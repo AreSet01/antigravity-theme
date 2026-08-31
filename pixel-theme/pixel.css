@@ -1,0 +1,2273 @@
+/* ============================================================================
+   PIXEL GRAVITY — Antigravity 2.x 像素风主题
+   ----------------------------------------------------------------------------
+   位置：<Antigravity安装目录>\resources\pixel-theme\pixel.css
+   改完保存后，在 Antigravity 窗口里按 Ctrl+R 刷新即可生效，不用重装、不用重启。
+
+   实现原理：
+     Antigravity 的界面是 Tailwind v4 + 一套语义化 CSS 变量，
+     所有颜色都从 --background / --foreground / --primary 三个基色派生；
+     内嵌 IDE 区域另有一套 --vscode-* 变量。
+     所以这里不是逐个组件改样式，而是直接替换这两套变量的取值。
+     这些变量是内联在 <html> 上的，所以覆盖时必须带 !important。
+
+   配色：Sweetie-16 复古调色板
+   ============================================================================ */
+
+/* ============================================================
+   0. 调色板
+   ============================================================ */
+:root {
+  --px-navy:    #1a1c2c;  /* 最深 —— 主背景 */
+  --px-navy-2:  #14161f;  /* 更深 —— 侧栏/标题栏 */
+  --px-panel:   #20233a;  /* 面板/卡片 */
+  --px-slate:   #333c57;  /* 边框（暗） */
+  --px-gray:    #566c86;  /* 次要边框 / 行号 */
+  --px-silver:  #94b0c2;  /* 次要文字 */
+  --px-white:   #f4f4f4;  /* 主文字（暗色模式） */
+
+  --px-cyan:    #73eff7;  /* 强调色 / 焦点 / 链接 */
+  --px-blue:    #41a6f6;
+  --px-indigo:  #3b5dc9;  /* 按钮 / 选中 */
+  --px-navy-3:  #29366f;  /* 选中背景 */
+  --px-teal:    #257179;
+  --px-green:   #a7f070;
+  --px-green-2: #38b764;
+  --px-yellow:  #ffcd75;
+  --px-orange:  #ef7d57;
+  --px-red:     #b13e53;
+  --px-purple:  #5d275d;
+
+  /* 亮色模式用的浅色阶（三级分明，否则侧栏和正文糊成一片） */
+  --px-paper:   #eef0f5;  /* 正文背景 */
+  --px-paper-2: #dde1ea;  /* 侧栏 */
+  --px-paper-3: #cbd2e0;  /* 侧栏内的次级块 */
+
+  /* 字体
+     ⚠ 不要往这条链里加 'Zpix'。实测（probe16）本机没装 Zpix，
+     但 document.fonts.check('12px "Zpix"') 仍然返回 true —— 那个 API
+     对没装的字体也会说有，不能拿来判断。真正的解析结果要看 CDP 的
+     platformFontsForNode：'Zpix' 落到了 Noto Sans SC（非点阵轮廓字体），
+     并不会像预期那样继续 fallback 到 Silkscreen，反而把中文糊掉。 */
+  --px-font-ui:   'Fusion Pixel 12px Proportional SC', 'Silkscreen', monospace;
+  --px-font-mono: 'Fusion Pixel 12px Monospaced SC', 'Fusion Pixel 12px Proportional SC', monospace;
+
+  /* 硬阴影（像素风的“立体”靠位移色块，不靠模糊） */
+  --px-shadow:    3px 3px 0 rgba(0, 0, 0, 0.55);
+  --px-shadow-lg: 5px 5px 0 rgba(0, 0, 0, 0.55);
+
+  /* ------------------------------------------------------------------
+     系统窗口按钮（右上角 最小化/最大化/关闭）的配色
+     --------------------------------------------------------------
+     这三个按钮是 Windows 画的，不是网页，CSS 够不着，
+     必须由主进程单独告诉系统用什么颜色。
+     主进程启动时会用正则从这里读走这四个值，所以配色仍然只有这一个来源。
+
+     注意：这几个值和上面的不一样，改完要【重启 Antigravity】才生效，
+     Ctrl+R 是不够的（窗口构造时才会读）。
+     ------------------------------------------------------------------ */
+
+  /* 是否使用系统原生的标题栏按钮。
+     默认 off = 关掉系统按钮，改用第 12.5 节里自绘的像素按钮。
+     原因见 12.5 节：Windows 11 上系统按钮底色改不动，永远和顶栏不搭。
+     改成 on 就换回系统按钮（然后下面两个 bg 值才有意义）。 */
+  --px-native-caption: off;
+
+  /* 仅当 --px-native-caption: on 时才用得上：窗口底色 & 系统按钮配色。
+     bg 同时也是窗口未绘制前的底色，设成和顶栏一致可以消掉启动白闪。 */
+  --px-chrome-light-bg: #dde1ea;
+  --px-chrome-light-fg: #1a1c2c;
+  --px-chrome-dark-bg:  #14161f;
+  --px-chrome-dark-fg:  #73eff7;
+}
+
+/* ============================================================
+   1. 暗色模式配色
+   （body 没有 theme-light 类时一律按暗色处理）
+   ============================================================ */
+body:not(.theme-light) {
+  /* ---- 应用语义变量 ---- */
+  --background:           var(--px-navy) !important;
+  --foreground:           var(--px-white) !important;
+  --content:              var(--px-navy) !important;
+  --primary:              var(--px-cyan) !important;
+  --primary-foreground:   var(--px-navy) !important;
+  --secondary:            var(--px-panel) !important;
+  --secondary-foreground: var(--px-white) !important;
+  --muted:                #1e2033 !important;
+  --muted-foreground:     var(--px-silver) !important;
+  --placeholder:          var(--px-gray) !important;
+  --sidebar:              var(--px-navy-2) !important;
+  --sidebar-secondary:    var(--px-panel) !important;
+  --sidebar-muted:        #1b1d2e !important;
+  --card:                 var(--px-panel) !important;
+  --card-border:          var(--px-slate) !important;
+  --border:               var(--px-slate) !important;
+
+  /* ---- 内嵌 IDE / 编辑器 ---- */
+  --vscode-foreground:                       var(--px-silver) !important;
+  --vscode-editor-background:                var(--px-navy) !important;
+  --vscode-editor-foreground:                var(--px-white) !important;
+  --vscode-sideBar-background:               var(--px-navy-2) !important;
+  --vscode-sideBar-foreground:               var(--px-silver) !important;
+  --vscode-titleBar-activeBackground:        var(--px-navy-2) !important;
+  --vscode-titleBar-activeForeground:        var(--px-white) !important;
+  --vscode-activityBar-background:           var(--px-navy-2) !important;
+  --vscode-activityBar-foreground:           var(--px-cyan) !important;
+  --vscode-activityBarBadge-background:      var(--px-cyan) !important;
+  --vscode-activityBarBadge-foreground:      var(--px-navy) !important;
+  --vscode-editorWidget-background:          var(--px-panel) !important;
+  --vscode-editorWidget-border:              var(--px-gray) !important;
+  --vscode-editorInlayHint-background:       var(--px-panel) !important;
+  --vscode-editorInlayHint-foreground:       var(--px-gray) !important;
+  --vscode-editorLineNumber-foreground:      var(--px-gray) !important;
+  --vscode-notebook-cellEditorBackground:    var(--px-panel) !important;
+  --vscode-input-background:                 var(--px-panel) !important;
+  --vscode-input-foreground:                 var(--px-white) !important;
+  --vscode-input-border:                     var(--px-gray) !important;
+  --vscode-button-background:                var(--px-indigo) !important;
+  --vscode-button-foreground:                var(--px-white) !important;
+  --vscode-button-hoverBackground:           var(--px-blue) !important;
+  --vscode-focusBorder:                      var(--px-cyan) !important;
+  --vscode-list-focusOutline:                var(--px-cyan) !important;
+  --vscode-list-hoverBackground:             var(--px-panel) !important;
+  --vscode-list-hoverBackground-subtle:      #1e2033 !important;
+  --vscode-list-activeSelectionBackground:   var(--px-navy-3) !important;
+  --vscode-list-activeSelectionForeground:   var(--px-white) !important;
+  --vscode-list-highlightForeground:         var(--px-cyan) !important;
+  --vscode-textLink-foreground:              var(--px-cyan) !important;
+  --vscode-textPreformat-foreground:         var(--px-yellow) !important;
+  --vscode-textPreformat-background:         var(--px-panel) !important;
+  --vscode-toolbar-hoverBackground:          var(--px-panel) !important;
+  --vscode-commandCenter-inactiveBorder:     var(--px-slate) !important;
+  --vscode-notifications-background:         var(--px-panel) !important;
+  --vscode-notifications-foreground:         var(--px-white) !important;
+  --vscode-notifications-border:             var(--px-gray) !important;
+  --vscode-editorWarning-foreground:         var(--px-yellow) !important;
+  --vscode-editorError-foreground:           var(--px-red) !important;
+  --vscode-editorGroup-dropBackground:       rgba(115, 239, 247, 0.15) !important;
+  --vscode-diffEditor-insertedLineBackground: rgba(56, 183, 100, 0.20) !important;
+  --vscode-diffEditor-removedLineBackground:  rgba(177, 62, 83, 0.22) !important;
+  --vscode-diffEditor-insertedTextBackground: rgba(56, 183, 100, 0.30) !important;
+  --vscode-diffEditor-removedTextBackground:  rgba(177, 62, 83, 0.32) !important;
+  --codeium-active-selection-color:          var(--px-cyan) !important;
+
+  /* 动效用（见第 14 节）：焦点闪光。
+     扫描线和 CRT 回扫亮带的两个变量**不在这里** —— 它们的消费者是 html 的
+     伪元素，取不到 body 上的值，已挪到第 13 节开头的 html 作用域，原因见那里。 */
+  --px-flash:    brightness(1.45);
+}
+
+/* ============================================================
+   2. 亮色模式配色
+   ============================================================ */
+body.theme-light {
+  --background:           var(--px-paper) !important;
+  --foreground:           var(--px-navy) !important;
+  --content:              var(--px-paper) !important;
+  --primary:              var(--px-indigo) !important;
+  --primary-foreground:   var(--px-paper) !important;
+  --secondary:            var(--px-paper-2) !important;
+  --secondary-foreground: var(--px-navy) !important;
+  --muted:                var(--px-paper-2) !important;
+  --muted-foreground:     #4d5a72 !important;
+  --placeholder:          var(--px-gray) !important;
+  --sidebar:              var(--px-paper-2) !important;
+  --sidebar-secondary:    var(--px-paper-3) !important;
+  --sidebar-muted:        #e3e7ee !important;
+  --card:                 var(--px-paper) !important;
+  --card-border:          var(--px-gray) !important;
+  --border:               var(--px-gray) !important;
+
+  --vscode-foreground:                       #4d5a72 !important;
+  --vscode-editor-background:                var(--px-paper) !important;
+  --vscode-editor-foreground:                var(--px-navy) !important;
+  --vscode-sideBar-background:               var(--px-paper-2) !important;
+  --vscode-sideBar-foreground:               var(--px-navy) !important;
+  --vscode-titleBar-activeBackground:        var(--px-paper-2) !important;
+  --vscode-titleBar-activeForeground:        var(--px-navy) !important;
+  --vscode-activityBar-background:           var(--px-paper-2) !important;
+  --vscode-activityBar-foreground:           var(--px-indigo) !important;
+  --vscode-activityBarBadge-background:      var(--px-indigo) !important;
+  --vscode-activityBarBadge-foreground:      var(--px-paper) !important;
+  --vscode-editorWidget-background:          var(--px-paper) !important;
+  --vscode-editorWidget-border:              var(--px-gray) !important;
+  --vscode-editorInlayHint-background:       var(--px-paper-2) !important;
+  --vscode-editorInlayHint-foreground:       var(--px-gray) !important;
+  --vscode-editorLineNumber-foreground:      var(--px-gray) !important;
+  --vscode-notebook-cellEditorBackground:    var(--px-paper-2) !important;
+  --vscode-input-background:                 var(--px-paper) !important;
+  --vscode-input-foreground:                 var(--px-navy) !important;
+  --vscode-input-border:                     var(--px-gray) !important;
+  --vscode-button-background:                var(--px-indigo) !important;
+  --vscode-button-foreground:                var(--px-paper) !important;
+  --vscode-button-hoverBackground:           var(--px-blue) !important;
+  --vscode-focusBorder:                      var(--px-indigo) !important;
+  --vscode-list-focusOutline:                var(--px-indigo) !important;
+  --vscode-list-hoverBackground:             var(--px-paper-3) !important;
+  --vscode-list-hoverBackground-subtle:      #eaecf1 !important;
+  --vscode-list-activeSelectionBackground:   #c9d4ee !important;
+  --vscode-list-activeSelectionForeground:   var(--px-navy) !important;
+  --vscode-list-highlightForeground:         var(--px-indigo) !important;
+  --vscode-textLink-foreground:              var(--px-indigo) !important;
+  --vscode-textPreformat-foreground:         var(--px-red) !important;
+  --vscode-textPreformat-background:         var(--px-paper-2) !important;
+  --vscode-toolbar-hoverBackground:          var(--px-paper-3) !important;
+  --vscode-commandCenter-inactiveBorder:     var(--px-gray) !important;
+  --vscode-notifications-background:         var(--px-paper) !important;
+  --vscode-notifications-foreground:         var(--px-navy) !important;
+  --vscode-notifications-border:             var(--px-gray) !important;
+  --vscode-editorWarning-foreground:         #a06800 !important;
+  --vscode-editorError-foreground:           var(--px-red) !important;
+  --vscode-editorGroup-dropBackground:       rgba(59, 93, 201, 0.15) !important;
+  --vscode-diffEditor-insertedLineBackground: rgba(56, 183, 100, 0.18) !important;
+  --vscode-diffEditor-removedLineBackground:  rgba(177, 62, 83, 0.16) !important;
+  --vscode-diffEditor-insertedTextBackground: rgba(56, 183, 100, 0.28) !important;
+  --vscode-diffEditor-removedTextBackground:  rgba(177, 62, 83, 0.26) !important;
+  --codeium-active-selection-color:          var(--px-indigo) !important;
+
+  /* 亮色模式下“闪一下”要往暗里走，往亮里走会直接洗成白块看不见 */
+  --px-flash:    brightness(0.88);
+}
+
+/* ============================================================
+   3. 字体
+   直接改 Tailwind 的字体 token，全局自动生效；
+   图标字体（codicon 等）自己指定了 font-family，不受影响。
+   ============================================================ */
+:root,
+:host,
+body {
+  --font-sans:               var(--px-font-ui) !important;
+  --font-mono:               var(--px-font-mono) !important;
+  --default-font-family:     var(--px-font-ui) !important;
+  --default-mono-font-family: var(--px-font-mono) !important;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea,
+[contenteditable] {
+  font-family: var(--px-font-ui) !important;
+}
+
+pre,
+code,
+kbd,
+samp,
+.monaco-editor,
+.monaco-editor *,
+[class*="font-mono"] {
+  font-family: var(--px-font-mono) !important;
+}
+
+/* 像素字体必须关掉抗锯齿，否则边缘发糊就不像素了。
+   ⚠ Windows 上 -webkit-font-smoothing 本来就不生效（那是 macOS 专属），
+   这一行在 Win 上等于空操作，保留是为了 mac 版 Antigravity 的一致性。
+   text-rendering 同样只对文本 shaping 有影响、和光栅化无关，
+   这里不写了 —— geometricPrecision 是个空摆设，留它徒增困惑。 */
+html,
+body,
+body * {
+  -webkit-font-smoothing: none !important;
+  -moz-osx-font-smoothing: unset !important;
+}
+
+/* 像素字体没有真正的粗体，用字重会触发合成加粗（糊成一团）。
+   统一压到 400，靠颜色和背景来区分层级。 */
+body,
+body * {
+  font-synthesis: none !important;
+}
+b,
+strong,
+h1, h2, h3, h4, h5, h6,
+[class*="font-bold"],
+[class*="font-semibold"],
+[class*="font-medium"] {
+  font-weight: 400 !important;
+}
+
+/* ------------------------------------------------------------
+   3.1 像素栅格对齐 —— 字号必须落在 12 的整数倍上
+   ------------------------------------------------------------
+   Fusion Pixel 只有 **一张** 12px 点阵（patch/pixelTheme.js 里
+   base64 内联的那两个 woff2，各自只有一个 strike）。
+   点阵字体只在「设备像素尺寸 = 12 的整数倍」时逐点对齐；
+   差一点点就得重采样，边缘糊成灰边。
+
+   唯一的判据（gridtest.mjs / fontgrid2.py 实测，两条独立光栅化路径
+   —— canvas 2D 和真实 DOM 文本 —— 结论一致）：
+
+       **字号(CSS) × devicePixelRatio 必须是 12 的整数倍**
+
+   注意：「落在整数设备像素上」**不够**。这是上一版注释里写错的地方。
+   下面这张表是 DPR = 1.3693 时同一段文字的颜色数（越少越干净）：
+
+     CSS 字号    设备像素   ÷12      颜色数
+      8.7636     12.000    1.00×       7   ← 干净
+     17.5271     24.000    2.00×       5   ← 干净
+     26.2907     36.000    3.00×       5   ← 干净
+     11.6847     16.000    1.33×     141   ← 整数设备像素，照样糊
+     13.1451     18.000    1.50×      95   ← 整数设备像素，照样糊
+     12（现状）  16.432    1.37×     223   ← 最糊
+
+   11.6847 和 13.1451 都正好落在整数设备像素上，还是糊的 —— 所以
+   「整数设备像素」不是判据，「12 的整数倍」才是。之所以以前会看错，
+   是因为上次实测时 DPR = 0.9129，13.1451 恰好同时满足两个条件，
+   两个假设分不开；换成今天的 DPR 就分开了。
+
+   容差极窄（tolerance.mjs 扫 0.05 步长）：
+     1× 处 ±0.05 就已经从 7 色劣化到 17~21 色；
+     2× 处能容忍的偏移也只有 ±0.05 设备像素。
+   所以字号不能「差不多」，必须按 DPR 算准。
+
+   DPR = 系统缩放 × 窗口缩放。本机实测 1.3693 = 1.5 × 1.2^-0.5，
+   也就是系统 150% + 窗口停在 -0.5 级。
+   **注意：把窗口缩放调回 100%（Ctrl+0）并不能解决问题** —— 那样
+   DPR = 1.5，12px CSS = 18 设备像素 = 1.5×，仍然是糊的。旧注释说
+   「缩放回正后 DPR = 1」只在系统缩放 100% 的机器上成立。
+
+   所以字号不能写死，必须跟着 DPR 走。下面用 resolution 媒体查询做：
+   实测 (min-resolution: Xdppx) 跟踪的是**系统缩放 × 窗口缩放**的合成
+   DPR（二分逼近测得 1.36931，与 devicePixelRatio 完全一致），所以
+   媒体查询能同时覆盖两种缩放，不需要用户手动调窗口缩放。
+
+   两个旋钮：
+     --px-unit   一个「点阵格」= 12 设备像素，折算成 CSS px。随 DPR 改。
+     --px-cells  正文占几格。**想要字大就改这个数**，整格跳，永不脱格。
+   正文 = unit × cells，标题 = unit × cells × 2（保持原来的 1:2 关系）。
+
+   cells 取 round(DPR)。系统给出 DPR 的本意，是让 12 CSS px 画成
+   12 × DPR 个设备像素；栅格只能给 12 × cells，所以取最接近的那
+   一格 —— 即最小化 |cells − DPR|。
+
+   旧版这里取的是 floor(DPR)，那是个 bug：向下取整在所有分数 DPR
+   上都系统性偏小。2K@150% 实测正文只有 1080P 的 0.75 倍，而行高
+   （48 CSS px）、图标（16 CSS px）是写死的 CSS px、没跟着缩，
+   字与框的比例因此差了 0.67 倍 —— 「行很空、字很小」就是这么来的。
+
+   与 1080P 完全等大的点是 DPR 1.3333（= 2560/1920），需要 16 设备
+   像素：不是 12 的倍数，实测糊成 84 级灰阶。所以只能在 12（0.75×）
+   与 24（1.5×）之间取近者，中间没有干净档位 —— 这是点阵字体的硬
+   约束，不是取整策略能绕开的。
+   嫌大嫌小就直接改 --px-cells，整格跳，永不脱格。 */
+:root,
+:host,
+body {
+  --px-unit:  12px;   /* 一格 = 12 设备像素；下面的表按 DPR 改写 */
+  --px-cells: 1;      /* 正文占几格；改这个数 = 整格缩放，不会脱格 */
+
+  --px-fs:    calc(var(--px-unit) * var(--px-cells));
+  --px-fs-lg: calc(var(--px-unit) * var(--px-cells) * 2);
+}
+
+/* DPR 对照表 —— **兜底用**。正常情况下 pixelTheme.js 的 DPR_SYNC_JS
+   会在 dom-ready / zoom-changed 时注入 #px-dpr-grid，用 JS 直接算
+   12 ÷ devicePixelRatio，精确覆盖任意 DPR。下表只在那段 JS 没跑起来
+   （注入失败、或直接引用本 CSS）时接管。
+
+   为什么表不够：窗口缩放按 1.2 的幂次走（0.9129 = 1.2^-0.5、
+   1.3693 = 1.5×1.2^-0.5 …），档位无穷多，列不完。实测漏掉一档就是
+   整屏脱格变糊 —— 0.9129 这一档就漏过。JS 那条路没有这个问题。
+
+   窗口开得很窄（±0.001dppx）是必须的：容差只有 ±0.05 设备像素，
+   窗口每宽 0.001，12 设备像素处就漂 0.01。
+   要加机器就照抄一行：
+     unit  = 12 ÷ DPR
+     cells = round(DPR)          ← 别用 floor，会系统性偏小
+   正文最终 = unit × cells = 12 × cells 设备像素，恒在栅格上。 */
+
+/* 系统 125%，或系统 150% + 窗口 -1 级 */
+@media (min-resolution: 1.2490dppx) and (max-resolution: 1.2510dppx) {
+  :root, :host, body { --px-unit: 9.6px;    --px-cells: 1; }
+}
+/* 系统 150% + 窗口 -0.5 级 —— 开发机实测值。round(1.369) = 1 */
+@media (min-resolution: 1.3688dppx) and (max-resolution: 1.3698dppx) {
+  :root, :host, body { --px-unit: 8.7636px; --px-cells: 1; }
+}
+/* 2K@150%（2560×1440 → 视口 1707）。round(1.5) = 2，正文 16 CSS px。
+   取 1 格会得到 8px，只有 1080P 的 0.75 倍 —— 就是「偏小」的来源。 */
+@media (min-resolution: 1.4990dppx) and (max-resolution: 1.5010dppx) {
+  :root, :host, body { --px-unit: 8px;      --px-cells: 2; }
+}
+/* 系统 150% + 窗口 +0.5 级。round(1.644) = 2 */
+@media (min-resolution: 1.6425dppx) and (max-resolution: 1.6438dppx) {
+  :root, :host, body { --px-unit: 7.3030px; --px-cells: 2; }
+}
+/* 系统 175%，窗口 100%。round(1.75) = 2 */
+@media (min-resolution: 1.7490dppx) and (max-resolution: 1.7510dppx) {
+  :root, :host, body { --px-unit: 6.8571px; --px-cells: 2; }
+}
+/* 系统 150% + 窗口 +1 级。round(1.8) = 2 */
+@media (min-resolution: 1.7990dppx) and (max-resolution: 1.8010dppx) {
+  :root, :host, body { --px-unit: 6.6667px; --px-cells: 2; }
+}
+/* 系统 200% */
+@media (min-resolution: 1.9990dppx) and (max-resolution: 2.0010dppx) {
+  :root, :host, body { --px-unit: 6px;      --px-cells: 2; }
+}
+/* 系统 225% */
+@media (min-resolution: 2.2490dppx) and (max-resolution: 2.2510dppx) {
+  :root, :host, body { --px-unit: 5.3333px; --px-cells: 2; }
+}
+/* 系统 250%。本意 30 设备像素，24（0.8×）与 36（1.2×）等距 —— 平局。
+   取 2 格（偏小的一侧），因为放大更容易撑破容器。想大就改成 3。 */
+@media (min-resolution: 2.4990dppx) and (max-resolution: 2.5010dppx) {
+  :root, :host, body { --px-unit: 4.8px;    --px-cells: 2; }
+}
+/* 系统 300% */
+@media (min-resolution: 2.9990dppx) and (max-resolution: 3.0010dppx) {
+  :root, :host, body { --px-unit: 4px;      --px-cells: 3; }
+}
+
+/* Tailwind 的任意值字号。全文档实测（cls11.mjs）只有这三个：
+     text-[11px]   “Restart to Update” 那颗更新药丸
+     text-[13px]
+     text-[0.9em]  行内 code 的相对字号
+   这类字号天生脱格（11、13 都不是 12 的倍数，0.9em 更是乘出来的小数），
+   而且 class 名里带方括号，按 token 匹配（[class~=]）匹配不到，
+   只能用子串匹配。三个一起收回栅格。 */
+[class*="text-[11px]"],
+[class*="text-[13px]"],
+[class*="text-[0.9em]"] {
+  font-size: var(--px-fs) !important;
+  line-height: 1.5 !important;
+}
+
+/* 继承源头。实测（offgrid2.mjs）：脱格的 493 个元素里有 490 个自己
+   **没有**任何 font-size 规则，是从 <html> 的行内 font-size:16px 一路
+   继承下来的 —— 中间隔着一层，所以上面那些按 class 点名的选择器全都
+   够不着。只能在继承链的源头拦。
+
+   **必须写在 body 上，不能写在 html 上。**
+   Tailwind 的间距全是 rem（px-3、py-[0.25rem]、gap-y-3 …），rem 是相对
+   html 的 font-size 算的。把 html 从 16px 改成 8.7636px，整个应用的内边距
+   和间距会一起缩掉 45%，布局直接塌。html 保持 16px 让 rem 不受影响，
+   字号挂在 body 上，文字照样能继承到。 */
+body {
+  font-size: var(--px-fs) !important;
+}
+
+/* 正文主力：.text-sm 及一切 14px 文本
+   行高一律用无单位 1.5：字号已经是 12 设备像素的整数倍，×1.5 之后
+   仍然落在整数设备像素上（12→18、24→36），基线不会掉进半个像素里。
+   写死 18px 就不行了 —— 字号跟着 DPR 变，18px 立刻脱格。 */
+[class~="text-sm"],
+[class~="text-base"],
+[class~="text-xs"],
+p,
+li,
+strong,
+b {
+  font-size: var(--px-fs) !important;
+  line-height: 1.5 !important;
+}
+
+/* 菜单栏那几个按钮（Antigravity / 文件 / 视图 …）也是 14px */
+button[class*="inline-flex"][class*="font-medium"] {
+  font-size: var(--px-fs) !important;
+}
+
+/* 行内 code 用的是 0.9em，父级收到 12px 后会变成 10.8px —— 还是离格。
+   必须写死，不能靠继承。 */
+code,
+kbd,
+samp {
+  font-size: var(--px-fs) !important;
+  line-height: 1.5 !important;
+}
+
+/* 回答里的标题。像素字体只有 1× 和 2× 两档干净尺寸，
+   中间档（18px、20px）一律是糊的，所以标题只能二选一：
+   h1/h2 走 2×，h3 以下回到 1×，靠颜色和缩进拉层级，不靠字号。 */
+h1,
+h2 {
+  font-size: var(--px-fs-lg) !important;
+  line-height: 1.5 !important;
+}
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--px-fs) !important;
+  line-height: 1.5 !important;
+}
+
+/* 最后两处漏网的 16px（after.mjs 复查出来的）：
+   顶栏面包屑里的 “/” 分隔符，和一个 .sr-only 的读屏按钮。
+   分隔符肉眼可见，读屏按钮不可见但一并收掉，省得以后又冒出来。 */
+[class~="font-light"][class~="opacity-30"],
+[class~="sr-only"] {
+  font-size: var(--px-fs) !important;
+}
+
+/* ============================================================
+   4. 直角化 —— 像素世界没有圆角
+   ============================================================ */
+:root,
+:host {
+  --radius-xs:  0 !important;
+  --radius-sm:  0 !important;
+  --radius-md:  0 !important;
+  --radius-lg:  0 !important;
+  --radius-xl:  0 !important;
+  --radius-2xl: 0 !important;
+  --radius-3xl: 0 !important;
+  --radius-full: 0 !important;
+}
+
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+/* ============================================================
+   5. 干掉毛玻璃和渐变 —— 像素风只要纯色块
+   ============================================================ */
+* {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  text-shadow: none !important;
+  /* 渐变也一并清掉。实测（probe15 urlBackgrounds 普查）全应用零 url() 背景图，
+     所以这行不会误杀头像/图标；CRT 扫描线（html::after）和亮带（html::before）
+     是伪元素，* 不匹配它们，扫描线不受影响。
+     万一以后有功能真的要用 background-image 铺图，这里的兜底写法：
+       [class*="group-hover:visible"], .absolute.bottom-0.inset-x-4.pointer-events-none
+     只清那两处，把 * 放宽回这些窄选择器。 */
+  background-image: none !important;
+}
+
+/* ============================================================
+   5.5 锁死窗口 —— 整个界面不许滚动
+   ----------------------------------------------------------------
+   Antigravity 的根容器是 w-screen/h-screen（= 100vw/100vh，含滚动条宽度）。
+   只要文档溢出哪怕 1px，就会出现滚动条 → 可视区变窄 → 但 100vw 不变
+   → 永久溢出，整个界面就能上下左右拖动，而系统窗口按钮是 OS 画的、
+   不跟随页面滚动，于是右上角按钮和最小化/关闭按钮就错位重叠了。
+   桌面应用的文档层本来就不该滚动，这里直接焊死。
+   ============================================================ */
+html,
+body {
+  overflow: hidden !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+
+/* ============================================================
+   6. 方块滚动条
+   ----------------------------------------------------------------
+   注意：Chromium 里只要元素上设了 scrollbar-color / scrollbar-width，
+   ::-webkit-scrollbar 就整个失效。Antigravity 在 <body> 内联了
+   scrollbar-color，而这个属性会被子元素继承，等于把全局的
+   webkit 滚动条样式废掉了 —— 所以这里必须先把它撤回 auto。
+   ============================================================ */
+html,
+body,
+body * {
+  scrollbar-color: auto !important;
+  scrollbar-width: auto !important;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--px-gray);
+  border: 3px solid var(--background);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--px-silver);
+}
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: var(--px-navy);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ============================================================
+   7. 硬边框 + 硬阴影
+   凡是原本用模糊阴影的地方，一律换成位移色块
+   ============================================================ */
+
+/* 边框加粗到 2px。
+   这里用 [class~="border"]（精确匹配完整的 border 类名），
+   而不是 [class*="border"]（会误伤只设了 border-l 的元素，
+   给它凭空补出四条边）。单边的用各自的 border-t/b/l/r 处理。 */
+[class~="border"] {
+  border-width: 2px !important;
+}
+[class~="border-t"] { border-top-width: 2px !important; }
+[class~="border-b"] { border-bottom-width: 2px !important; }
+[class~="border-l"] { border-left-width: 2px !important; }
+[class~="border-r"] { border-right-width: 2px !important; }
+
+[class*="shadow-"]:not([class*="shadow-none"]) {
+  box-shadow: var(--px-shadow) !important;
+}
+
+/* 浮层加硬边框。
+   这里的 :not(:empty) 很关键 —— 应用里有几个常驻的空占位浮层
+   （比如 Lexical 输入框的 <div role="listbox"> 联想菜单占位），
+   平时是 0×0 的。给它们加 2px 边框会撑成 4×4 顶在文档底部，
+   把整个页面撑出滚动条。只给有内容的浮层加边框就没这问题。 */
+[role="menu"]:not(:empty),
+[role="listbox"]:not(:empty),
+[role="dialog"]:not(:empty),
+[role="alertdialog"]:not(:empty),
+[data-radix-popper-content-wrapper] > * {
+  border: 2px solid var(--px-gray) !important;
+  box-shadow: var(--px-shadow-lg) !important;
+}
+
+/* 字号走 var(--px-fs)，不能写死 12px —— 12px 只在 DPR = 1 时对齐栅格。 */
+[role="tooltip"]:not(:empty) {
+  border: 2px solid var(--px-gray) !important;
+  box-shadow: var(--px-shadow) !important;
+  font-size: var(--px-fs) !important;
+}
+
+/* 输入框那圈「假边框」。
+   应用不给容器画 border，而是套一层 p-px + bg-card-border 的父盒子，
+   靠 1px padding 露出底色来充当边框。上面把真 border 全加粗到 2px 了，
+   这个漏网的还是 1px，并排看粗细不一致。padding 提到 2px 对齐。
+   （4 处命中：主输入框和几个内联编辑框） */
+[class~="p-px"][class~="bg-card-border"] {
+  padding: 2px !important;
+}
+
+/* ============================================================
+   8. 按钮 —— 按下去有“咔哒”的位移手感
+   ============================================================ */
+/* 去掉原生控件外观。只点名 button/[role=button]，**不写 input** ——
+   input 上加 appearance: none 会把复选框和单选框直接抹成空白方块，
+   而这两个是靠第 9 节的 accent-color 上色的，抹了就没了。
+
+   ⚠ 这里曾经还有一句 `transition: none !important`（2026-08-04 移除）。
+   写它的本意是「过渡由主题统一接管」，但主题只给 border / bg-primary /
+   bg-card 三类按钮补了过渡 —— 实测这三类在真实页面只命中 1/66 个按钮，
+   剩下 65 个是裸奔的：应用自己写了 hover:bg-secondary + transition-colors，
+   被这一句压成 0s，于是 38 个按钮悬停是硬跳色。
+   （CDP getMatchedStylesForNode 实测：.transition-colors 定义了
+   transition-property: color, background-color, … 却被 injected 的
+   `transition-property: none !important` 完全盖掉。）
+   删掉之后应用自带的颜色过渡活过来，缓动曲线仍由 14.1 节的
+   [class*="transition"] 统一接管，风格不会散。 */
+button,
+[role="button"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+button:active:not(:disabled),
+[role="button"]:active {
+  transform: translate(1px, 1px);
+}
+
+/* 主按钮做成带硬阴影的实心块 */
+button[class*="bg-primary"],
+[role="button"][class*="bg-primary"] {
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45) !important;
+}
+button[class*="bg-primary"]:active:not(:disabled) {
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0) !important;
+  transform: translate(2px, 2px);
+}
+
+/* ============================================================
+   9. 输入框
+   ============================================================ */
+input,
+textarea,
+[contenteditable] {
+  caret-color: var(--primary);
+  /* 光标改成实心方块，像终端。Chromium 128+ 支持，旧版忽略，无副作用。
+     配合 --px-font-ui 的等宽格子，方块光标正好压住一个字符位。 */
+  caret-shape: block;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder) !important;
+}
+input[type="checkbox"],
+input[type="radio"],
+progress {
+  accent-color: var(--primary);
+}
+
+/* ============================================================
+   10. 焦点框与选区 —— 2px 实线，不要柔光
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 1px !important;
+  box-shadow: none !important;
+}
+::selection {
+  background: var(--px-indigo);
+  color: var(--px-white);
+}
+body.theme-light ::selection {
+  background: #c9d4ee;
+  color: var(--px-navy);
+}
+
+/* ============================================================
+   11. 图片 / 头像 —— 像素化缩放
+   ============================================================ */
+img,
+canvas,
+[style*="background-image"] {
+  image-rendering: pixelated;
+}
+
+/* ============================================================
+   12. 加载动画
+   ============================================================ */
+[class*="animate-spin"] {
+  animation: px-spin 1s linear infinite !important;
+}
+@keyframes px-spin {
+  to { transform: rotate(360deg); }
+}
+/* 跳帧时代这里把 animate-pulse 换成二值硬闪（px-blink），流式输出的
+   「思考中」占位块每 0.6s 啪一下 —— 平滑化后按呼吸做，这类占位闪烁
+   恰恰是用户「看着卡」的来源之一。 */
+[class*="animate-pulse"] {
+  animation: px-breathe 1.6s var(--px-ease-io) infinite !important;
+}
+@keyframes px-breathe {
+  50% { opacity: 0.55; }
+}
+
+/* ============================================================
+   12.5 自绘窗口按钮（右上角 最小化 / 最大化 / 关闭）
+   ----------------------------------------------------------------
+   为什么要自己画：
+     Windows 11 上系统标题栏按钮的底色**完全不受 Electron 控制** ——
+     试过给 titleBarOverlay 传亮绿色和深蓝，系统照样渲染成它自己的
+     #EAEAEB，跟像素配色的顶栏永远差一截，看着就是贴了块补丁。
+     所以干脆关掉系统按钮，在网页里自己画三个像素按钮。
+     驱动窗口用的是 Antigravity preload 本来就暴露的 window.electronNative，
+     没有额外的 IPC。
+
+   想换回系统原生按钮的话，把下面这行的 off 改成 on，然后重启 Antigravity：
+   --px-native-caption: off;
+
+   图形是纯 CSS 画的方块，不用字符，保证任何缩放下都是硬边缘。
+   ============================================================ */
+
+#px-window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 2147483646;      /* 压在扫描线下面一层 */
+  display: flex;
+  height: 35px;             /* 和应用顶栏同高 */
+  -webkit-app-region: no-drag;
+}
+
+#px-window-controls .px-wc-btn {
+  all: unset;
+  box-sizing: border-box;
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  /* all: unset 把过渡也 unset 了，而这三个按钮（最小化/最大化/关闭）
+     是全应用最右上角、点击频率最高的一组 —— 补回来，否则悬停底色瞬变。
+     2026-08-04 实测发现：computed transitionProperty 是 none。 */
+  transition: background-color var(--px-t-fast) var(--px-ease),
+              color var(--px-t-fast) var(--px-ease);
+}
+
+#px-window-controls .px-wc-btn:hover  { background: var(--px-slate); }
+#px-window-controls .px-wc-close:hover { background: var(--px-red); }
+#px-window-controls .px-wc-btn:active { background: var(--px-navy-3); }
+
+body.theme-light #px-window-controls .px-wc-btn:hover   { background: var(--px-paper-3); }
+body.theme-light #px-window-controls .px-wc-close:hover { background: var(--px-red); }
+
+/* --- 图标本体：用 i 元素 + 边框画方块 --- */
+#px-window-controls i {
+  display: block;
+  color: var(--foreground);
+}
+/* 只有关闭键 hover 时是红底，才需要反白。
+   其余按钮 hover 底色是浅色/深色的中间调，图标保持 --foreground 才看得清。 */
+#px-window-controls .px-wc-close:hover i { color: var(--px-white); }
+
+/* 最小化：一条横杠 */
+#px-window-controls .px-wc-min i {
+  width: 10px;
+  height: 2px;
+  background: currentColor;
+}
+
+/* 最大化：一个空心方块 */
+#px-window-controls .px-wc-max i {
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+}
+
+/* 已最大化时换成“还原”样式：两个错开的方块 */
+#px-window-controls[data-maximized="1"] .px-wc-max i {
+  width: 8px;
+  height: 8px;
+  box-shadow: 4px -4px 0 -2px var(--background), 4px -4px 0 0 currentColor;
+  /* 居中补偿：后面那个方块靠 box-shadow 画在 (+4, -4)，
+     所以图形的**可视**范围是 12×12（x: 0→12，y: -4→8），
+     可视中心在元素盒中心的右 2px、上 2px 处。
+     要让可视中心压住按钮中心，元素本身就得往**左下**各挪 2px。
+
+     ⚠ 原来这里写的是 margin: -2px 2px 2px -2px —— 横向对了（左移 2px），
+     纵向反了：负的 margin-top 是把元素往**上**提，于是图标偏高 4px，
+     在最大化状态下看着就是“歪”的。（实测：元素中心 y 比按钮中心高 2px，
+     可视中心又比元素中心高 2px，合起来 4px。）
+
+     改用 translate 而不是继续调 margin：margin 会连带改变 flex 的
+     居中基准（居中的是 margin box，不是 border box），四个值要一起算才对得上；
+     translate 不参与布局，写多少就是挪多少，意图一眼能看懂。
+     数值保持 CSS px：它补偿的是同样用 CSS px 写死的 box-shadow 偏移，
+     两边必须同单位，换成设备像素反而会在别的 DPR 下对不上。 */
+  translate: -2px 2px;
+}
+
+/* 关闭：两条交叉斜杠 */
+#px-window-controls .px-wc-close i {
+  position: relative;
+  width: 12px;
+  height: 12px;
+}
+#px-window-controls .px-wc-close i::before,
+#px-window-controls .px-wc-close i::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: -1px;
+  width: 14px;
+  height: 2px;
+  background: currentColor;
+}
+#px-window-controls .px-wc-close i::before { transform: rotate(45deg); }
+#px-window-controls .px-wc-close i::after  { transform: rotate(-45deg); }
+
+/* ============================================================
+   13. CRT 扫描线
+   ----------------------------------------------------------------
+   觉得晃眼的话，把下面这一整块注释掉（选中后 Ctrl+/），
+   保存后回 Antigravity 按 Ctrl+R 就没了。
+   ------------------------------------------------------------ */
+
+/* --px-scan-alpha 和 --px-crt-band 在这里定义，不放在第 1/2 节的 body 作用域：
+   它们的消费者是 html::after / html::before —— 伪元素挂在 <html> 上，
+   继承自上而下，body 上定义的变量它们取不到。
+   踩坑记录：这俩原本定义在 body 里，结果 html::before 的 background
+   吃到 undefined 的 var，整条声明失效 —— 回扫亮带从来没渲染过。 */
+html {
+  --px-scan-alpha: 0.10;         /* 暗色模式扫描线浓度 */
+  --px-crt-band: rgba(255, 255, 255, 0.038);  /* 回扫亮带 */
+}
+html:has(body.theme-light) {
+  --px-scan-alpha: 0.045;
+  --px-crt-band: rgba(0, 0, 0, 0.030);
+}
+
+html::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.10) 0px,
+    rgba(0, 0, 0, 0.10) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+/* 亮色模式下扫描线要更淡，否则整个界面发灰。
+   ⚠ 这里必须写死 rgba，不能用 var(--px-scan-alpha) ——
+   那个变量存的是**裸数字**（0.045），拼进 gradient 会得到
+   「0.045 0px」这种非法颜色，整条 background 直接失效。
+   要改浓度就改下面这两个 rgba 的第四位。 */
+html:has(body.theme-light)::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.045) 0px,
+    rgba(0, 0, 0, 0.045) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* ============================================================
+   14. 动效
+   ----------------------------------------------------------------
+   动效的铁律（2026-08-04 修订）：
+
+     1) 【已废除】「只走帧，不走插值 —— 一律 steps()」。
+        跳帧版用户实测观感是「卡」，明确要求动画完全贴合屏幕刷新率，
+        所以缓动全部换成平滑曲线，集中在下面这组变量里。
+        仍保持二值的只有一处本来就该二值的：CRT 闪烁（px-crt-flicker）——
+        闪烁做平滑就不是闪烁了。
+        各节注释里残留的「N 帧 / steps」推导是跳帧时代的记录，当史料读。
+
+     2) 位移只用整数设备像素做**终点**，绝对不用 scale()。
+        缩放会把点阵字重采样，动画中途先糊掉再变清楚，非常难看。
+        Antigravity 自带的弹层动画正好就是 scaleY(0.95)，14.3 节换掉了。
+        （平滑运动过程中经过分数像素没关系：transform 是合成器搬运，
+        不触发重排版；停稳那一帧落在整数设备像素上，字就是清晰的。）
+
+   Antigravity 原本的动效底子（探测实机得到的，改的时候可以对照）：
+     · 弹层用 Base UI，开合状态挂在 data-starting-style / data-ending-style
+     · 侧栏/副面板在根节点上过渡 --sidebar-width，0.5s 平滑
+     · 项目树展开用 grid-template-rows: 0fr→1fr，duration-300
+     · tooltip 是 react-tooltip，显示态是 .react-tooltip__show
+     · 自带关键帧：fade-in / pulse / spin / button-press / unread-ping
+
+   整体调快调慢改下面这组变量就够，不用逐条去翻。
+   ============================================================ */
+:root {
+  /* 2026-08-04：全部平滑化。变量名里的 step 是历史名字，整个文件都在引用，
+     不值得为改名动几十处 —— 名字留着，值全换了。
+     想回跳帧版，换回这五个值就行（15.0 里还有四个同名同理）：
+       --px-step: steps(4,end)   --px-step-3: steps(3,end)
+       --px-step-2: steps(2,end) --px-step-fade: steps(6,end)
+       --px-t-snap: 70ms */
+  --px-ease:    cubic-bezier(0.16, 1, 0.3, 1);     /* expo-out：绝大多数动效 */
+  --px-ease-io: cubic-bezier(0.45, 0.05, 0.25, 1); /* 往返 / 穿越型运动 */
+
+  --px-step:   var(--px-ease);
+  --px-step-3: var(--px-ease);
+  --px-step-2: var(--px-ease);
+  --px-step-fade: var(--px-ease);
+
+  --px-t-fast: 80ms;            /* 悬停、按下这类即时反馈 */
+  --px-t:      140ms;           /* 弹层 */
+  --px-t-view: 170ms;           /* 切视图 */
+
+  /* 跳帧时代弹层必须 70ms「啪」地弹（大面板分帧淡入看着像抖），
+     平滑版没这个问题，和常规过渡同速即可。
+     仍然不是 0s —— 应用可能在等 transitionend，时长为 0 不触发。 */
+  --px-t-snap: 140ms;
+}
+
+/* ------------------------------------------------------------
+   14.1 地基：把所有过渡换成跳帧
+   ------------------------------------------------------------
+   应用里已经铺满了 transition-colors / transition-opacity /
+   transition-all，这里不动它们的属性和时长，只把插值函数换掉，
+   于是所有原本平滑的渐变一次性全变成跳格 —— 包括侧栏伸缩那 0.5s，
+   它动的是注册过的 --sidebar-width，照样吃这条规则。
+   ------------------------------------------------------------ */
+/* 这里刻意**不用** `*` 通选器。
+   实测（1384 个元素的真实页面，整文档一次 style recalc，三次取中位数）：
+
+     基线（无本节）                              47ms
+     `*`                                        70ms   子树插入 1.5 → 3.3ms
+     `[class*="transition"]`                    66ms   子树插入 1.5 → 1.8ms
+
+   全应用只有 153/1384 个元素真的带过渡，`*` 等于为另外 1200 个不需要的元素买单，
+   而且插入子树时更贵。没带 transition 类的过渡（面板伸缩那几个）在下面单独点名。 */
+[class*="transition"] {
+  transition-timing-function: var(--px-step) !important;
+}
+
+/* ---- 侧栏 / 辅助面板：平滑滑动，跑满刷新率 ----
+   全主题唯一一处平滑动画。不是背弃像素信仰，是量出来的结论：
+   这两块面板动的是 width，属于 layout 动画 —— 跳帧的话每一格都是一次
+   全应用重排，帧数给多少都卡（试过 12 格：长帧数量和原版一模一样）；
+   上一版改成 70ms「啪」一下，不卡了，但被用户嫌突兀。
+
+   真相是：原版那个「平滑 0.5s」自己就在掉帧 —— 帧间隔 P95 67.5ms，
+   一次切换里 9 帧超过 33ms，用户实际只能看到 8 格。
+
+   元凶不是 width 动画本身，是根节点内联样式里这一句：
+     transition: --aux-pane-width 500ms, --sidebar-width 500ms
+   这两个变量是 @property 注册的、inherits: true —— 给根上的**继承型**
+   自定义属性做动画，等于每一帧把全树 1384 个元素的样式全部失效一遍。
+
+   而视觉上真正的滑动另有其人：面板自己带着内联 transition: width 500ms，
+   标题栏左侧的 padding 消费者也自带过渡。根上的 var 过渡纯属冗余，
+   掐掉它，滑动照旧，每帧的重算账单直接消失。实测（1.75s 窗口）：
+
+                      帧间隔P95     >33ms的帧   用户可见格数
+     原版             67.5ms         9 帧          8 格
+     掐掉根var后      6.4~10.9ms     1~2 帧        19~50 格
+
+   帧间隔 P50 稳定 6.1ms = 165Hz 满刷新。剩下那 1~2 帧尖峰（~70·80ms）
+   是应用在切换瞬间用 React 重渲染面板内容，原版同样有，CSS 管不到。 */
+.h-screen.w-screen.flex.flex-col.bg-background {
+  transition-property: none !important;
+}
+
+/* 右上角 padding-right: max(8px, 36px - var(--aux-pane-width)) 是唯一
+   没自带过渡的 var 消费者 —— 根上的 var 一停它就会瞬跳，补一条同参数的 */
+[style*="36px - var(--aux-pane-width)"] {
+  transition: padding-right 500ms var(--ease-expo-out, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+}
+
+/* 项目树展开（grid-template-rows）也是 layout 动画，但子树小、平滑得起。
+   不写这条的话上面 [class*="transition"] 的跳帧地基会咬到它 */
+[class~="duration-300"],
+[class~="transition-[grid-template-rows]"] {
+  transition-duration: 220ms !important;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ------------------------------------------------------------
+   14.2 微动效：列表行（会话、项目、菜单项）
+   ------------------------------------------------------------
+   侧栏的会话行原本只有文字颜色变一下，几乎等于没有反馈。
+   这里给它两个动作：左边长出一条高亮竖条 + 整行右移 2px。
+
+   竖条故意用 inset box-shadow 画，不用 ::before：
+   不新增元素、不用把行改成 position: relative，零布局风险。
+
+   会话行本身没有可辨识的类名，它的特征是「外面套着一层 .w-full.group」。
+   这里就用 `.w-full.group > [class*="cursor-pointer"]` 认它。
+
+   ⚠ 别改成 :has()。最初写的是 `:has(> div > div > [data-testid^="convo-pill-"])`，
+   从 testid 反查行，看着更可靠 —— 但实测代价很重，而两者命中的是
+   **完全同一批 13 行**（逐个比对，顺序都一样）：
+
+                                    侧栏插一行+删一行   整文档 recalc
+     基线（无本节）                       1.52ms           47ms
+     :has() 版                            7.12ms           58ms
+     .w-full.group > … 版                 1.59ms           47ms
+
+   :has() 会让祖先跟着子树变动一起失效，会话列表一重渲染就是 4.7 倍的代价，
+   而流式输出时这一片是一直在动的。同样效果就别用贵的写法。
+   ------------------------------------------------------------ */
+.main-row-trigger,
+.w-full.group > [class*="cursor-pointer"],
+[class*="hover:bg-muted"],
+[class*="hover:bg-sidebar-muted"],
+[class*="hover:bg-sidebar-secondary"] {
+  transition-property: box-shadow, transform, background-color, color !important;
+  transition-duration: var(--px-t-fast) !important;
+  transition-timing-function: var(--px-step-2) !important;
+}
+
+.main-row-trigger:hover,
+.w-full.group > [class*="cursor-pointer"]:hover,
+[class*="hover:bg-muted"]:hover,
+[class*="hover:bg-sidebar-muted"]:hover,
+[class*="hover:bg-sidebar-secondary"]:hover {
+  box-shadow: inset 3px 0 0 var(--primary) !important;
+  transform: translateX(2px);
+}
+
+/* 选中态竖条常驻。
+   ⚠ 这里原先写的是 [aria-selected]/[aria-current]/[data-selected]/[data-active]
+   四件套兜底 —— 全是死代码，一个都不命中：实测应用在会话行上**完全不用**
+   ARIA 或 data 属性表达选中态，整棵 DOM 里这四个属性一个都没有。
+   选中行和未选中行的唯一差别在 class 上，逐个 diff 出来是这三个：
+     items-center / bg-sidebar-secondary / pl-8
+   其中 bg-sidebar-secondary 是语义最正的那个。
+
+   必须用 [class~=]（精确匹配整个类名），不能用 [class*=]：
+   另外 27 行全都带着 hover:bg-sidebar-secondary，子串匹配会把它们一起选中，
+   于是「选中态」变成「所有行常驻竖条」。[class~=] 下实测命中数 1/28。 */
+.w-full.group > [class~="bg-sidebar-secondary"] {
+  box-shadow: inset 3px 0 0 var(--primary) !important;
+}
+/* 选中行的标题也跟着上色，让「当前在这条」更容易一眼扫到。
+   这里要同时写 -webkit-text-fill-color，否则没效果：
+   Chromium 里 fill 是绘制用色，优先级在普通 color 之上，覆盖不了它
+   就永远显示 var(--foreground)（实测，见 whywins3）。 */
+.w-full.group > [class~="bg-sidebar-secondary"] a {
+  color: var(--primary) !important;
+  -webkit-text-fill-color: var(--primary) !important;
+}
+
+/* ------------------------------------------------------------
+   14.3 过渡动效：弹层开合
+   ------------------------------------------------------------
+   Base UI 把开合状态写在 data-starting-style / data-ending-style 上，
+   原生是 150ms 平滑的 translateY(-8px) scaleY(0.95)。
+   整条换掉：只留整数位移 + 跳帧透明度，再让硬阴影跟着一起长出来，
+   读起来像面板“弹”出来而不是“淡”出来。
+
+   这一节必须排在第 7 节之后 —— 那边给浮层设了 box-shadow: --px-shadow-lg
+   也带 !important，同权重靠后覆盖。
+   ------------------------------------------------------------ */
+/* 时长曾是 --px-t-snap = 70ms/2 帧：跳帧时代大面板分帧淡入看着像抖，
+   只能「啪」地弹。平滑版没这个约束，--px-t-snap 已提到 140ms（见 14 节
+   变量注释），这条规则本身不用改。 */
+.animate-slideIn {
+  transition-property: opacity, transform, box-shadow !important;
+  transition-duration: var(--px-t-snap) !important;
+  transition-timing-function: var(--px-step-2) !important;
+}
+.animate-slideIn[data-starting-style],
+.animate-slideIn[data-ending-style] {
+  opacity: 0 !important;
+  transform: translateY(-6px) !important;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0) !important;
+}
+/* 从哪边弹出来就往哪边收，位移量取 6px（3 帧刚好每帧 2px，全是整数） */
+.animate-slideIn[data-side="top"][data-starting-style],
+.animate-slideIn[data-side="top"][data-ending-style] {
+  transform: translateY(6px) !important;
+}
+.animate-slideIn[data-side="right"][data-starting-style],
+.animate-slideIn[data-side="right"][data-ending-style] {
+  transform: translateX(-6px) !important;
+}
+.animate-slideIn[data-side="left"][data-starting-style],
+.animate-slideIn[data-side="left"][data-ending-style] {
+  transform: translateX(6px) !important;
+}
+
+/* 右下角通知条同理 */
+.toast-root-transition {
+  transition-duration: var(--px-t) !important;
+  transition-timing-function: var(--px-step-3) !important;
+}
+
+/* ------------------------------------------------------------
+   14.4 过渡动效：tooltip
+   ------------------------------------------------------------
+   注意：绝对不要动 .react-tooltip 根节点的 transform —— 它是定位用的，
+   一改位置就飘。位移只能放在里层的 content wrapper 上。
+   ------------------------------------------------------------ */
+.react-tooltip {
+  transition-property: opacity !important;
+  transition-duration: var(--px-t-fast) !important;
+  transition-timing-function: var(--px-step-3) !important;
+}
+.react-tooltip .react-tooltip-content-wrapper {
+  transition: transform var(--px-t-fast) var(--px-step-2) !important;
+}
+.react-tooltip:not(.react-tooltip__show) .react-tooltip-content-wrapper {
+  transform: translateY(2px);
+}
+
+/* ------------------------------------------------------------
+   14.5 微动效：按钮
+   ------------------------------------------------------------
+   有边框/有底色的“实体”按钮：悬停抬 1px 并长出硬阴影，按下压回去。
+   幽灵按钮（一排工具图标）不抬 —— 一整排一起跳会很乱，只让图标弹一下。
+   ------------------------------------------------------------ */
+button[class~="border"],
+button[class*="bg-primary"],
+button[class*="bg-card"],
+[role="button"][class~="border"] {
+  transition-property: transform, box-shadow, background-color, color !important;
+  transition-duration: var(--px-t-fast) !important;
+  transition-timing-function: var(--px-step-2) !important;
+}
+button[class~="border"]:hover:not(:disabled),
+button[class*="bg-primary"]:hover:not(:disabled),
+button[class*="bg-card"]:hover:not(:disabled),
+[role="button"][class~="border"]:hover {
+  transform: translate(0, -1px);
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 按下的手感要盖住上面的悬停规则，所以 :active 一定写在后面 */
+button[class~="border"]:active:not(:disabled),
+button[class*="bg-primary"]:active:not(:disabled),
+button[class*="bg-card"]:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: none !important;
+}
+.main-row-trigger:active,
+.w-full.group > [class*="cursor-pointer"]:active {
+  transform: translate(1px, 1px);
+}
+
+/* 图标按钮：悬停时图标弹两下。
+   排除 .main-row-trigger —— 菜单项里那些小徽章图标跟着抖会很吵。 */
+button:hover:not(:disabled):not(.main-row-trigger) > svg,
+button:hover:not(:disabled):not(.main-row-trigger) > * > svg,
+[role="button"]:hover > svg {
+  animation: px-jiggle 0.2s var(--px-ease-io) 2;
+}
+/* 位移用独立的 translate 属性，不用 transform：
+   有些图标本身就带着 transform: rotate()（比如展开箭头），
+   用 transform 做动画会在悬停时把它转回去，translate 是可叠加的。 */
+@keyframes px-jiggle {
+  50% { translate: 0 -2px; }
+}
+
+/* 发送键：悬停时箭头一直往右顶，提示“可以发了”。
+   （这里原本还要显式放行 background-color / color 的过渡，因为第 8 节
+   那条 transition: none 把应用自带的 transition-all 压掉了。8 节那条
+   2026-08-04 已删除，应用自己的过渡活过来了，这段兜底不再需要。） */
+[data-testid="send-button"]:hover:not(:disabled) svg {
+  animation: px-nudge-x 0.6s var(--px-ease-io) infinite;
+}
+@keyframes px-nudge-x {
+  50% { translate: 2px 0; }
+}
+
+/* 键盘焦点：闪两下。
+   这里只能用 filter —— 第 10 节的 outline 带 !important，
+   而 !important 声明的优先级高于动画，改 outline-* 是改不动的。 */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[contenteditable]:focus-visible {
+  animation: px-focus-flash 0.18s var(--px-ease-io) 2;
+}
+@keyframes px-focus-flash {
+  50% { filter: var(--px-flash); }
+}
+
+/* ------------------------------------------------------------
+   14.6 过渡动效：切会话 / 切视图
+   ------------------------------------------------------------
+   切换时主内容区是整块重挂的，重挂就会重新触发 animation，
+   所以这里不需要任何状态类名，挂个入场动画就够。
+   ------------------------------------------------------------ */
+/* 这里的取值是调过的，三点都有原因，改之前先看一眼：
+
+   1) 不做位移。整屏文字上跳 4px 是「突兀」的主要来源 ——
+      小控件位移 2px 是手感，一整屏正文位移就是画面在弹。
+
+   2) 不从 opacity: 0 起跳，从 0.4 开始。
+      0 起跳配跳帧的话，中间帧是「灰幽灵字」，然后猛地变实心，
+      读起来像渲染坏了。从 0.4 起每帧只差 0.12，文字从第一帧就是能读的，
+      观感是「亮起来」而不是「冒出来」。
+
+   3) 帧数用 --px-step-fade（6 帧）而不是默认的 4 帧。
+      动的面积越大，帧数就得越多，否则大色块的跳变很扎眼。 */
+@keyframes px-view-in {
+  from { opacity: 0.4; }
+  to   { opacity: 1; }
+}
+/* 主内容列（右侧那一整列），排掉它的顶部工具条 .shrink-0 —— 那条不跟着换 */
+.flex-1.flex.flex-col.min-w-0.h-full > *:not(.shrink-0) {
+  animation: px-view-in var(--px-t-view) var(--px-step-fade) both;
+}
+
+/* 会话里的每条消息，进屏时也亮一下。
+   消息的结构（probe14 实测）：conversation-view 里每一轮是一个
+   .relative.flex.flex-col.gap-y-3，它的直接子节点是若干 .flex.items-start，
+   每条消息一条；切会话/切视图整块重挂时动画重放，新消息进来时这一条
+   是整批新挂的，动画自然跟着跑，不需要状态类名。
+   用 .gap-y-3 认栈、用 :last-child 兜住最后一条 —— 这个应用里
+   .gap-y-3 只出现在会话流上，不误伤别处（probe14 实测）。 */
+.relative.flex.flex-col.gap-y-3 > .flex.items-start:last-child {
+  animation: px-view-in var(--px-t) var(--px-step-fade) both;
+}
+
+/* 应用自带的 fade-in 也换成像素味的版本（同名关键帧后定义即覆盖）。
+   这个是真·从无到有的入场，所以保留 opacity: 0 起点，但同样给足帧数。
+   位移去掉了：不知道应用把它挂在什么元素上，可能是一整块内容。 */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+[class~="animate-fade-in"] {
+  animation: fade-in var(--px-t-view) var(--px-step-fade) both !important;
+}
+
+/* ------------------------------------------------------------
+   14.7 CRT：让扫描线活起来
+   ------------------------------------------------------------
+   静态扫描线在第 13 节，这里加两样会动的：
+     · 一条很淡的亮带从上往下滚，模仿老显示器的回扫
+     · 扫描线整体每隔几秒极轻微地闪一下
+
+   嫌晃眼就把 14.7 这一整块注释掉（选中 Ctrl+/），
+   第 13 节的静态扫描线不受影响。
+   ------------------------------------------------------------ */
+html::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 140px;
+  z-index: 2147483645;   /* 扫描线 …647，窗口按钮 …646，亮带压在最下面 */
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--px-crt-band), transparent);
+  /* 提升成独立合成层，让这层移动时不用在主线程上重绘它扫过的区域。
+     （只影响绘制开销；下面那个 8 次/秒的 style recalc 加不加都一样。） */
+  will-change: transform;
+  animation: px-crt-roll 7s linear infinite;
+  /* 跳帧时代这里是 steps(28)，省帧账（7 秒只出 28 帧）随平滑化作废。
+     linear 版的每帧成本在合成器上：这层已提升独立层（will-change），
+     transform 由 GPU 搬运，主线程不参与逐帧 —— 常驻开销依然可忽略。
+
+     ⚠ 如果你要测「空闲」开销，别用 requestAnimationFrame 循环来测 ——
+     rAF 会强行把帧率顶满，逼着主线程每帧 tick 一次动画，
+     同一份 CSS 能测出 165 次/秒、430ms/4 秒的假数字（我就先踩了这个坑）。 */
+}
+@keyframes px-crt-roll {
+  from { transform: translateY(-140px); }
+  to   { transform: translateY(100vh); }
+}
+
+/* 扫描线那层是满屏的，**故意不加 will-change**：
+   加了就要常驻一整屏的合成层（1534×986 约 6MB 显存），
+   而这个闪烁 5 秒才变 3 次值，实测 recalc 次数是 0 —— 提升图层纯亏。 */
+html::after {
+  animation: px-crt-flicker 5s steps(1, end) infinite;
+}
+@keyframes px-crt-flicker {
+  0%, 96%  { opacity: 1; }
+  97%, 99% { opacity: 0.72; }
+  100%     { opacity: 1; }
+}
+
+/* ------------------------------------------------------------
+   14.8 尊重系统的「减少动态效果」
+   ------------------------------------------------------------
+   这一节挪到文件最末尾了（见第 16 节）。
+   原因：它靠 animation: none 关掉动画，而 CSS 里同权重是后定义者胜 ——
+   放在这里的话，第 15 节新增的动效会**反过来盖住它**，
+   「减少动态效果」就成了摆设。收尾的规则必须排在最后。
+   ------------------------------------------------------------ */
+
+/* ============================================================
+   15. 动效增强
+   ----------------------------------------------------------------
+   第 14 节的铁律在这里继续生效（平滑曲线、不用 scale()，2026-08-04 修订版），
+   另外加第三条 —— 这一节所有位移都用 var(--px-dev) 的整数倍，
+   不再直接写 px。原因见 15.0。
+
+   分组和第 14 节不重叠：14 节管的是「把应用原有的平滑过渡换成跳帧」，
+   这一节是「新增本来没有的动效」。
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   15.0 位移的单位：整数设备像素
+   ------------------------------------------------------------
+   --px-dev = 1 个设备像素等于多少 CSS px，由 pixelTheme.js 的
+   DPR_SYNC_JS 实时算出来（1/dpr），和 --px-unit / --px-cells 一起下发。
+
+   为什么不直接写 px：在 2K@150%（dpr 1.5）下 1 CSS px = 1.5 设备像素，
+   位移 1px 就停在半个设备像素上，动画期间点阵字要被重采样。
+   写 calc(2 * var(--px-dev)) 则恒等于 2 个设备像素 —— dpr 1 时是 2px
+   （和原来一样），dpr 1.5 时是 1.3333px。
+
+   下面这个 fallback 值在 JS 没跑起来时兜底（1 个设备像素当 1px 算），
+   等于退回本节改造前的行为，不会脱格，只是分数 dpr 下不那么精确。
+   ------------------------------------------------------------ */
+:root {
+  --px-dev: 1px;
+
+  --px-t-send: 420ms;      /* B1 数据包上窜的总时长 */
+  --px-t-reveal: 260ms;    /* C 组气泡揭示 */
+  --px-t-dissolve: 320ms;  /* D 组主题溶解 */
+
+  /* 名字沿用跳帧时代（step-N = 当年的帧数），值已全部平滑，见 14 节修订 */
+  --px-step-8: var(--px-ease);
+  --px-step-10: var(--px-ease-io);
+  --px-step-12: linear;         /* 揭示：匀速擦出来最像「显影」 */
+  --px-step-6: var(--px-ease);
+}
+
+/* ------------------------------------------------------------
+   15.1 A 组：按钮机械键程（升级 14.5）
+   ------------------------------------------------------------
+   14.5 已经有「悬停抬 1px + 硬阴影，按下压回去」。这里两处升级：
+     · 位移换成整数设备像素
+     · 按下时阴影不再直接 none，而是跟着位移一起收（2 帧）
+
+   必须排在 14.5 之后：同权重靠后覆盖。
+   ------------------------------------------------------------ */
+button[class~="border"]:hover:not(:disabled),
+button[class*="bg-primary"]:hover:not(:disabled),
+button[class*="bg-card"]:hover:not(:disabled),
+[role="button"][class~="border"]:hover {
+  transform: translate(0, calc(-1 * var(--px-dev)));
+  box-shadow: calc(2 * var(--px-dev)) calc(3 * var(--px-dev)) 0 rgba(0, 0, 0, 0.45) !important;
+}
+button[class~="border"]:active:not(:disabled),
+button[class*="bg-primary"]:active:not(:disabled),
+button[class*="bg-card"]:active:not(:disabled) {
+  transform: translate(var(--px-dev), var(--px-dev));
+  /* 收到 1 个设备像素而不是 0：完全去掉阴影会让按钮在按下瞬间「变平」，
+     留一格残影读起来是「压下去了」而不是「消失了」 */
+  box-shadow: var(--px-dev) var(--px-dev) 0 rgba(0, 0, 0, 0.45) !important;
+}
+.main-row-trigger:active,
+.w-full.group > [class*="cursor-pointer"]:active {
+  transform: translate(var(--px-dev), var(--px-dev));
+}
+
+/* A5 停用态斜纹：4 设备像素一道，静态不动，零运行时成本。
+   用 background-image 而不是伪元素 —— 停用按钮里可能已经有图标，
+   加伪元素要处理层级和 pointer-events，斜纹只是背景。 */
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent calc(2 * var(--px-dev)),
+    rgba(0, 0, 0, 0.18) calc(2 * var(--px-dev)),
+    rgba(0, 0, 0, 0.18) calc(4 * var(--px-dev))
+  ) !important;
+}
+
+/* ------------------------------------------------------------
+   15.2 A 组：输入框聚焦扫描线（A2）
+   ------------------------------------------------------------
+   一条 2 设备像素高的亮带从下往上扫一次。
+
+   为什么不做在 outline 上：第 10 节的 outline 带 !important，
+   而 !important 声明的优先级高于动画（14.5 已经记过这个坑，
+   px-focus-flash 当年就是因此只能改 filter）。这里改用伪元素，
+   完全绕开 outline。
+
+   ⚠ 挂在**包裹层**上而不是 input/textarea 自己身上：
+   替换元素（input）和 textarea 不保证渲染 ::after。
+   主输入框的包裹层特征是 .p-px.bg-card-border（第 7 节已认过它）。
+   ------------------------------------------------------------ */
+[class~="p-px"][class~="bg-card-border"] {
+  position: relative;
+}
+[class~="p-px"][class~="bg-card-border"]:focus-within::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* 静止态必须隐形：top 钉住、opacity 归零，亮度只存在于关键帧里。
+     上一版静止态自带 opacity .55 且没写 top —— 动画放完后 top 回落到
+     auto（绝对定位下 = 排在内容流之后的位置），于是一条 55% 亮度的横线
+     常驻在输入框中部，跟边框叠在一起 —— 就是用户截图里「线重叠」那条。
+     顺带修掉另一个没被发现的：reduced-motion（16 节）关掉动画后，
+     旧写法会让这条线**永久**驻留。 */
+  top: 0;
+  opacity: 0;
+  height: calc(2 * var(--px-dev));
+  background: var(--primary);
+  pointer-events: none;
+  z-index: 1;
+  animation: px-scan-up var(--px-t-view) var(--px-ease) 1;
+}
+@keyframes px-scan-up {
+  from { top: 100%; opacity: 0.55; }
+  to   { top: 0;    opacity: 0.55; }
+}
+
+/* ------------------------------------------------------------
+   15.3 A 组：发送键充能与就绪呼吸（A3 / A4）
+   ------------------------------------------------------------
+   A3 充能：底色用硬边 linear-gradient 分段，background-size 从
+   左往右分 6 格充满。硬边（两个色标同位置）保证每格是方块而不是渐变。
+
+   A4 呼吸：可发送时边框亮度两帧慢闪，提示「可以发了」。
+   只在 :not(:disabled) 上跑 —— 输入框空的时候按钮是 disabled，
+   不会白闪。
+
+   两者都作用在 background/border 上，和 14.5 已有的箭头右顶
+   （px-nudge-x，作用在 svg 的 translate 上）不冲突，可以同时跑。
+   ------------------------------------------------------------ */
+[data-testid="send-button"]:not(:disabled) {
+  animation: px-ready-breathe 1.6s var(--px-step-2) infinite;
+}
+@keyframes px-ready-breathe {
+  50% { border-color: var(--primary); }
+}
+
+/* 充能有两个触发口，缺一个都会漏场景：
+   1) :active —— 鼠标按住的即时反馈；
+   2) html.px-sending —— SEND_PULSE_JS 打的标记。**Enter 发送不产生
+      :active**，第一版只挂了 :active，键盘党根本看不到充能，
+      这正是「发送动效不明显」的一半原因。 */
+[data-testid="send-button"]:active:not(:disabled),
+html.px-sending [data-testid="send-button"] {
+  background-image: linear-gradient(
+    to right,
+    var(--primary) 0,
+    var(--primary) 100%
+  ) !important;
+  background-repeat: no-repeat !important;
+  animation: px-charge var(--px-t) var(--px-ease) 1 both;
+}
+@keyframes px-charge {
+  from { background-size: 0 100%; }
+  to   { background-size: 100% 100%; }
+}
+
+/* ------------------------------------------------------------
+   15.4 B 组：发送「传输上页面」
+   ------------------------------------------------------------
+   触发方式走的是「路线 2」：pixelTheme.js 的 SEND_PULSE_JS 在捕获阶段
+   监听发送键 click 和输入框 Enter，给 <html> 打一个 .px-sending，
+   420ms 后自己摘掉。
+
+   为什么不用 body:has([data-testid="send-button"]:active)：
+     1) 按 Enter 发送根本不产生 :active，而 Enter 是最常用的发送方式；
+     2) 14.2 节实测记录过 :has() 会让祖先跟着子树变动一起失效，
+        会话列表重渲染时代价 4.7 倍，而流式输出时那一片一直在动。
+   JS 版是两个 passive 监听器，只在真的发送时才碰 DOM。
+
+   ⚠ 数据包这层挂在 body::after 上，不是 html::after ——
+   html 的两个伪元素都被 CRT 占了（13 / 14.7 节），抢过来会把扫描线弄没。
+   ------------------------------------------------------------ */
+html.px-sending body::after {
+  content: "";
+  position: fixed;
+  /* 从输入框上沿附近起飞。用 vh 而不是去测输入框位置：
+     CSS 读不到它的坐标，而输入框始终贴着窗口底部，固定值足够。 */
+  bottom: 14vh;
+  left: 50%;
+  /* 第一版 8×2 设备像素 = 2K 下约 5.8×1.5 CSS px 的一粒点，300ms 就没了，
+     用户反馈「不明显」—— 理所当然。现在是 8×14 的亮条 + box-shadow 画的
+     三节拖尾（往下渐淡），整体约 44 设备像素长的一道光柱在窜。 */
+  width: calc(8 * var(--px-dev));
+  height: calc(14 * var(--px-dev));
+  background: var(--primary);
+  box-shadow:
+    0 calc(10 * var(--px-dev)) 0 0 color-mix(in srgb, var(--primary) 60%, transparent),
+    0 calc(20 * var(--px-dev)) 0 0 color-mix(in srgb, var(--primary) 35%, transparent),
+    0 calc(30 * var(--px-dev)) 0 0 color-mix(in srgb, var(--primary) 16%, transparent);
+  pointer-events: none;
+  z-index: 2147483644;   /* 压在扫描线(…647)、窗口按钮(…646)、CRT亮带(…645)之下 */
+  animation: px-packet var(--px-t-send) var(--px-ease-io) 1 both;
+}
+/* 平滑上窜，最后 20% 淡出。只动 bottom 和 opacity ——
+   不用 scale()（重采样），这层也没有文字。
+   fill 用 both：SEND_PULSE_JS 的 class 会保持到 700ms，
+   动画 420ms 结束后必须停在 opacity 0，否则光柱会闪回来站在顶上。 */
+@keyframes px-packet {
+  0%   { bottom: 14vh; opacity: 1; }
+  80%  { opacity: 1; }
+  100% { bottom: 86vh; opacity: 0; }
+}
+
+/* B2 输入框回弹：发送瞬间下压 3 设备像素再弹回。
+   挂在包裹层上，和 15.2 的扫描线是同一个元素，两者互不干扰
+   （一个动 transform，一个是伪元素）。 */
+html.px-sending [class~="p-px"][class~="bg-card-border"] {
+  animation: px-recoil 140ms var(--px-ease-io) 1;
+}
+@keyframes px-recoil {
+  50% { transform: translateY(calc(3 * var(--px-dev))); }
+}
+
+/* B3 落地气泡：新消息从下方 4 设备像素台阶式归位。
+   复用 14.6 已经认过的选择器（probe14 实测：.gap-y-3 只出现在会话流上）。
+   ⚠ 这里只加位移，不碰 opacity —— 14.6 的 px-view-in 已经在管淡入了，
+   两个动画可以叠加（animation 是可以列多个的），但同一个属性会打架。 */
+.relative.flex.flex-col.gap-y-3 > .flex.items-start:last-child {
+  animation:
+    px-view-in var(--px-t) var(--px-step-fade) both,
+    px-land var(--px-t) var(--px-step-2) both;
+}
+@keyframes px-land {
+  from { transform: translateY(calc(6 * var(--px-dev))); }
+  to   { transform: translateY(0); }
+}
+
+/* ------------------------------------------------------------
+   15.4b C 组：消息气泡显影（clip-path 自下而上揭示）
+   ------------------------------------------------------------
+   clip-path: inset(0 0 100% 0) → inset(0 0 0 0)，自下往上擦出来。
+
+   ⚠⚠ 只对**用户自己发的消息**生效，助手回复一律不碰。这不是保守，
+   是实测结论 —— 用 getAnimations() 在真实页面上量过两种情况：
+
+     追加文字（正常流式输出）：
+       同一个 Animation 对象、startTime 不变、currentTime 不回退
+       → append 本身**不会**重启动画，安全
+
+     元素被整体替换（remount）：
+       新的 Animation，currentTime 归 0
+       → **每次 remount 都从头重放**
+
+   流式输出期间助手那条消息会被 React 反复重挂（Markdown 增量渲染
+   基本都这么做），于是 clip-path 会不停地从「切掉 100%」重新开始，
+   观感就是文字反复被抹掉又冒出来 —— 就是坏的。
+   而用户消息发出去就定型了，永远不会流式，所以它是干净的。
+
+   判别特征（实测 28 个 [role="article"]，14 用户 / 14 助手，
+   严格 UAUAUA… 交替，每一轮两条同父）：
+     用户消息   = [role="article"] 里面有 [data-testid="user-input-step"]
+     助手消息   = [role="article"] 里面没有
+
+   这里**不用** :has() 来选 —— 14.2 节实测记过 :has() 会让祖先跟着
+   子树变动一起失效，代价 4.7 倍，而流式输出时这一片一直在动。
+   改成直接选 user-input-step 本身（它就是用户消息的内容容器），
+   等价、且没有 :has() 的开销。
+
+   平滑版下这是一次自下而上的匀速擦除（linear），像相纸显影。
+   跳帧版曾按 steps(12) 分格揭示、号称「逐行」—— 随平滑化作废。
+   ------------------------------------------------------------ */
+/* 只揭示**最后一轮**的用户消息，不是全部。
+   两个都是实测踩出来的：
+
+   1) 挂给所有 [data-testid="user-input-step"] 的话，打开一个 14 轮的会话
+      会有 14 条消息同时揭示 —— 14.6 节早就写过「整屏文字一起动是突兀的
+      主要来源」，这正是那种情况。而这个动效想表达的是「新消息出现了」，
+      历史消息不该重放。
+
+   2) 绝对不能用 animation-fill-mode: both。
+      窗口最小化/切到后台时 document timeline 是冻住的（实测：
+      playState "running" 但 currentTime 恒为 0，rAF 15 秒不触发一次），
+      fill: both 会把元素按 from 帧保持 —— 也就是 inset(0 0 100%)，
+      整条消息被切成看不见，而且一直切着。
+      实测就是这么翻车的：hidden 状态下 14 条用户消息全部不可见。
+      不写 fill，动画结束后回落到元素自己的样式（不裁剪），
+      冻住的情况下也只是「还没开始揭示」，窗口一回到前台就补上。 */
+.relative.flex.flex-col.gap-y-3 > .flex.items-start:last-child
+  [data-testid="user-input-step"] {
+  animation: px-reveal var(--px-t-reveal) var(--px-step-12);
+}
+@keyframes px-reveal {
+  from { clip-path: inset(0 0 100% 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+/* ------------------------------------------------------------
+   15.5 D 组：主题切换全屏像素溶解
+   ------------------------------------------------------------
+   #px-dissolve 这个元素由 pixelTheme.js 的 THEME_DISSOLVE_JS 建立，
+   animationend 后自己删掉；这里只负责它长什么样。
+
+   触发是「明暗真的翻转了」才算 —— 注入器那边比对了切换前后的
+   isLightTheme()，因为设置文件的每一次写入都会触发 watcher，
+   不加这道闸的话保存任何一个无关设置都会闪一次全屏。
+
+   和 14.7 那条「满屏扫描线故意不加 will-change，常驻一整屏合成层
+   约 6MB 显存纯亏」的结论不冲突：这一层是一次性的，用完即焚。
+   ------------------------------------------------------------ */
+#px-dissolve {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483643;
+  /* 4×4 设备像素的棋盘点阵。用 conic-gradient 画棋盘比两层
+     repeating-linear-gradient 少一层合成，且硬边天然是方块。 */
+  background-image: conic-gradient(
+    var(--background) 0deg 90deg,
+    transparent 90deg 180deg,
+    var(--background) 180deg 270deg,
+    transparent 270deg 360deg
+  );
+  background-size: calc(4 * var(--px-dev)) calc(4 * var(--px-dev));
+  animation: px-dissolve var(--px-t-dissolve) var(--px-ease-io) 1 both;
+}
+/* 点阵先铺满再撤走：0 → 1 → 0 的不对称三段，
+   前段快（盖住旧主题），后段慢一点（新主题从点阵后面浮出来）。 */
+@keyframes px-dissolve {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ------------------------------------------------------------
+   15.6 E 组：零散补充
+   ------------------------------------------------------------ */
+
+/* E2 折叠箭头：跳帧时代这里锁 steps(3)，平滑版跟随全局曲线。
+   14.1 给 [class~="duration-300"] 的容器设了平滑（layout 动画），
+   箭头自己只是 rotate，不引起重排，同曲线即可。 */
+[class~="duration-300"] > svg,
+[aria-expanded] > svg,
+[data-state] > svg {
+  transition-timing-function: var(--px-ease) !important;
+}
+
+/* E3 滚动条滑块：悬停时内缩 1 设备像素，读作「捏住了」。
+   ::-webkit-scrollbar-thumb 不支持 transition（Chromium 里伪元素滚动条
+   不参与过渡），所以这里只能靠 border-width 直接跳变 —— 正好是像素风想要的。
+   3px → 2px + 1 设备像素，视觉上滑块变宽一格。 */
+::-webkit-scrollbar-thumb:hover {
+  border-width: calc(3px - var(--px-dev));
+}
+
+/* E5 toast 报错横向抖动。
+   只对报错态抖 —— 成功提示跟着抖会很吵。
+   [data-type="error"] 是 sonner/react-hot-toast 这类库的通用属性，
+   命不中就退化成不抖，无副作用。 */
+.toast-root-transition[data-type="error"],
+[role="alert"][data-type="error"] {
+  animation: px-shake 200ms var(--px-step-2) 2;
+}
+@keyframes px-shake {
+  25%  { transform: translateX(calc(-2 * var(--px-dev))); }
+  75%  { transform: translateX(calc(2 * var(--px-dev))); }
+}
+
+/* ============================================================
+   17. 交互反馈补全（P0/P1）
+   ----------------------------------------------------------------
+   2026-08-04 实测普查（CDP 遍历全部可交互元素）得出的结论：
+   全应用 66 个 button 里，我原来的选择器（border / bg-primary /
+   bg-card 三类）只命中 **1 个**。其余按钮要么靠应用自带的
+   transition-colors（被第 8 节压掉了，已修），要么根本没有反馈。
+
+   这一节按「应用实际用的写法」重新认元素，而不是按我以为的写法：
+     · 幽灵按钮（最常见，38 个）：bg-transparent + hover:bg-secondary
+     · 侧栏项：hover:bg-muted / hover:bg-sidebar-muted
+     · 图标按钮（39 个）：20~24px 见方，padding 0，只有底色变化
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   17.1 统一按压系统（P1-1）
+   ------------------------------------------------------------
+   所有可点元素按下时沉 1 设备像素。第 8 节已给 button/[role=button]
+   定了 translate(1px,1px)，这里换成设备像素并扩展到应用实际在用的
+   那几类容器上（它们是 div，不是 button，第 8 节认不到）。
+   ------------------------------------------------------------ */
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]),
+[class*="cursor-pointer"]:active,
+[role="tab"]:active,
+[role="menuitem"]:active,
+[role="option"]:active {
+  transform: translate(var(--px-dev), var(--px-dev));
+}
+
+/* 图标按钮（P0-3）：给它们补一个能感知的悬停反馈。
+   这类按钮只有 20~24px，位移太大会在密集工具条里显得乱，
+   所以只让图标本体亮起来 + 底色过渡，位移交给上面的 :active。 */
+button:hover:not(:disabled) svg,
+[role="button"]:hover svg {
+  transition: color var(--px-t-fast) var(--px-ease),
+              opacity var(--px-t-fast) var(--px-ease);
+}
+
+/* ------------------------------------------------------------
+   17.2 焦点环长出来（P1-2）+ 补全过渡属性
+   ------------------------------------------------------------
+   第 10 节的 outline 是瞬间出现的。改成 80ms 长出来，键盘操作时
+   能看清焦点走到哪。
+
+   ⚠ 这一整条必须带 !important，原因是实测出来的（CDP
+   getMatchedStylesForNode，2026-08-04）：应用自己有一条
+
+     button, input, select, textarea, a, [tabindex], .focus-within-ring
+     { transition-property: box-shadow; duration: 150ms }
+
+   它在样式表里排在**我们注入的表之后**，同权重后来者胜，会把过渡属性
+   收窄回只剩 box-shadow —— 于是既吃掉 outline-* 的过渡，也吃掉
+   .transition-colors 的颜色过渡（第一版没加 !important，实测
+   p1_focusRing = false、幽灵按钮 transition-property 只有 box-shadow）。
+   我们盖不动它的定义顺序，只能用 !important 压过去。
+
+   属性表里必须**同时**列出颜色相关的属性：一旦用 !important 接管了
+   transition-property，就等于替所有这些元素重新定义了「哪些属性参与过渡」，
+   漏写 background-color / color 就会把 P0-1 刚修好的悬停改色又弄没。
+
+   ⚠ 不能用 animation 改 outline-*：第 10 节那条带 !important，
+   而 !important 声明的优先级高于动画（14.5 的 px-focus-flash 当年
+   就是因此只能改 filter）。transition 不受这个限制。
+   ------------------------------------------------------------ */
+button,
+[role="button"],
+a,
+input,
+textarea,
+[contenteditable],
+[tabindex] {
+  transition-property: outline-width, outline-offset, box-shadow,
+                       background-color, color, border-color, fill, stroke,
+                       opacity, transform !important;
+  transition-duration: var(--px-t-fast) !important;
+  transition-timing-function: var(--px-ease) !important;
+}
+:focus-visible {
+  outline-offset: calc(1 * var(--px-dev)) !important;
+}
+
+/* ------------------------------------------------------------
+   17.3 折叠箭头与内容同步（P1-3）
+   ------------------------------------------------------------
+   21 个 [aria-expanded]。箭头的旋转和内容的展开用同一时长、同一曲线，
+   否则一个先到一个后到，读起来是两件事。
+   内容展开是 grid-template-rows 的 layout 动画（14.1 记过：项目树用
+   0fr→1fr，220ms），所以箭头也对齐 220ms。
+   ------------------------------------------------------------ */
+[aria-expanded] > svg,
+[aria-expanded] svg:first-of-type,
+[data-state] > svg {
+  transition: transform 220ms var(--px-ease) !important;
+}
+
+/* ------------------------------------------------------------
+   17.4 滚动条滑块抓握感（P1-5）
+   ------------------------------------------------------------
+   Chromium 的 ::-webkit-scrollbar-thumb 不参与 transition，
+   所以只能靠状态切换直接跳 —— 但配色变化本身就够读出「捏住了」。
+   拖动态（:active）比悬停态更亮，形成 静止 → 悬停 → 拖动 三级。
+   ------------------------------------------------------------ */
+::-webkit-scrollbar-thumb:active {
+  background: var(--primary);
+  border-width: calc(3px - 2 * var(--px-dev));
+}
+
+/* ------------------------------------------------------------
+   17.5 禁用态统一（P1-6）
+   ------------------------------------------------------------
+   应用自己用 disabled:opacity-50，我在 15.1 加了斜纹，两者并存时
+   观感不一致（有的淡、有的带纹）。统一成「斜纹 + 不再额外降透明」：
+   斜纹本身已经足够表达不可用，再叠 50% 透明会让图标糊成一团。
+   ------------------------------------------------------------ */
+button:disabled,
+[role="button"][aria-disabled="true"],
+[disabled] {
+  opacity: 0.72 !important;
+  cursor: not-allowed !important;
+}
+/* 发送键是唯一「禁用是常态」的按钮（输入框空时就是禁用），
+   给它斜纹会让输入区一直有纹路 —— 单独豁免。 */
+[data-testid="send-button"]:disabled {
+  background-image: none !important;
+}
+
+/* ------------------------------------------------------------
+   17.6 复制成功反馈（P1-4）
+   ------------------------------------------------------------
+   6 个复制按钮点完毫无反馈。SEND_PULSE_JS 那套监听器里顺带认了
+   复制按钮，点中后给它打 .px-copied，1s 后摘掉。
+   这里画一个纯 CSS 的对勾覆盖在原图标上 —— 不改图标本身，
+   摘掉 class 就完全复原。
+   ------------------------------------------------------------ */
+.px-copied {
+  position: relative;
+}
+.px-copied > svg {
+  opacity: 0 !important;
+}
+.px-copied::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(4 * var(--px-dev));
+  height: calc(8 * var(--px-dev));
+  margin: calc(-5 * var(--px-dev)) 0 0 calc(-2 * var(--px-dev));
+  border: solid var(--px-green, #a7f070);
+  border-width: 0 calc(2 * var(--px-dev)) calc(2 * var(--px-dev)) 0;
+  transform: rotate(45deg);
+  animation: px-check-in 160ms var(--px-ease) 1;
+  pointer-events: none;
+}
+@keyframes px-check-in {
+  from { opacity: 0; transform: rotate(45deg) translateY(calc(-2 * var(--px-dev))); }
+  to   { opacity: 1; transform: rotate(45deg) translateY(0); }
+}
+
+/* ============================================================
+   18. 动效语言（P2）
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   18.1 流式输出的块状光标（P2-1）
+   ------------------------------------------------------------
+   终端美学最强的一笔：助手回复末尾一个实心方块跟着文字走。
+
+   ⚠ 关键约束：**绝不碰消息节点本体**。v2 实测确证，流式期间 React 会
+   反复重挂助手消息节点（getAnimations() 量到 currentTime 归 0），
+   任何挂在它身上的动画都会从头重放。
+   所以光标挂在**会话流容器**的 ::after 上 —— 容器在整个流式过程中
+   是稳定的，不重挂。位置靠 float 让它贴在最后一行文字尾部。
+
+   .px-streaming 由注入器根据「停止按钮是否存在」来打，见 STREAM_WATCH_JS。
+   ------------------------------------------------------------ */
+html.px-streaming .relative.flex.flex-col.gap-y-3::after {
+  content: "";
+  display: inline-block;
+  width: calc(6 * var(--px-dev));
+  height: calc(12 * var(--px-dev));
+  background: var(--primary);
+  vertical-align: text-bottom;
+  margin-left: calc(2 * var(--px-dev));
+  animation: px-caret 1s steps(2, end) infinite;
+  pointer-events: none;
+}
+/* 光标闪烁保持二值：闪烁做平滑就成了呼吸灯，不是终端光标。
+   这是全文件仅有的两处 steps() 之一（另一处是 CRT 闪烁）。 */
+@keyframes px-caret {
+  50% { opacity: 0; }
+}
+
+/* ------------------------------------------------------------
+   18.2 思考块 / 工具卡的分层展开（P2-3）
+   ------------------------------------------------------------
+   「Thought for 1s」这类块（实测 class 含 min-h-8 + tabular-nums）
+   展开时容器先开，内容再淡入，读起来是「打开抽屉」而不是「瞬现」。
+   延迟 40ms 是刻意的：小于 30ms 人眼读作同时，大于 80ms 读作卡顿。
+   ------------------------------------------------------------ */
+[aria-expanded="true"] + * > *,
+[data-state="open"] > *:not(:first-child) {
+  animation: px-stagger-in 200ms var(--px-ease) 40ms both;
+}
+@keyframes px-stagger-in {
+  from { opacity: 0; transform: translateY(calc(-2 * var(--px-dev))); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------------------------------------------
+   18.3 侧栏选中态迁移（P2-5）
+   ------------------------------------------------------------
+   14.2 节已经用 inset box-shadow 画选中竖条。真正的 FLIP 迁移需要
+   在两次渲染之间测量位置（要 JS 且要拿到切换前后的 DOM），成本高、
+   与 React 重渲染抢时机，收益只是一条 3px 竖条的位移。
+   折中：让竖条的出现本身有方向感 —— 从上方滑入而不是直接亮起。
+   ------------------------------------------------------------ */
+.w-full.group > [class~="bg-sidebar-secondary"] {
+  animation: px-bar-in 180ms var(--px-ease) 1;
+}
+@keyframes px-bar-in {
+  from { box-shadow: inset 3px 0 0 -3px var(--primary); }
+  to   { box-shadow: inset 3px 0 0 0 var(--primary); }
+}
+
+/* ------------------------------------------------------------
+   18.4 代码块入场（P2-6）
+   ------------------------------------------------------------
+   当前会话里 pre 元素数量为 0，没能量到真实结构，所以这条写得保守：
+   只做淡入 + 极小位移，不碰内部布局，任何结构下都不会错位。
+   等你打开含代码块的会话，我再按真实结构细化。
+   ------------------------------------------------------------ */
+pre {
+  animation: px-code-in 200ms var(--px-ease) both;
+}
+@keyframes px-code-in {
+  from { opacity: 0; transform: translateY(calc(3 * var(--px-dev))); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------------------------------------------
+   18.5 发送粒子（P2-4 + 你要的多粒子无序版）
+   ------------------------------------------------------------
+   一次发送喷出十几粒方块，各自的横向漂移、延迟、时长、大小都不同，
+   读起来像一束数据在往上传，而不是一颗子弹。
+
+   为什么必须用 JS 建元素：CSS 伪元素每个选择器只能有一个 ::after，
+   要 N 粒各自随机就得有 N 个真实节点。粒子由 SEND_PULSE_JS 创建，
+   动画结束自删（还有兜底定时器），见注入器里的 spawnParticles。
+
+   每粒的随机量通过内联 CSS 变量传进来：
+     --px-dx  横向漂移终点     --px-dly 起飞延迟
+     --px-dur 飞行时长         --px-sz  粒子边长（设备像素数）
+     --px-rise 上升高度
+   ------------------------------------------------------------ */
+#px-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483644;   /* 与旧的单粒光柱同层，压在扫描线/窗口按钮之下 */
+  overflow: hidden;
+}
+#px-particles > i {
+  position: absolute;
+  left: var(--px-x, 50%);
+  bottom: var(--px-y, 14vh);
+  width: calc(var(--px-sz, 3) * var(--px-dev));
+  height: calc(var(--px-sz, 3) * var(--px-dev));
+  background: var(--primary);
+  opacity: 0;
+  animation: px-particle var(--px-dur, 500ms) var(--px-ease-io) var(--px-dly, 0ms) 1 both;
+}
+/* 上升 + 横向漂移 + 淡出。位移用 translate 而不是改 bottom：
+   translate 走合成器，十几粒同时跑也不会让主线程逐帧重算布局。 */
+@keyframes px-particle {
+  0%   { opacity: 0; transform: translate(0, 0); }
+  12%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0;
+         transform: translate(var(--px-dx, 0px), calc(-1 * var(--px-rise, 60vh))); }
+}
+
+/* 旧的单粒光柱保留但缩短，作为粒子束的「主束」，两者叠在一起看是
+   一道亮线带着散粒往上窜。 */
+html.px-sending body::after {
+  animation-duration: 320ms;
+}
+
+/* ============================================================
+   19. 像素指针 + 拖尾粒子
+   ----------------------------------------------------------------
+   系统指针整个隐藏，改由 JS 在一块全屏 canvas 上逐像素画指针头和拖尾。
+   指针头的位置走**速度外推**，抵消 JS 绘制固有的一帧延迟。
+   引擎在 pixelTheme.js 的 CURSOR_JS 里，这一节只管：
+   隐藏系统指针、canvas 图层样式、配色变量、总开关。
+
+   ── 想关掉整套：把下面这行的 on 改成 off，然后重开窗口 ──
+   --px-cursor: on;
+
+   实测依据（2026-08-04，你的 164Hz 屏幕）：
+     每帧预算 6.1ms | 拖尾 300 粒实测占 0.2ms（3%）| 长帧 0 个
+     外推把位置误差从 11.81px 降到 1.50px（降 87%）
+   ============================================================ */
+
+/* 隐藏系统指针。
+   ⚠ 这里**故意用 `*` 通选器**，和 14.1 节「别用 `*`」的结论相反 ——
+   那条针对的是 transition（要给 1200 个元素各建过渡对象，实测 47→70ms）。
+   cursor 不一样，它只是个继承值，实测（全文档样式重算，三次取中位）：
+
+     基线（无规则）                     39.0ms
+     `* { cursor: none }`               39.1ms   漏网 0 个
+     精确点名 html+交互元素             41.3ms   漏网 6 个
+
+   `*` 版本更快**也**更彻底 —— 应用里有 601 个元素显式声明了 cursor
+   （其中 573 个 cursor: pointer），精确点名总会漏，漏一个就会在那个
+   元素上冒出系统箭头，和像素指针同时出现，非常难看。
+
+   必须**同时**点名 html 自身：`html[...] *` 选的是 html 的后代，
+   不含 html 本身。实测漏的就是它一个（页面边缘/滚动条区域会露出系统箭头）。 */
+html[data-px-cursor="on"],
+html[data-px-cursor="on"] * {
+  cursor: none !important;
+}
+/* 卡顿兜底：引擎连续两帧超过 50ms 就把这个属性切成 off，
+   系统指针立刻回来接管（切回来只是风格闪一下，比指针粘住不动好）。
+   引擎恢复后自己再切回 on。 */
+html[data-px-cursor="off"] #px-cursor {
+  display: none !important;
+}
+
+#px-cursor {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;   /* 绝不能吃掉点击 */
+  /* CSS 尺寸必须显式钉成视口大小。
+     canvas 的 width/height **属性**是绘图缓冲区的像素数（= 视口 × DPR），
+     和它的 CSS 显示尺寸是两回事。只写 inset: 0 时实测量到 cssBox 变成
+     1750×1125（跟着缓冲区走）而不是视口的 1400×900 —— 于是缓冲区被拉伸
+     显示，画上去的指针就和真实鼠标位置对不上，缩放后尤其明显。
+     100vw/100vh 让显示尺寸恒等于视口，缓冲区只负责清晰度。 */
+  width: 100vw;
+  height: 100vh;
+  /* 必须压在窗口按钮（…646）**之上**：那三个按钮是页面元素，
+     层级比画布高的话会把指针盖住 —— 实测顶栏右侧三个按钮上看不到像素指针。
+     扫描线（…647）仍然在最上面，它是半透明覆盖层，压住指针是对的。 */
+  z-index: 2147483646;
+}
+/* 窗口按钮降一级，给指针让位。
+   它原来是 …646，和指针画布同级时后定义者胜，指针会被盖掉。 */
+#px-window-controls {
+  z-index: 2147483644 !important;
+}
+
+/* ------------------------------------------------------------
+   顶栏拖拽区：系统指针抢占的地方
+   ------------------------------------------------------------
+   实测（elementFromPoint 扫描 y=12 整条顶栏）：菜单按钮之外的整条顶栏是
+   一个 1400×35 的 div，带内联 `app-region: drag`（全应用只有这一个 drag 区）。
+
+   -webkit-app-region: drag 把这块交给操作系统做窗口拖拽，**光标由系统画**，
+   CSS 的 cursor: none 在这块区域无效 —— 这不是优先级问题，是这块根本不走
+   页面的光标逻辑。所以顶栏空白处会露出系统箭头，和像素指针并存。
+
+   ── 菜单区的「缝隙」：保留拖拽的前提下消除 ──
+   四个菜单按钮（Antigravity / 文件 / 视图 / 窗口）之间和上下都有缝，
+   鼠标平���过去时会瞬间跳成系统箭头再跳回来。实测量到的缝：
+
+     水平：按钮间 gap-1 = 4px，三处（x=109 / 165 / 221）
+     垂直：按钮 28px 高、顶栏 35px，上缘 4px、下缘 3px
+
+   这些缝隙露出的就是底下的 drag 区。解决办法不是去掉 drag（那会失去
+   拖窗口），而是**只把菜单条那一段盖成 no-drag**：给 drag 区的
+   :first-child（菜单按钮的直接容器，实测就是那四个 .relative 的父级链）
+   之前插一层伪元素挡住缝隙。
+
+   伪元素本身不能有 app-region（那是布局盒的属性，伪元素不参与命中测试），
+   所以改用另一条路：把四个按钮的可点击区域**撑满**，缝隙自然消失。
+   按钮是 .relative 且父级是 flex + gap-1 —— 让每个按钮
+   上下撑满 35px、并用负 margin 吃掉 4px 的 gap，缝就没了，
+   而按钮之外（右边一大片空白）仍然是 drag，拖窗口照旧。 */
+[style*="app-region: drag"] > .relative,
+[style*="app-region:drag"] > .relative {
+  /* 撑满顶栏高度：吃掉上缘 4px、下缘 3px */
+  align-self: stretch !important;
+  /* 吃掉 flex gap 留下的 4px 横缝。只补右侧，最后一个按钮不补，
+     否则会和右边的 drag 区重叠、把可拖区域啃掉一块。 */
+  margin-right: -4px !important;
+  padding-right: 4px !important;
+}
+/* 按钮内部的可点击层也要跟着撑满，否则外层撑高了但命中区没跟上。
+   ⚠ 必须只点名 button，**不能**写成 `> *`：
+   下拉面板（.absolute.top-full）也是这个 .relative 的直接子元素，
+   被 height: 100% 命中后会被压成 35px —— 实测面板宽 225px 却只有一行高，
+   菜单项全部溢出到边框外面（用户截图里的「框选范围有问题」）。 */
+[style*="app-region: drag"] > .relative > button,
+[style*="app-region:drag"] > .relative > button {
+  height: 100% !important;
+}
+/* 下拉面板不受上面撑高规则影响，但要抵消父级的 padding-right/left ——
+   面板用 left-0 定位，父级的 padding 会把它整体推右并算错宽度。 */
+[style*="app-region: drag"] > .relative > [class*="absolute"],
+[style*="app-region:drag"] > .relative > [class*="absolute"] {
+  height: auto !important;
+}
+/* 第一个按钮左边还有容器的 px-2 = 8px 内缩（实测 x:2-7 仍是 drag，
+   鼠标从最左侧滑进来时会闪一下）。让首个按钮向左吃掉这段内缩。 */
+[style*="app-region: drag"] > .relative:first-child,
+[style*="app-region:drag"] > .relative:first-child {
+  margin-left: -8px !important;
+  padding-left: 8px !important;
+}
+
+/* ── 想让整条顶栏都是像素指针（代价：不能拖窗口）──
+   把下面这条规则的注释取消： */
+/*
+[style*="app-region: drag"],
+[style*="app-region:drag"] {
+  -webkit-app-region: no-drag !important;
+}
+*/
+
+/* 配色。粒子颜色必须跟着主题变，而且要在**任何**它会飞过的表面上都看得清。
+   这两个要求在亮色下是冲突的，实测（WCAG 对比度，55% 不透明度下
+   与实际背景做 alpha 合成后再算）：
+
+                        暗色主题        亮色主题
+     --primary          4.42  ✅        2.15  ❌ 太淡看不见
+     达到 3.0 所需不透明度  0.40          0.80  ← 0.8 就不「淡」了
+     改用 --px-navy      —              3.50  ✅
+
+   所以亮色**不能**用 --primary：要让它可见就得把不透明度提到 0.8，
+   那就违背了「淡淡的」。改用深色墨点（--px-navy），既跟随主题、
+   又保持淡、又看得清。暗色下 --primary（青）本身就够亮，直接用。
+
+   ⚠ 这四个变量必须定义在 **html 上**，不能只写在 body 上。
+   引擎用 getComputedStyle(document.documentElement) 读它们，而主题的
+   --primary 等变量是从 body 往下才生效的 —— 实测踩过：定义在
+   body.theme-light 上时，引擎在 html 上读到的 --primary 是应用自己的
+   紫色 #8839EF（不是主题的 #3b5dc9），拖尾颜色就错了。
+   所以这里用 :root 打底、再用 html:has(body.theme-light) 覆盖，
+   两者都落在 html 上。 */
+html[data-px-cursor] {
+  /* 暗色（默认）：青色够亮，直接用主题主色 */
+  --px-cursor-trail: var(--px-cyan);
+  --px-cursor-head: var(--px-cyan);
+  --px-cursor-edge: var(--px-navy);
+  --px-cursor-alpha: 0.55;
+}
+/* 亮色：拖尾用深墨点，指针头用主题的靛蓝，描边改浅色
+   （深色描边在浅背景上会和填充糊成一团）。
+   :has() 在这里只匹配一次、不在热路径上，没有 14.2 节记录的那种代价。 */
+html[data-px-cursor]:has(body.theme-light) {
+  --px-cursor-trail: var(--px-navy);
+  --px-cursor-head: var(--px-indigo);
+  --px-cursor-edge: var(--px-paper);
+}
+
+/* ============================================================
+   16. 尊重系统的「减少动态效果」
+
+   ----------------------------------------------------------------
+   ⚠ 这一节必须是全文件的最后一节。
+   它靠 animation: none 把动画关掉，而 CSS 同权重是后定义者胜 ——
+   排在第 15 节前面的话，15 节新增的动效会反过来盖住它。
+   （原来它是 14.8，加了第 15 节之后就必须往后挪。）
+
+   往后再加新动效，也要加在这一节**上面**。
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html::before {
+    display: none;
+  }
+  html::after {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+
+  /* 上面那条 1ms + iteration-count: 1 对**无限循环**的动画不够用：
+     它不是关掉，是让动画停在第一帧。对 px-ready-breathe 来说
+     第一帧正好是「边框亮起来」，于是发送键会一直亮着不动。
+     这类必须显式关。 */
+  [data-testid="send-button"]:not(:disabled) {
+    animation: none !important;
+  }
+
+  /* 一次性的全屏/大面积动效，减动模式下直接不要，不是加速。
+     #px-dissolve 那边由 JS 单独判断 prefers-reduced-motion 后压根不建元素
+     （没有动画就没有 animationend，元素会泄漏），这里是双保险。 */
+  #px-dissolve,
+  html.px-sending body::after {
+    display: none !important;
+  }
+
+  /* 位移类的微动效保留但取消位移：留着颜色反馈就够，
+     不然界面会显得没反应。 */
+  html.px-sending [class~="p-px"][class~="bg-card-border"],
+  [class~="p-px"][class~="bg-card-border"]:focus-within::after {
+    animation: none !important;
+  }
+
+  /* C 组的揭示必须显式关掉：上面那条 1ms 会让它停在第一帧，
+     而第一帧是 clip-path: inset(0 0 100% 0) —— 整条消息被切没了。
+     这是「减少动态效果」里最不能出的错。
+
+     同理，任何以「内容不可见」为起始帧的动画都不能靠 1ms 收尾，
+     必须点名关掉。本节以外新增这类动画时记得同步加进来。 */
+  [data-testid="user-input-step"] {
+    animation: none !important;
+    clip-path: none !important;
+  }
+
+  /* 17/18 节新增的、以 opacity:0 或不可见状态起步的动画，同理点名关掉，
+     否则内容会停在第一帧＝看不见。 */
+  [aria-expanded="true"] + * > *,
+  [data-state="open"] > *:not(:first-child),
+  pre,
+  .px-copied::after,
+  .w-full.group > [class~="bg-sidebar-secondary"] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* 粒子束整个不要 —— 减动模式下十几粒方块横飞是最该关掉的东西。
+     注入器那边也会直接跳过创建（没有动画就没有 animationend，
+     元素会泄漏），这里是双保险。 */
+  #px-particles {
+    display: none !important;
+  }
+
+  /* 流式光标保留但不闪：光标本身是有用的状态指示，闪烁才是动效。 */
+  html.px-streaming .relative.flex.flex-col.gap-y-3::after {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  /* 第 19 节：减动模式下把系统指针还回去，整套像素指针停掉。
+     不是「保留指针但去掉拖尾」—— 指针头本身就是每帧重绘的动画，
+     真要尊重这个开关就得整套停。引擎那边也会自己判断并且压根不启动
+     （见 CURSOR_JS 开头），这里是双保险，也保证系统指针一定回来。 */
+  html[data-px-cursor] * {
+    cursor: auto !important;
+  }
+  html[data-px-cursor] #px-cursor {
+    display: none !important;
+  }
+  /* 应用自己声明过 pointer 的那 573 个元素要恢复成手型，
+     否则上面那条 auto 会让所有按钮都变成普通箭头。 */
+  html[data-px-cursor] [class*="cursor-pointer"],
+  html[data-px-cursor] button,
+  html[data-px-cursor] a[href],
+  html[data-px-cursor] [role="button"] {
+    cursor: pointer !important;
+  }
+  html[data-px-cursor] input,
+  html[data-px-cursor] textarea,
+  html[data-px-cursor] [contenteditable="true"] {
+    cursor: text !important;
+  }
+}
