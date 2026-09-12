@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # PIXEL GRAVITY installer for Antigravity 2.x (Windows)
 # - Backs up app.asar, patches dist/utils.js to load the pixel theme injector,
 #   repacks the asar, and deploys pixel-theme assets next to it.
@@ -9,23 +9,30 @@
 #   stock app.asar and silently remove the theme).
 # ============================================================================
 param(
-    [switch]$KillRunning
+    [switch]$KillRunning,
+    [ValidateSet("doodle", "pixel", "matcha", "phantom", "doodle-theme", "pixel-theme", "matcha-theme", "phantom-theme")]
+    [string]$Theme = "phantom"
 )
 $ErrorActionPreference = 'Stop'
+
+switch -Regex ($Theme) {
+    'pixel'   { $ThemeName = 'pixel-theme';   $ThemeTitle = 'PIXEL GRAVITY (8-Bit 复古像素极客风)'; $ThemeColor = 'Yellow' }
+    'matcha'  { $ThemeName = 'matcha-theme';  $ThemeTitle = 'MATCHA GRAVITY (治愈系抹茶日记手帐风)'; $ThemeColor = 'Green' }
+    'phantom' { $ThemeName = 'phantom-theme'; $ThemeTitle = 'PHANTOM GRAVITY (Persona 5 潮酷怪盗波普风)'; $ThemeColor = 'Red' }
+    default   { $ThemeName = 'doodle-theme';  $ThemeTitle = 'DOODLE GRAVITY (纯线稿漫画手绘风)'; $ThemeColor = 'Magenta' }
+}
 
 $AppDir    = Join-Path $env:LOCALAPPDATA 'Programs\Antigravity'
 $Resources = Join-Path $AppDir 'resources'
 $Asar      = Join-Path $Resources 'app.asar'
 $Backup    = Join-Path $Resources 'app.asar.pixel-backup'
-$ThemeSrc  = Join-Path $PSScriptRoot 'pixel-theme'
 $Injector  = Join-Path $PSScriptRoot 'patch\pixelTheme.js'
-$Work      = Join-Path $env:TEMP ('pixel-gravity-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+$Work      = Join-Path $env:TEMP ('theme-gravity-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 
-function Write-Step($msg) { Write-Host "[pixel] $msg" -ForegroundColor Cyan }
-function Fail($msg) { Write-Host "[pixel] ERROR: $msg" -ForegroundColor Red; exit 1 }
+function Write-Step($msg) { Write-Host "[theme] $msg" -ForegroundColor Cyan }
+function Fail($msg) { Write-Host "[theme] ERROR: $msg" -ForegroundColor Red; exit 1 }
 
 if (-not (Test-Path $Asar))     { Fail "app.asar not found at $Asar - is Antigravity installed?" }
-if (-not (Test-Path $ThemeSrc)) { Fail "pixel-theme folder not found next to this script." }
 if (-not (Test-Path $Injector)) { Fail "patch\pixelTheme.js not found next to this script." }
 
 # --- 1. Make sure Antigravity is not running (asar is locked while it runs) ---
@@ -140,18 +147,36 @@ if ($NeedsRepack) {
     Move-Item $NewAsar $Asar -Force
 }
 
-# --- 5. Deploy theme assets (outside the asar, freely editable) ---
-Write-Step "Deploying pixel-theme assets to resources\pixel-theme..."
-$ThemeDst = Join-Path $Resources 'pixel-theme'
-if (Test-Path $ThemeDst) { Remove-Item $ThemeDst -Recurse -Force -Confirm:$false }
-Copy-Item $ThemeSrc $ThemeDst -Recurse
+# --- 5. Deploy all theme assets (outside the asar, freely editable) ---
+$AllThemes = @('pixel-theme', 'doodle-theme', 'matcha-theme', 'phantom-theme')
+foreach ($t in $AllThemes) {
+    $src = Join-Path $PSScriptRoot $t
+    if (Test-Path $src) {
+        Write-Step "Deploying $t assets to resources\$t..."
+        $dst = Join-Path $Resources $t
+        if (Test-Path $dst) { Remove-Item $dst -Recurse -Force -Confirm:$false }
+        Copy-Item $src $dst -Recurse
+    }
+}
+
+# Write active theme config
+$ActiveConfig = @{ theme = $ThemeName } | ConvertTo-Json
+$ActiveConfigPath = Join-Path $Resources 'active-theme.json'
+[System.IO.File]::WriteAllText($ActiveConfigPath, $ActiveConfig, (New-Object System.Text.UTF8Encoding($false)))
+Write-Step "Active theme set to: $ThemeName"
 
 # --- 6. Cleanup ---
 Remove-Item $Work -Recurse -Force -Confirm:$false -ErrorAction SilentlyContinue
 
 Write-Host ""
-Write-Host "  +----------------------------------------------+" -ForegroundColor Yellow
-Write-Host "  |  PIXEL GRAVITY installed. Press START.       |" -ForegroundColor Yellow
-Write-Host "  |  Launch Antigravity to see the pixel theme.  |" -ForegroundColor Yellow
-Write-Host "  +----------------------------------------------+" -ForegroundColor Yellow
+Write-Host "  +-------------------------------------------------------------+" -ForegroundColor Yellow
+Write-Host "  |  $ThemeTitle installed! " -ForegroundColor $ThemeColor
+Write-Host "  |  Launch or reload (Ctrl+R) Antigravity to see your theme!   |" -ForegroundColor White
+Write-Host "  |                                                             |" -ForegroundColor Yellow
+Write-Host "  |  Switch theme anytime:                                      |" -ForegroundColor Cyan
+Write-Host "  |    .\switch-theme.ps1 phantom  (Persona 5 潮酷怪盗风)       |" -ForegroundColor Red
+Write-Host "  |    .\switch-theme.ps1 matcha   (治愈系抹茶日记手帐风)       |" -ForegroundColor Green
+Write-Host "  |    .\switch-theme.ps1 doodle   (纯线稿漫画粉印手绘风)       |" -ForegroundColor Magenta
+Write-Host "  |    .\switch-theme.ps1 pixel    (8-Bit 复古像素极客风)       |" -ForegroundColor Yellow
+Write-Host "  +-------------------------------------------------------------+" -ForegroundColor Yellow
 Write-Host ""

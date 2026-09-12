@@ -1,0 +1,247 @@
+{
+  "timestamp": "2026-09-10T14:17:52.991Z",
+  "passed": 60,
+  "failed": 0,
+  "details": [
+    {
+      "status": "PASS",
+      "message": "patch/pixelTheme.js passes Node.js syntax check (node -c)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-1: trackDialogs deep searches container subtrees without onBody restriction"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-1: trackDialogs preserves disconnection cleanup (!d.isConnected) to prevent stale modal states"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-1: trackDialogs accurately maintains px-modal-open on document.documentElement"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-1: settings modal graceful exit controller prevents recursive event interception via isTrusted guard and try/finally reset"
+    },
+    {
+      "status": "PASS",
+      "message": "pixel.css: Balanced braces (open=454, close=454)"
+    },
+    {
+      "status": "PASS",
+      "message": "doodle.css: Balanced braces (open=377, close=377)"
+    },
+    {
+      "status": "PASS",
+      "message": "matcha.css: Balanced braces (open=356, close=356)"
+    },
+    {
+      "status": "PASS",
+      "message": "phantom.css: Balanced braces (open=411, close=411)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [pixel]: Dialog & modal backdrops elevated to z-index: 2147483640"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [pixel]: Tooltips normalized to z-index: 2147483620 (below dialog, above normal floaters)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [pixel]: html.px-modal-open suppresses tooltips with display: none and pointer-events: none"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [pixel]: Zero high-cost body:has([role=\"dialog\"]) ancestors (eliminates 4.7x RecalcStyle spike)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [doodle]: Dialog & modal backdrops elevated to z-index: 2147483640"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [doodle]: Tooltips normalized to z-index: 2147483620 (below dialog, above normal floaters)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [doodle]: html.px-modal-open suppresses tooltips with display: none and pointer-events: none"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [doodle]: Zero high-cost body:has([role=\"dialog\"]) ancestors (eliminates 4.7x RecalcStyle spike)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [matcha]: Dialog & modal backdrops elevated to z-index: 2147483640"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [matcha]: Tooltips normalized to z-index: 2147483620 (below dialog, above normal floaters)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [matcha]: html.px-modal-open suppresses tooltips with display: none and pointer-events: none"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [matcha]: Zero high-cost body:has([role=\"dialog\"]) ancestors (eliminates 4.7x RecalcStyle spike)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [phantom]: Dialog & modal backdrops elevated to z-index: 2147483640"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [phantom]: Tooltips normalized to z-index: 2147483620 (below dialog, above normal floaters)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [phantom]: html.px-modal-open suppresses tooltips with display: none and pointer-events: none"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-2 [phantom]: Zero high-cost body:has([role=\"dialog\"]) ancestors (eliminates 4.7x RecalcStyle spike)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-3 [pixel]: Background HUD/marks scoped to html:not(.px-sending) body::after"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-3 [pixel]: Send beam monopolizes body::after during transmission with background-image: none !important"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-3 [doodle]: Background HUD/marks scoped to html:not(.px-sending) body::after"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-3 [doodle]: Send beam monopolizes body::after during transmission with background-image: none !important"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-3 [matcha]: Background HUD/marks scoped to html:not(.px-sending) body::after"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-3 [matcha]: Send beam monopolizes body::after during transmission with background-image: none !important"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-3 [phantom]: Background HUD/marks scoped to html:not(.px-sending) body::after"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-3 [phantom]: Send beam monopolizes body::after during transmission with background-image: none !important"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-4 [doodle]: Conversation list items concurrent animation disabled (animation: none !important)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-5 [pixel]: Modal animation set to 240ms with 8-bit stepped curve steps(3)/steps(4)"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-5 [doodle]: Modal animation set to 280ms with snap tension curve"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-5 [matcha]: Modal animation set to 280ms with gentle paper settling curve"
+    },
+    {
+      "status": "PASS",
+      "message": "P0-5 [phantom]: Modal animation set to 280ms with Persona 5 pop curve"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-1 [matcha]: :root defines --matcha-font-ui, --matcha-font-mono, and --matcha-neon"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-1 [matcha]: Zero legacy var(--doodle-font-*) cross-theme variable pollution in matcha.css"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-2 [pixel]: prefers-reduced-motion is physically located at the very end of file"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-2 [pixel]: Uses ID pseudo-negation :not(#_px_never_exist_) achieving (1, 1, 2) overriding specificity"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-2 [doodle]: prefers-reduced-motion is physically located at the very end of file"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-2 [doodle]: Uses ID pseudo-negation :not(#_px_never_exist_) achieving (1, 1, 2) overriding specificity"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-2 [matcha]: prefers-reduced-motion is physically located at the very end of file"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-2 [matcha]: Uses ID pseudo-negation :not(#_px_never_exist_) achieving (1, 1, 2) overriding specificity"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-2 [phantom]: prefers-reduced-motion is physically located at the very end of file"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-2 [phantom]: Uses ID pseudo-negation :not(#_px_never_exist_) achieving (1, 1, 2) overriding specificity"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-3 [pixel]: @keyframes px-step-pop-in eliminates continuous scale() subpixel interpolation"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-3 [pixel]: @keyframes px-step-pop-in uses crisp integer device pixel translation"
+    },
+    {
+      "status": "PASS",
+      "message": "WCAG 2.1 AA: Pixel light placeholder #4a5d73 on #eef0f5 ratio = 5.93:1 (>= 4.5:1 AA PASS)"
+    },
+    {
+      "status": "PASS",
+      "message": "WCAG 2.1 AA: Phantom light gold #8A6300 on #F4F4F6 ratio = 4.95:1 (>= 4.5:1 AA PASS)"
+    },
+    {
+      "status": "PASS",
+      "message": "WCAG 2.1 AA: Doodle light send button text #121214 on #ff2e93 ratio = 5.40:1 (>= 4.5:1 AA PASS)"
+    },
+    {
+      "status": "PASS",
+      "message": "WCAG 2.1 AA: Matcha light subtle #4A6B4E on #F5F6F0 ratio = 5.51:1 (>= 4.5:1 AA PASS)"
+    },
+    {
+      "status": "PASS",
+      "message": "WCAG 2.1 AA: Phantom dark send button text #FFFFFF on #E60012 ratio = 4.80:1 (>= 4.5:1 AA PASS)"
+    },
+    {
+      "status": "PASS",
+      "message": "P1-4 [phantom]: Zero legacy var(--doodle-font-*) cross-theme variable pollution in phantom.css"
+    },
+    {
+      "status": "PASS",
+      "message": "P2-2 [phantom]: Persona 5 theme completely stripped of cartoon doodle-jiggle and doodle-nudge"
+    },
+    {
+      "status": "PASS",
+      "message": "P2-1 [matcha]: Jiggle & nudge removed from child icons with gentle paper settling damping"
+    },
+    {
+      "status": "PASS",
+      "message": "P2-2 [phantom]: Persona 5 skewX(-2.5deg) pop-in and red/gold diamond particle burst"
+    },
+    {
+      "status": "PASS",
+      "message": "P2-3 [pixel]: General transition excludes outline-width layout trigger while retaining focus & SVG channels"
+    }
+  ]
+}

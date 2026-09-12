@@ -1,0 +1,1319 @@
+{
+  "pixel": {
+    "theme": "pixel",
+    "domInspection": {
+      "totalDomNodes": 3671,
+      "rootInlineStyle": "--sidebar-width: 256px; --aux-pane-width: 0px;",
+      "rootTransitionProperty": "none",
+      "rootTransition": "none",
+      "auxPaneWidthVar": "0px",
+      "topBarInlineStyle": "transition: padding-right 500ms var(--ease-expo-out); padding-right: max(8px, 36px - var(--aux-pane-width));",
+      "topBarTransition": "padding-right 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+      "topBarPaddingRight": "36px"
+    },
+    "screenshots": {
+      "collapsed": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\pixel_aux_01_collapsed.png",
+      "expanded": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\pixel_aux_02_expanded.png",
+      "collapsed_final": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\pixel_aux_03_collapsed_final.png"
+    },
+    "expand": {
+      "totalFrames": 22,
+      "mean": 29.68,
+      "fps": 33.7,
+      "p50": 7,
+      "p90": 76.5,
+      "p95": 90.2,
+      "maxSpike": 132,
+      "dropped144": 13,
+      "dropRate144": 59.1,
+      "dropped60": 8,
+      "dropRate60": 36.4,
+      "longTasksCount": 2,
+      "maxLongTask": 117,
+      "longTasks": [
+        {
+          "startTime": 4033.7,
+          "duration": 117
+        },
+        {
+          "startTime": 4233.2,
+          "duration": 68
+        }
+      ],
+      "trajectorySample": [
+        {
+          "t": 1.3,
+          "d": 1.3,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 300,
+          "d": 90.2,
+          "paneWidth": 256,
+          "paddingRight": 8.3,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 438.9,
+          "d": 27.8,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 564,
+          "d": 7.1,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 584.8,
+          "d": 6.9,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 605.6,
+          "d": 6.9,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 626.5,
+          "d": 7.1,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 647.2,
+          "d": 6.9,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 654.2,
+          "d": 7,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        }
+      ],
+      "cdpMetricsDiff": {
+        "recalcStyleCount": 27,
+        "recalcStyleDurationMs": 68.79,
+        "layoutCount": 11,
+        "layoutDurationMs": 180.28,
+        "scriptDurationMs": 208.27,
+        "taskDurationMs": 613.36
+      }
+    },
+    "collapse": {
+      "totalFrames": 44,
+      "mean": 14.68,
+      "fps": 68.1,
+      "p50": 13.8,
+      "p90": 20.8,
+      "p95": 20.9,
+      "maxSpike": 125.1,
+      "dropped144": 36,
+      "dropRate144": 81.8,
+      "dropped60": 8,
+      "dropRate60": 18.2,
+      "longTasksCount": 1,
+      "maxLongTask": 114,
+      "longTasks": [
+        {
+          "startTime": 5332.9,
+          "duration": 114
+        }
+      ],
+      "trajectorySample": [
+        {
+          "t": 3.5,
+          "d": 3.5,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "0px"
+        },
+        {
+          "t": 170.2,
+          "d": 20.9,
+          "paneWidth": 256,
+          "paddingRight": 18.4,
+          "auxVar": "0px"
+        },
+        {
+          "t": 225.7,
+          "d": 20.8,
+          "paneWidth": 256,
+          "paddingRight": 28,
+          "auxVar": "0px"
+        },
+        {
+          "t": 267.4,
+          "d": 20.8,
+          "paneWidth": 256,
+          "paddingRight": 31.6,
+          "auxVar": "0px"
+        },
+        {
+          "t": 295.2,
+          "d": 7,
+          "paneWidth": 256,
+          "paddingRight": 33,
+          "auxVar": "0px"
+        },
+        {
+          "t": 336.9,
+          "d": 14,
+          "paneWidth": 256,
+          "paddingRight": 34.3,
+          "auxVar": "0px"
+        },
+        {
+          "t": 371.6,
+          "d": 13.9,
+          "paneWidth": 256,
+          "paddingRight": 35,
+          "auxVar": "0px"
+        },
+        {
+          "t": 399.4,
+          "d": 7,
+          "paneWidth": 256,
+          "paddingRight": 35.4,
+          "auxVar": "0px"
+        },
+        {
+          "t": 434.1,
+          "d": 13.9,
+          "paneWidth": 256,
+          "paddingRight": 35.7,
+          "auxVar": "0px"
+        },
+        {
+          "t": 461.9,
+          "d": 6.9,
+          "paneWidth": 256,
+          "paddingRight": 35.8,
+          "auxVar": "0px"
+        },
+        {
+          "t": 496.6,
+          "d": 13.9,
+          "paneWidth": 256,
+          "paddingRight": 35.9,
+          "auxVar": "0px"
+        },
+        {
+          "t": 531.4,
+          "d": 14,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 559.1,
+          "d": 6.9,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 586.9,
+          "d": 6.9,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 614.6,
+          "d": 7,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 649.5,
+          "d": 27.9,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        }
+      ],
+      "cdpMetricsDiff": {
+        "recalcStyleCount": 50,
+        "recalcStyleDurationMs": 123.54,
+        "layoutCount": 47,
+        "layoutDurationMs": 194.39,
+        "scriptDurationMs": 108.09,
+        "taskDurationMs": 721.34
+      }
+    }
+  },
+  "phantom": {
+    "theme": "phantom",
+    "domInspection": {
+      "totalDomNodes": 2049,
+      "rootInlineStyle": "--sidebar-width: 256px; --aux-pane-width: 0px;",
+      "rootTransitionProperty": "all",
+      "rootTransition": "all",
+      "auxPaneWidthVar": "0px",
+      "topBarInlineStyle": "transition: padding-right 500ms var(--ease-expo-out); padding-right: max(8px, 36px - var(--aux-pane-width));",
+      "topBarTransition": "padding-right 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+      "topBarPaddingRight": "36px"
+    },
+    "screenshots": {
+      "collapsed": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\phantom_aux_01_collapsed.png",
+      "expanded": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\phantom_aux_02_expanded.png",
+      "collapsed_final": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\phantom_aux_03_collapsed_final.png"
+    },
+    "expand": {
+      "totalFrames": 92,
+      "mean": 7.1,
+      "fps": 140.9,
+      "p50": 7,
+      "p90": 7,
+      "p95": 7.1,
+      "maxSpike": 14,
+      "dropped144": 46,
+      "dropRate144": 50,
+      "dropped60": 0,
+      "dropRate60": 0,
+      "longTasksCount": 0,
+      "maxLongTask": 0,
+      "longTasks": [],
+      "trajectorySample": [
+        {
+          "t": 2.5,
+          "d": 2.5,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 23.5,
+          "d": 7.1,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 44.2,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 65,
+          "d": 6.8,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 85.9,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 106.6,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 127.6,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 148.3,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 169.2,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 190.1,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 217.9,
+          "d": 14,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 238.7,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 259.5,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 280.3,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 301.2,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 322,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 342.8,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 363.7,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 384.5,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 405.4,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 426.2,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 447,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 467.9,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 488.7,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 509.6,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 530.3,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 551.2,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 578.9,
+          "d": 13.8,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 599.8,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 620.6,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 641.5,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 655.3,
+          "d": 6.8,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        }
+      ],
+      "cdpMetricsDiff": {
+        "recalcStyleCount": 94,
+        "recalcStyleDurationMs": 42.84,
+        "layoutCount": 0,
+        "layoutDurationMs": 0,
+        "scriptDurationMs": 10.98,
+        "taskDurationMs": 114.68
+      }
+    },
+    "collapse": {
+      "totalFrames": 92,
+      "mean": 7.02,
+      "fps": 142.4,
+      "p50": 6.9,
+      "p90": 7,
+      "p95": 7,
+      "maxSpike": 13.8,
+      "dropped144": 41,
+      "dropRate144": 44.6,
+      "dropped60": 0,
+      "dropRate60": 0,
+      "longTasksCount": 0,
+      "maxLongTask": 0,
+      "longTasks": [],
+      "trajectorySample": [
+        {
+          "t": 3.7,
+          "d": 3.7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 24.5,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 45.3,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 66.2,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 87,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 107.9,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 128.7,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 149.6,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 170.4,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 191.2,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 212,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 232.8,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 253.7,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 274.6,
+          "d": 7.1,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 295.4,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 316.2,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 337,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 357.9,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 378.7,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 399.6,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 420.4,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 441.2,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 462,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 482.9,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 503.8,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 524.5,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 545.5,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 566.4,
+          "d": 7.1,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 594.1,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 614.9,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 635.7,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 649.6,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        }
+      ],
+      "cdpMetricsDiff": {
+        "recalcStyleCount": 93,
+        "recalcStyleDurationMs": 21.48,
+        "layoutCount": 0,
+        "layoutDurationMs": 0,
+        "scriptDurationMs": 12.82,
+        "taskDurationMs": 150.99
+      }
+    }
+  },
+  "doodle": {
+    "theme": "doodle",
+    "domInspection": {
+      "totalDomNodes": 202,
+      "rootInlineStyle": "",
+      "rootTransitionProperty": "",
+      "rootTransition": "",
+      "auxPaneWidthVar": "",
+      "topBarInlineStyle": "",
+      "topBarTransition": "",
+      "topBarPaddingRight": ""
+    },
+    "screenshots": {
+      "collapsed": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\doodle_aux_01_collapsed.png",
+      "expanded": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\doodle_aux_02_expanded.png",
+      "collapsed_final": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\doodle_aux_03_collapsed_final.png"
+    },
+    "expand": {
+      "totalFrames": 94,
+      "mean": 6.95,
+      "fps": 144,
+      "p50": 6.9,
+      "p90": 7,
+      "p95": 7.1,
+      "maxSpike": 7.1,
+      "dropped144": 45,
+      "dropRate144": 47.9,
+      "dropped60": 0,
+      "dropRate60": 0,
+      "longTasksCount": 0,
+      "maxLongTask": 0,
+      "longTasks": [],
+      "trajectorySample": [
+        {
+          "t": -4.6,
+          "d": -4.6,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 16.3,
+          "d": 7.1,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 37.1,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 58,
+          "d": 7.1,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 78.7,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 99.6,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 120.4,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 141.3,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 162.1,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 182.9,
+          "d": 6.8,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 203.8,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 224.7,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 245.5,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 266.3,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 287.1,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 308,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 328.8,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 349.6,
+          "d": 6.8,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 370.5,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 391.3,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 412.1,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 432.9,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 453.8,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 474.7,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 495.5,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 516.3,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 537.2,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 558,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 578.8,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 599.6,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 620.5,
+          "d": 6.9,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 641.4,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        },
+        {
+          "t": 648.4,
+          "d": 7,
+          "paneWidth": 0,
+          "paddingRight": 0,
+          "auxVar": null
+        }
+      ],
+      "cdpMetricsDiff": {
+        "recalcStyleCount": 0,
+        "recalcStyleDurationMs": 0,
+        "layoutCount": 0,
+        "layoutDurationMs": 0,
+        "scriptDurationMs": 17.27,
+        "taskDurationMs": 39.56
+      }
+    },
+    "collapse": {
+      "totalFrames": 4,
+      "mean": 247.31,
+      "fps": 4,
+      "p50": 305.7,
+      "p90": 500,
+      "p95": 500,
+      "maxSpike": 500,
+      "dropped144": 4,
+      "dropRate144": 100,
+      "dropped60": 4,
+      "dropRate60": 100,
+      "longTasksCount": 4,
+      "maxLongTask": 380,
+      "longTasks": [
+        {
+          "startTime": 5295.5,
+          "duration": 76
+        },
+        {
+          "startTime": 5573.1,
+          "duration": 203
+        },
+        {
+          "startTime": 5776.3,
+          "duration": 380
+        },
+        {
+          "startTime": 6156.4,
+          "duration": 117
+        }
+      ],
+      "trajectorySample": [
+        {
+          "t": 7.6,
+          "d": 7.56,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 496.8,
+          "d": 305.7,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 996.8,
+          "d": 500,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        }
+      ],
+      "cdpMetricsDiff": {
+        "recalcStyleCount": 24,
+        "recalcStyleDurationMs": 301.71,
+        "layoutCount": 18,
+        "layoutDurationMs": 28.36,
+        "scriptDurationMs": 1017.77,
+        "taskDurationMs": 1551.47
+      }
+    }
+  },
+  "matcha": {
+    "theme": "matcha",
+    "domInspection": {
+      "totalDomNodes": 1820,
+      "rootInlineStyle": "--sidebar-width: 256px; --aux-pane-width: calc((100vw - var(--sidebar-width)) * 0.37697227668249833);",
+      "rootTransitionProperty": "all",
+      "rootTransition": "all",
+      "auxPaneWidthVar": "491.035px",
+      "topBarInlineStyle": "transition: padding-right 500ms var(--ease-expo-out); padding-right: max(8px, 36px - var(--aux-pane-width));",
+      "topBarTransition": "padding-right 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+      "topBarPaddingRight": "8px"
+    },
+    "screenshots": {
+      "collapsed": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\matcha_aux_01_collapsed.png",
+      "expanded": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\matcha_aux_02_expanded.png",
+      "collapsed_final": "E:\\搞搞新意思\\antigravity-美化\\test-reports\\screenshots\\matcha_aux_03_collapsed_final.png"
+    },
+    "expand": {
+      "totalFrames": 13,
+      "mean": 49.15,
+      "fps": 20.3,
+      "p50": 27.8,
+      "p90": 104.1,
+      "p95": 215.4,
+      "maxSpike": 215.4,
+      "dropped144": 13,
+      "dropRate144": 100,
+      "dropped60": 13,
+      "dropRate60": 100,
+      "longTasksCount": 3,
+      "maxLongTask": 167,
+      "longTasks": [
+        {
+          "startTime": 4497.7,
+          "duration": 95
+        },
+        {
+          "startTime": 4970.3,
+          "duration": 167
+        },
+        {
+          "startTime": 5176.3,
+          "duration": 55
+        }
+      ],
+      "trajectorySample": [
+        {
+          "t": 9.5,
+          "d": 9.5,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 196.9,
+          "d": 27.8,
+          "paneWidth": 256,
+          "paddingRight": 10,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 273.3,
+          "d": 20.9,
+          "paneWidth": 256,
+          "paddingRight": 8.6,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 335.8,
+          "d": 20.9,
+          "paneWidth": 256,
+          "paddingRight": 8.2,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 433,
+          "d": 34.8,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        },
+        {
+          "t": 648.4,
+          "d": 215.4,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "491.035px"
+        }
+      ],
+      "cdpMetricsDiff": {
+        "recalcStyleCount": 18,
+        "recalcStyleDurationMs": 316.75,
+        "layoutCount": 16,
+        "layoutDurationMs": 73.4,
+        "scriptDurationMs": 177.95,
+        "taskDurationMs": 773.55
+      }
+    },
+    "collapse": {
+      "totalFrames": 23,
+      "mean": 28.39,
+      "fps": 35.2,
+      "p50": 7,
+      "p90": 41.6,
+      "p95": 83.3,
+      "maxSpike": 326.5,
+      "dropped144": 16,
+      "dropRate144": 69.6,
+      "dropped60": 6,
+      "dropRate60": 26.1,
+      "longTasksCount": 3,
+      "maxLongTask": 142,
+      "longTasks": [
+        {
+          "startTime": 5956.1,
+          "duration": 51
+        },
+        {
+          "startTime": 6013.4,
+          "duration": 124
+        },
+        {
+          "startTime": 6138,
+          "duration": 142
+        }
+      ],
+      "trajectorySample": [
+        {
+          "t": -3.2,
+          "d": -3.2,
+          "paneWidth": 256,
+          "paddingRight": 8,
+          "auxVar": "0px"
+        },
+        {
+          "t": 434.3,
+          "d": 27.7,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 483,
+          "d": 20.8,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 552.4,
+          "d": 7,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 573.2,
+          "d": 6.9,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 594.1,
+          "d": 7,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 614.9,
+          "d": 7,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 635.8,
+          "d": 7,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        },
+        {
+          "t": 649.7,
+          "d": 6.9,
+          "paneWidth": 256,
+          "paddingRight": 36,
+          "auxVar": "0px"
+        }
+      ],
+      "cdpMetricsDiff": {
+        "recalcStyleCount": 31,
+        "recalcStyleDurationMs": 314.06,
+        "layoutCount": 12,
+        "layoutDurationMs": 27.97,
+        "scriptDurationMs": 146.56,
+        "taskDurationMs": 661.42
+      }
+    }
+  }
+}

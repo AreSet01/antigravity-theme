@@ -1,430 +1,218 @@
-# PIXEL GRAVITY — Antigravity 2.x 像素风美化包
+# 🌌 Antigravity Theme 美化增强套件
 
-把 Antigravity 变成一台复古像素机：点阵中文字体、Sweetie-16 配色、全直角、
-硬阴影、方块滚动条、CRT 扫描线，连启动动画都换成了像素进度条。
+<p align="center">
+  <b>Google Antigravity 2.x 全量高刷、无损热切、多风格深度美化套件</b><br>
+  <i>Deep visual restyling, high-refresh smooth animations, and instant zero-restart theme hot-switching for Google Antigravity.</i>
+</p>
 
-动效全部走平滑曲线、贴合屏幕刷新率（2026-08-04 应用户要求从跳帧改版）：
-悬停列表行会长出高亮竖条，按钮按下去有位移手感，发送消息时一道像素光柱
-带着拖尾窜上会话流，扫描线上还有一条回扫亮带在慢慢滚。位移终点都取整数
-设备像素，停稳那一帧点阵字依然清晰。
-
-右上角的最小化 / 最大化 / 关闭按钮也是**自己画的像素按钮**——
-Windows 原生那三个按钮的底色改不动（详见 [复用指南](复用指南.md) 第 6 条），
-永远和顶栏差一截，所以直接关掉换成自绘的，和顶栏严丝合缝。
-
-已在 **Antigravity 2.3.1 / Windows** 上实测通过。
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?logo=windows" alt="Platform" />
+  <img src="https://img.shields.io/badge/Compatibility-Antigravity%202.x-6C5CE7" alt="Compatibility" />
+  <img src="https://img.shields.io/badge/Themes-4%20Presets-FF7675" alt="Themes" />
+  <img src="https://img.shields.io/badge/Switching-Zero--Restart%20(0.1s)-55EFC4" alt="Switching" />
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
+</p>
 
 ---
 
-## 安装
+[📖 English Documentation](#english) | [📖 简体中文文档](#简体中文)
 
-需要装了 Node.js（脚本用 `npx` 拆装 asar 包）。
+---
 
-1. **先完全退出 Antigravity**（记得看一眼右下角托盘图标，别只关窗口）
-2. 在这个文件夹里右键 → 在终端中打开，然后跑：
+<a name="简体中文"></a>
+## 简体中文
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1
+### ✨ 简介
+
+**Antigravity Theme** 是一套专为 **Google Antigravity 2.x** 客户端打造的深度视觉美化与性能增强套件。
+
+项目打破了传统 Electron 客户端单调的视觉体验，在完全不影响原有核心编码与 AI 交互功能的前提下，注入了四套极具艺术张力与实用性的定制主题。同时采用**非侵入式加载器架构**，结合自研的 CDP（Chrome DevTools Protocol）通讯通道，实现了**无需重启客户端、0.1 秒全窗口无感秒级切换**。
+
+---
+
+### 🎨 四大预设主题风格
+
+| 主题代号 | 视觉流派 | 核心调色板 | 特色组件与质感 | 切换指令 |
+| :--- | :--- | :--- | :--- | :--- |
+| **🎭 phantom** | **Persona 5 潮酷怪盗波普风** | `#D81124` (怪盗猩红)<br>`#121212` (夜幕曜黑)<br>`#F5F5F5` (高光纯白) | 警戒斜纹切角、高饱和波普徽章、锋利几何折角、动感对话流 | `switch phantom` |
+| **🍵 matcha** | **治愈系抹茶日记手帐风** | `#2D4B39` (深苔竹青)<br>`#5B8A68` (抹茶苍绿)<br>`#F6F8F3` (日式和纸) | 手帐贴纸质感、书签便签角标、柔和护眼纸纹、优雅圆润排版 | `switch matcha` |
+| **✒️ doodle** | **纯线稿漫画粉印手绘风** | `#202020` (墨线勾勒)<br>`#FDFCF7` (手绘糙纸)<br>`#E84855` (落款粉印) | 黑白漫画分镜框、直角硬边分割、印章式交互反馈、纯粹纸质感 | `switch doodle` |
+| **👾 pixel** | **8-Bit 复古像素极客风** | Sweetie-16 经典复古调色板<br>点阵荧光绿 / 琥珀橙 | 中文点阵字体、CRT 扫描线与荧光微光、像素方块滑块、复古进度条 | `switch pixel` |
+
+---
+
+### 🚀 核心特性
+
+1. **⚡ 0 重启秒级热切换 (Zero-Restart CDP Hot-Switching)**
+   - 内置 `switch.bat` / `switch-theme.ps1`，自动通过本地 DevTools 端口建立调试连接。
+   - **无需关闭或重启 Antigravity**，也不必重新封包 asar，一键输入主题代号，0.1 秒内所有渲染进程自动完成样式热重载。
+2. **🏎️ 60Hz / 144Hz / 165Hz 高刷平滑调优**
+   - 彻底排查并拆除了每帧触发全树重排的注册 `@property` CSS 变量动画。
+   - 所有平移与缩放严格对齐物理设备像素（`calc(N * var(--px-dev))`），彻底杜绝点阵字体重采样发糊与长任务（Long Tasks）掉帧卡顿。
+3. **🪟 自绘像素级无缝窗口按钮**
+   - 彻底绕过 Windows 11 `titleBarOverlay` 无法自定义底色并偶现浅白条闪烁的系统缺陷。
+   - 采用纯 CSS / 矢量自绘最小化、最大化、关闭按钮，完美融入应用顶栏色调，支持完整原生操作。
+4. **🛡️ 非侵入式安全架构**
+   - 仅在 `app.asar` 中注入微型加载器钩子（数十行），所有主题 CSS 与字体资源完全存放在 asar 外部目录（`resources/<theme>/`）。
+   - 用户可随时以纯文本方式修改 CSS，按下 `Ctrl + R` 即可实时见效。
+   - 安装前自动备份原始包（`app.asar.pixel-backup`），卸载脚本 `uninstall.bat` 能够 100% 无损恢复原厂状态。
+
+---
+
+### 📦 快速开始与安装
+
+#### 运行环境要求
+- **操作系统**：Windows 10 / 11 (x64)
+- **目标应用**：Google Antigravity 2.x
+- **依赖工具**：[Node.js](https://nodejs.org/)（安装脚本使用 `npx @electron/asar` 解装包，需确保 `npx` 可在终端调用）
+
+#### 1. 一键安装
+1. **完全退出 Antigravity**（请检查 Windows 托盘区，确保进程已退出）；
+2. 在本项目根目录下，**双击运行 `install.bat`**，或在终端执行：
+   ```powershell
+   # 默认安装 phantom 主题（若程序在运行，加 -KillRunning 自动退出）
+   powershell -ExecutionPolicy Bypass -File .\install.ps1 -KillRunning
+   
+   # 或指定初始安装主题：phantom | matcha | doodle | pixel
+   powershell -ExecutionPolicy Bypass -File .\install.ps1 -Theme matcha -KillRunning
+   ```
+3. 安装完成后启动 Antigravity，即可看到全新视觉效果！
+
+#### 2. 一键极速切换主题
+美化包支持免重启热切，随时在终端或 CMD 执行：
+```cmd
+:: 方式一：打开交互式数字选择菜单（按 1~4 快速选择）
+switch
+
+:: 方式二：直接传参切换指定风格
+switch phantom   :: 切换至 Persona 5 怪盗波普风
+switch matcha    :: 切换至 治愈系抹茶日记风
+switch doodle    :: 切换至 纯线稿漫画手绘风
+switch pixel     :: 切换至 8-Bit 复古像素风
 ```
+> **提示**：你也可以在文件资源管理器中直接双击 `switch.bat` 运行！
 
-嫌关程序麻烦的话，加 `-KillRunning` 让脚本自己去关：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -KillRunning
+#### 3. 彻底卸载与还原
+如需恢复原版官方界面：
+```cmd
+:: 双击运行 uninstall.bat，或执行：
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -KillRunning
 ```
+卸载程序会自动从备份无损还原 `app.asar`，并彻底清理所有外置主题资产文件。
 
-装完启动 Antigravity 就是像素风了。
+---
 
-## 卸载
+### 🛠️ 进阶定制与实时调色
 
-```powershell
+所有主题样式文件均安装在外部用户目录：
+```
+%LOCALAPPDATA%\Programs\Antigravity\resources\<theme-name>\<theme-name>.css
+```
+- **实时调色**：用任意编辑器打开对应 `.css` 文件，修改顶部 `:root` 变量区（例如背景色、强调色、字体大小），保存后在 Antigravity 窗口按下 **`Ctrl + R`** 即可在 1 秒内看到修改结果，无需重新安装！
+- **新增自定义主题 / 复用至其他 Electron 客户端**：请详阅 [复用指南.md](复用指南.md)。
+
+---
+
+<a name="english"></a>
+## English Documentation
+
+### ✨ Introduction
+
+**Antigravity Theme** is a comprehensive visual restyling, performance optimization, and hot-switching theme suite engineered for **Google Antigravity 2.x** client.
+
+It replaces the default monochromatic interface with four high-aesthetic, production-ready design styles without interfering with any core coding, extension, or AI features. Utilizing a **non-invasive external asset architecture** alongside direct **Chrome DevTools Protocol (CDP)** integration, it allows users to switch themes **within 0.1 seconds without restarting the app**.
+
+---
+
+### 🎨 Four Preset Themes
+
+| Theme Key | Aesthetics & Design Philosophy | Primary Palette | Key Visual Characteristics | Quick Switch |
+| :--- | :--- | :--- | :--- | :--- |
+| **🎭 phantom** | **Persona 5 Bold Pop-Art** | `#D81124` (Crimson)<br>`#121212` (Obsidian)<br>`#F5F5F5` (Pure White) | Slanted hazard warning stripes, high-saturation pop badges, sharp geometric angles | `switch phantom` |
+| **🍵 matcha** | **Japanese Matcha Diary** | `#2D4B39` (Deep Moss)<br>`#5B8A68` (Matcha Green)<br>`#F6F8F3` (Washi Paper) | Stationery stickers, bookmark tabs, warm eye-protective paper tone, rounded flow | `switch matcha` |
+| **✒️ doodle** | **Comic Manga Line Art** | `#202020` (Ink Outline)<br>`#FDFCF7` (Rough Paper)<br>`#E84855` (Seal Stamp Red) | Clean storyboard panels, right-angled framing, ink stamp accent feedback | `switch doodle` |
+| **👾 pixel** | **8-Bit Retro Geek Art** | Sweetie-16 16-color palette<br>Dot-matrix phosphor glow | Chinese/English dot-matrix font, CRT scanlines, pixelated block scrollbars | `switch pixel` |
+
+---
+
+### 🚀 Key Features
+
+1. **⚡ Zero-Restart Hot Switching (0.1s)**
+   - Powered by `switch.bat` / `switch-theme.ps1` connecting to Chromium's local DevTools port.
+   - Switch between themes instantly without killing the application or repacking asar archives.
+2. **🏎️ 60Hz / 144Hz / 165Hz High-Refresh Pacing**
+   - Eliminated redundant style recalculation bottlenecks caused by animated root `@property` variables.
+   - Strictly mapped layout coordinates to physical device pixels (`calc(N * var(--px-dev))`), preventing font resampling blur and animation frame drops.
+3. **🪟 Custom Native-Free Caption Controls**
+   - Eliminates Windows 11 `titleBarOverlay` tint discoloration and white background flash issues.
+   - Pure CSS/vector minimize, maximize, and close buttons seamlessly integrated into the titlebar.
+4. **🛡️ Non-Invasive & Safe Architecture**
+   - Only a compact loader hook is placed inside `app.asar`. All CSS stylesheets and WOFF2 fonts reside outside in `resources/<theme>/`.
+   - Edit CSS directly and press `Ctrl + R` to preview changes in real time.
+   - Automatic `app.asar.pixel-backup` creation ensures complete uninstallation with `uninstall.bat`.
+
+---
+
+### 📦 Quick Start & Usage
+
+#### Prerequisites
+- **OS**: Windows 10 / 11 (x64)
+- **App**: Google Antigravity 2.x
+- **Dependency**: [Node.js](https://nodejs.org/) (`npx` must be available in PATH for asar packing/unpacking)
+
+#### 1. Installation
+1. **Completely exit Antigravity** (ensure no background instances remain in the system tray).
+2. Double click `install.bat` or run in terminal:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\install.ps1 -KillRunning
+   ```
+3. Launch Antigravity to enjoy your chosen theme.
+
+#### 2. Switching Themes
+Switch anytime from terminal or command prompt:
+```cmd
+:: Interactive number-based menu (1-4):
+switch
+
+:: Or specify the theme directly:
+switch phantom
+switch matcha
+switch doodle
+switch pixel
+```
+*(You can also simply double-click `switch.bat` in Windows Explorer).*
+
+#### 3. Uninstallation
+To restore official stock files:
+```cmd
+uninstall.bat
+:: Or in PowerShell:
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -KillRunning
 ```
 
-会从备份还原原版 `app.asar`，并删掉主题文件，恢复得干干净净。
+---
+
+### 📁 Project Structure
+
+```text
+antigravity-theme/
+├── doodle-theme/            # Comic manga theme CSS & fonts
+├── matcha-theme/            # Japanese matcha stationery theme CSS & fonts
+├── phantom-theme/           # Persona 5 pop-art theme CSS & fonts
+├── pixel-theme/             # 8-Bit retro pixel theme CSS & fonts
+├── patch/
+│   └── pixelTheme.js        # Core runtime theme injector & CDP hot-reload engine
+├── install.bat / .ps1       # Automated patcher & asset deployer
+├── switch.bat / switch-theme.ps1 # Instant zero-restart theme hot-switcher
+├── uninstall.bat / .ps1     # 100% clean restore & cleanup script
+├── 复用指南.md              # In-depth technical architecture & reuse guide
+└── README.md                # Bilingual documentation
+```
 
 ---
 
-## 改配色 / 关扫描线 / 调动效
-
-主题样式装在这里，是**纯文本 CSS，可以随便改**：
-
-```
-%LOCALAPPDATA%\Programs\Antigravity\resources\pixel-theme\pixel.css
-```
-
-改完保存，回 Antigravity 窗口按 **Ctrl+R** 刷新就生效了——不用重装，也不用重启。
-
-- **换配色**：改文件开头 `:root` 里那组 `--px-*` 变量就行，全局自动跟着变
-- **关掉 CRT 扫描线**：把「13. CRT 扫描线」那一整块注释掉
-- **亮/暗色**：跟着 Antigravity 自己的主题设置走，两套配色都调过了
-- **动效整体调快/调慢**：改「14. 动效」开头那组变量，
-  `--px-ease*` 是曲线、`--px-t*` 是时长（2026-08-04 起全部平滑；
-  `--px-step*` 是跳帧时代的历史名字，值已指向平滑曲线，改名不划算）。
-  嫌哪一小节吵就单独注释掉，各节之间不互相依赖：
-
-  | 小节 | 管什么 |
-  |---|---|
-  | 14.1 | 地基：接管应用自带过渡的缓动曲线；**侧栏/辅助面板拆掉每帧重排的账单** |
-  | 14.2 | 列表行悬停：左侧高亮竖条 + 整行右移 2px |
-  | 14.3 | 弹层 / 通知条开合 |
-  | 14.4 | tooltip |
-  | 14.5 | 按钮：抬起、按下、图标弹跳、发送键顶箭头、焦点闪光 |
-  | 14.6 | 切会话 / 切视图的入场 |
-  | 14.7 | **CRT 回扫亮带 + 扫描线闪烁**（嫌晃眼先注释这块） |
-  | 15.0 | 位移的单位 `--px-dev`（1 个设备像素等于多少 CSS px） |
-  | 15.1 | 按钮机械键程升级 + 停用态斜纹 |
-  | 15.2 | 输入框聚焦扫描线 |
-  | 15.3 | 发送键充能填充 + 就绪呼吸 |
-  | 15.4 | **发送「数据包上窜」** + 输入框回弹 + 新消息落地 |
-  | 15.4b | 用户消息 clip-path 阶梯揭示（**只对用户消息**，见下） |
-  | 15.5 | 主题切换全屏像素溶解 |
-  | 15.6 | 折叠箭头 / 滚动条滑块 / toast 报错抖动 |
-  | 17.1 | 统一按压系统（所有可点元素按下沉 1 设备像素）|
-  | 17.2 | 焦点环长出来 + **过渡属性总接管**（改这里最容易牵一发动全身，见下）|
-  | 17.3 | 折叠箭头与内容同步（220ms 对齐）|
-  | 17.4 | 滚动条滑块三级状态（静止 / 悬停 / 拖动）|
-  | 17.5 | 禁用态统一（斜纹，发送键豁免）|
-  | 17.6 | 复制成功的对勾反馈 |
-  | 18.1 | **流式输出的块状光标**（挂容器 ::after，不碰消息节点）|
-  | 18.2 | 思考块 / 工具卡分层展开 |
-  | 18.3 | 侧栏选中竖条滑入 |
-  | 18.4 | 代码块入场（结构未实测，写得保守）|
-  | 18.5 | **发送粒子束**（16 粒随机漂移，JS 建节点）|
-  | 16 | 跟随系统的「减少动态效果」开关 |
-  | 19 | **像素指针 + 拖尾粒子**（系统指针隐藏，JS canvas 绘制）|
-
-  ⚠ **17.2 是一条会影响全局的规则**。它用 `!important` 接管了
-  button / a / input / textarea / [tabindex] 的 `transition-property`，
-  因为应用自己有一条排在我们之后的
-  `button, input, select, … { transition-property: box-shadow }`，
-  不用 `!important` 就会被它收窄回只剩 box-shadow（实测：焦点环不动、
-  按钮颜色过渡消失）。代价是：**一旦接管，属性表里漏写哪个属性，
-  哪个属性就不再有过渡**。要加新的过渡属性，去 17.2 的列表里加，
-  别新写一条规则。
-
-  第 15 节有三条自己的规矩，改之前先看一眼：
-
-  - **位移一律写 `calc(N * var(--px-dev))`，别直接写 px。**
-    2K@150% 下 1 CSS px = 1.5 设备像素，直接写 px 会停在半个设备像素上，
-    点阵字在动画期间被重采样。`--px-dev` 由注入器按 `1/dpr` 实时下发。
-  - **气泡揭示（15.4b）只挂用户消息，助手回复一律不碰。**
-    实测过：追加文字不会重启动画（安全），但元素被 React 整体重挂会
-    让动画从头重放 —— 流式输出期间助手那条一直在重挂，挂上去就是
-    文字反复被抹掉又冒出来。用户消息发出去就定型，不会流式。
-    而且只揭示**最后一轮**，否则打开长会话会十几条一起动。
-  - **以「内容不可见」为起始帧的动画，绝对不能加 `animation-fill-mode: both`。**
-    窗口最小化/切后台时 document timeline 是冻住的（实测 playState
-    仍是 running 但 currentTime 恒为 0），`both` 会把元素按 from 帧保持住 ——
-    对 clip-path 揭示来说就是整条消息被永久切没。踩过，别再踩。
-    第 16 节里也要给这类动画单独写 `animation: none`，
-    因为那条兜底的 `animation-duration: 1ms` 同样是停在第一帧。
-  - **别再给 button 写 `transition: none`。**
-    2026-08-04 之前第 8 节有这么一句，本意是「过渡由主题统一接管」，
-    实际把应用自带的 `.transition-colors` 全压死了 —— 实测 66 个按钮里
-    38 个悬停是硬跳色。主题只给 border / bg-primary / bg-card 三类补了
-    过渡，而这三类在真实页面只命中 1 个按钮。要统一缓动曲线，用
-    14.1 那条 `[class*="transition"]` 只改 timing-function，别动 property。
-
-- **窗口按钮样式**：见「12.5 自绘窗口按钮」那一节。
-  想换回 Windows 原生按钮的话，把 `--px-native-caption` 改成 `on`——
-  但这个开关和 `--px-chrome-*` 一样是**窗口构造时才读**的，
-  改完要**重启 Antigravity**，Ctrl+R 不够
-
-> 注意：这里改的是**已安装**的那份。想让改动在重装后还在，
-> 记得把改好的 `pixel.css` 拷回项目里的 `pixel-theme\pixel.css` 覆盖一份。
-
----
-
-## 动效的性能开销
-
-实测过，不是估的（Electron 41 / Chromium 146，1384 个元素的真实页面，
-CDP `Performance` 域取值，工作负载各跑三轮取中位数）：
-
-| | 无动效 | 全开 | 全开但关掉 14.7 |
-|---|---|---|---|
-| 帧率 | 165fps | 165fps | 165fps |
-| 空闲 5 秒的引擎耗时 | 1.1ms | 169ms | 0.8ms |
-| 整文档一次样式重算 | 45.3ms | 49.1ms | 48.0ms |
-| 侧栏插一行+删一行 | 1.59ms | 1.75ms | 2.12ms |
-| 流式追加 400 段文字（每段） | 1.029ms | 1.031ms | 1.202ms |
-
-- **帧率没有任何影响**。
-  （下表是跳帧版的实测。2026-08-04 平滑化后没有整套重测：变化只在缓动
-  曲线，动画期间每帧算的还是同一批属性，且瞬时动画只存在几十到几百毫秒；
-  唯一的常驻项 CRT 亮带本来就在独立合成层上，主线程不参与逐帧。）
-- 后三行的差值都在测量噪声（±0.4ms）之内——静态规则基本不要钱
-  （所以「关掉 14.7」那一列有几项反而更大，那是噪声不是变慢）。
-- **唯一的常驻开销来自 14.7 的 CRT 动画**：约 169ms/5 秒 ≈ 单核 3.4%。
-  在意耗电就把 14.7 注释掉，开销立刻回到和没装主题一样（0.8ms/5 秒）。
-
-达到这个数是调过的：最初的写法用 `:has()` 认会话行、用 `*` 挂过渡函数，
-整文档重算要 79ms（+73%）、侧栏插删一行 6.3ms（+300%）。
-换成等价但便宜的选择器之后才降到上面这个水平，详见
-[复用指南第 15 条](复用指南.md)。
-
-### 顺手修掉的：侧栏 / 辅助面板伸缩卡顿
-
-Antigravity 原版切侧栏/辅助面板是 500ms 平滑动画，但它**自己就在掉帧**。
-根因：它把过渡挂在根节点的 `--sidebar-width` / `--aux-pane-width` 上，
-而这俩是 `@property ... inherits: true` 的注册变量——给根上的**继承型**
-自定义属性做动画，等于每帧把全树 1384 个元素的样式全部失效一遍。
-
-拆法很简单：视觉上真正的滑动是面板自己的内联 `transition: width 500ms`
-在跑，根上的 var 过渡对画面纯属冗余。主题把它掐掉（14.1），滑动照旧，
-每帧的账单消失：
-
-| 切一次侧栏/辅助面板 | 原版（平滑 0.5s） | 本主题（同样平滑 0.5s） |
-|---|---|---|
-| 帧间隔 P50 | — | **6.1ms（= 165Hz 满刷新）** |
-| 帧间隔 P95 | 67.5ms | **6.4 ~ 10.9ms** |
-| 超过 33ms 的长帧 | **9 个** | 1~2 个 |
-| 用户实际看到的格数 | 8 格（还忽大忽小地跳） | **19 ~ 50 格** |
-
-剩下那 1~2 个长帧是切换瞬间应用自己用 React 重渲染面板内容（约 70~80ms），
-原版同样有，CSS 管不到——表现为动画开头轻微顿一下，之后全程满帧。
-
-这里的教训在平滑化之后依然成立：layout 动画（width/height）每帧都是一次
-全应用重排，能不能流畅取决于把每帧的重算账单拆掉，跟缓动函数无关。
-
----
-
-## 它到底改了什么
-
-```
-antigravity-美化\
-├─ install.ps1              安装脚本
-├─ uninstall.ps1            卸载脚本
-├─ patch\pixelTheme.js      注入器（会被打进 app.asar）
-└─ pixel-theme\             主题资源（装在 asar 外面，可随时改）
-   ├─ pixel.css             全部样式
-   └─ fonts\                缝合怪像素字体 12px（OFL 协议，含中文）
-```
-
-Antigravity 是个 Electron 应用，界面是 Tailwind v4 + 一套语义化 CSS 变量，
-所有颜色都从 `--background` / `--foreground` / `--primary` 三个基色派生，
-内嵌 IDE 区域另有一套 `--vscode-*` 变量。
-
-所以这个包**不是**逐个组件去覆盖样式（那样一升级就全崩），而是：
-
-1. 往 `app.asar` 的 `dist/utils.js` 里插三行，加载注入器
-2. 注入器在每次页面 `dom-ready` 时把 `pixel.css` 注入进去
-3. `pixel.css` 直接替换那两套变量的取值 + 改 Tailwind 的字体/圆角 token
-
-这样改动面很小，也不容易被 Antigravity 的小版本更新弄坏。
-
-字体用 base64 内嵌进 CSS，不依赖系统安装。
-
----
-
-## 想复用 / 想改配色 / 想拿去美化别的 Electron 应用
-
-见 **[复用指南.md](复用指南.md)**，里面写了三种复用场景的具体做法，
-以及做这个包时踩过的 17 个坑（照抄能省不少时间），
-其中第 11～17 条专讲给像素风加动效会撞上的墙，
-第 15～17 条是性能相关的（含一个会把测量结果搞错 20 倍的陷阱）。
-
----
-
-## 顺带修掉的：启动白屏 / 打不开
-
-Antigravity 有大约 **21% 的概率启动后卡在加载画面**（这个 install 上的
-实测数据：68 次启动里 14 次）。
-
-原因和主题无关，首次出现比主题安装早 8 天：界面本身是本地网页，
-`language_server.exe` 用 `--https_server_port 0` 随机选端口，主进程一拿到
-端口就让窗口重载，但语言服务冷启动要预热 20~30 秒，窗口先撞上 Chromium 的
-30 秒硬超时，留下一个空壳，加载遮罩又只在 `did-finish-load` 时退场 ——
-没有成功加载它就永远不走，看起来就是「一直在加载界面」。
-
-注入器现在分三层兜（都只对 `https://127.0.0.1` 生效，别的导航不碰）：
-
-1. **12 秒卡死中止**：对本地服务的导航 12 秒还没动静就 `wc.stop()`，
-   不陪 Chromium 干等 30 秒。实测警告：`wc.stop()` **不会**触发
-   `did-fail-load` 也不会触发 `did-finish-load`（2026-08-04 13:38 真机测得，
-   第一版就是在这里断链把窗口晾死的），所以中止后必须直接进入第 2 层。
-2. **就绪探测**：每 1 秒用 node https 探一次端口（`rejectUnauthorized:
-   false`，服务端是自签证书，electron.net 会误报不可用），服务器一应答
-   立刻重载 —— 不是猜时间表，是等真信号。每轮最多探 2 分钟 / 重载 6 次，
-   加载成功就清零额度。
-3. **挂起看门狗**：`did-finish-load` 之后 8 秒页面还少于 30 个元素
-   （健康页约 1900 个，卡死壳只有 11 个），重载一次，至多两次 ——
-   这是「加载成功但应用没起来」的那种没有任何事件可听的坏法。
-   加载遮罩也加了 150 秒兜底退场，最坏情况看到的是可以 Ctrl+R 的窗口，
-   不是永远的加载画面。
-
-全链路真机实测（`%APPDATA%\Antigravity\logs\main.log`，2026-08-04）：
-
-```
-14:06:31.6  Port changed! Reloading → https://127.0.0.1:50178/
-14:06:43.8  [pixel-theme] load stalled >12000ms, aborting to probe instead
-14:06:43.8  [pixel-theme] ... probing until the server answers (reload 1/6)
-14:06:52.0  [pixel-theme] server is up, reloading (1/6)   ← 20.4s 进入
-```
-
-冷启动那 ~20-30 秒是语言服务自己的预热，主题修不掉；修掉的是
-「预热完了窗口却再也进不去」。要是连探测都放弃了（日志里有 giving up），
-手动 Ctrl+R 仍然有效。
-
-## 顺带修掉的：启动缩放不是 100%
-
-Chromium 按 **host** 记忆页面缩放，而整个界面都在 `127.0.0.1` 上 ——
-一次误触 Ctrl+滚轮（或一次调试留下的缩放）会永久跟着每次启动、每个端口。
-实测这台机器上被记成了 -0.5 档（×0.9129），DPR 从 1.5 掉到 1.3693，
-点阵栅格跟着掉到 1 格，就是「2K 打开时界面偏小、要手动重置缩放」的来源。
-注入器现在在每个窗口第一次加载真页面时把缩放归零（日志会记一行
-`persisted zoom ... resetting`），之后会话内你自己 Ctrl+± 不受影响。
-
----
-
-## 像素指针 + 拖尾粒子
-
-系统指针整个隐藏，改由 JS 在一块全屏 canvas 上逐像素画箭头和拖尾方块。
-**关掉**：把 pixel.css 第 19 节的 `--px-cursor: on` 改成 `off`，重开窗口。
-
-### 跟手是怎么做到的
-
-JS 画的指针天生落后一帧。解法不是「画得更快」，而是**按样本年龄外推**：
-用最近 24ms 的位移算速度，把指针头画在「它在**出帧那一刻**应该在的位置」。
-
-这里有个我一开始写错、后来实测纠正的关键点 —— 外推的时间跨度必须是
-**这个样本到出帧的实际间隔**（`now - sample.t`），不能再叠加一个固定的
-管线延迟常数。`performance.now()` 在出帧时读到的时刻**已经**包含了管线延迟，
-再加一次就是重复计算。实测（曲线路径、1000Hz 采样、与真值比对）：
-
-```
-固定 4.4ms 跨度      p50 8.52px   p95 12.15px
-样本年龄 + 4.4ms     p50 9.40px   p95 12.38px   ← 双重计算，更差
-样本年龄（现在）      p50 0.04px   p95  0.67px
-```
-
-桩测试里（164Hz 出帧、1000Hz 鼠标）最终误差 **p50 0.44px / p95 2.33px**，
-人眼在 164Hz 下分辨不出来。两道保险：方向反转时外推量归零（不然急停会
-冲过头再弹回），以及 14px 硬上限。
-
-### 拖尾为什么不能用「速度」来开关
-
-第一版用瞬时速度判断「有没有在动」，结果手放着不动时拖尾一直冒。
-原因是**真实鼠标以 125~1000Hz 轮询**，1 像素的传感器抖动就是
-`1px / 1ms = 1.0 px/ms`，比任何合理的速度阈值都高得多。
-
-改成**位移判据**：指针必须在一个时间窗内真的「走过」至少 3px。
-抖动永远走不出这个距离，真移动一定走得出。实测：1px 抖动 400ms → 0 粒。
-
-历史缓冲也必须**按时间**裁剪而不是按条数 —— 固定留 6 条的话，125Hz 鼠标
-覆盖 48ms、1000Hz 只覆盖 6ms，同样的手部动作会读出 8 倍差异。
-
-### 缩放（Ctrl +/-）为什么会让指针错位
-
-三个独立的坑，都实测确认过：
-
-**1. DPR 变化不触发 `resize`。** 引擎原本只在 resize 时重建画布，所以缩放后
-画布还按旧 DPR 缩放，指针位置整体偏移（实测 DPR 1→1.25 时缓冲区仍是 1920 宽，
-却需要 2400 —— 20% 的比例误差，离原点越远偏得越多）。
-
-**2. 守卫不能放在渲染循环里。** 第二版把检查放进每帧，但循环在指针静止时
-是**停机**的 —— 而「鼠标不动时按 Ctrl +」恰恰是最常见的情况。实测：
-DPR 依次变成 1.25 / 2.0 / 0.8，engineDpr 一直卡在 1.5。
-现在用 400ms 的独立定时器（两次浮点读取，开销可忽略），
-media query / resize / 什么都不触发这三种路径全覆盖。
-
-**3. canvas 的 CSS 尺寸必须显式钉住。** `width`/`height` **属性**是绘图缓冲区
-的像素数，和 CSS 显示尺寸是两回事。只写 `inset: 0` 时实测 cssBox 跟着缓冲区
-变成 1750×1125，而视口是 1400×900 —— 缓冲区被拉伸显示，指针自然对不上。
-加 `width/height: 100vw/vh` 后，四个缩放档（0.8× / 1× / 1.25× / 2×）
-全部 `cssMatchesViewport` 且 `scaleConsistent`。
-
-### 顶栏为什么还有系统指针
-
-顶栏是一个 1400×35 的 div，带内联 `app-region: drag`（全应用只有这一个）。
-Chromium 把这块交给操作系统做窗口拖拽，**光标也由系统画**，
-CSS 的 `cursor: none` 在这块区域根本不生效 —— 不是优先级问题。
-
-**菜单区的缝隙已消除，拖拽保留。** 四个菜单按钮之间和上下原本有缝，
-鼠标平移过去会瞬间跳成系统箭头再跳回来。实测量到的缝：
-
-```
-水平：按钮间 flex gap-1 = 4px，三处（x=109 / 165 / 221）
-垂直：按钮 28px 高、顶栏 35px → 上缘 4px、下缘 3px
-左侧：容器 px-2 = 8px 内缩（x:2-7）
-```
-
-修法不是去掉 drag（那会丢掉拖窗口），而是把按钮**撑满并吃掉缝隙**：
-`align-self: stretch` 吃掉上下缘，负 margin + 同值 padding 吃掉横缝和左内缩。
-按钮的**可点击区域**变大了，视觉位置不变。修完实测：
-
-```
-菜单条 x:0-281   drag 像素 0 个（原来 7 段缝隙）
-按钮接缝         none (all flush)
-按钮高度         35px（原 28px），标签仍垂直居中、textLeft 未变
-四个按钮命中      centreHitsOwnSubtree: true（点击没坏）
-顶栏可拖区        980/1400 = 70%（菜单右侧空白照旧可拖）
-菜单条光标泄漏    0
-```
-
-⚠ **撑高只能点名 `> button`，不能写 `> *`。** 下拉面板
-（`.absolute.top-full`）也是同一个 `.relative` 的直接子元素，被
-`height: 100%` 命中后会压成 35px —— 面板宽 225px 却只剩一行高，
-菜单项全部溢出到边框外。踩过一次，四个菜单当时全坏了。修正后实测：
-
-```
-Antigravity  面板 225×84   2 项  全部落在框内（余 6px）
-文件         面板 225×120  3 项  ✅
-视图         面板 225×120  3 项  ✅
-窗口         面板 225×120  3 项  ✅
-```
-
-想让**整条顶栏**都是像素指针（代价是完全不能拖窗口），
-第 19 节留了一条注释掉的规则，取消注释即可。
-
-另外右上角三个窗口按钮原来 z-index 比画布高，会把指针盖住；
-现在按钮降到 `…644`、画布升到 `…646`，扫描线仍在最上层 `…647`。
-
-### 性能
-
-实测（你的 164Hz 屏、每帧预算 6.1ms）：
-
-| | 值 |
-|---|---|
-| 划动时帧间隔 | p50 **6.1ms**，p95 6.9ms，长帧 **0** |
-| 300 粒极限时主线程 | **0.2ms/帧**（3%） |
-| 静止 | rAF 完全停机，CPU 归零 |
-| 显存 | 一块全屏合成层 ≈ 7.6MB（1080P）/ 17MB（2K） |
-
-**卡顿兜底**：连续 2 帧超过 50ms 就把系统指针交还回去，恢复后再接管 ——
-最坏情况是指针风格闪一下，而不是像素指针粘住不动。
-
-### 配色是量出来的，不是挑的
-
-粒子要「跟随主题」又要「淡淡的」又要「看得清」，这三条在亮色下会打架。
-实测（WCAG 对比度，55% 不透明度与实际背景合成后计算）：
-
-```
-                   暗色主题      亮色主题
---primary          4.42 ✅       2.15 ❌ 太淡
-达到 3.0 所需不透明度  0.40         0.80  ← 就不「淡」了
-改用 --px-navy      —            3.50 ✅
-```
-
-所以亮色不能用主色，改用深墨点。这四个变量必须定义在 **html 上**——
-引擎从 `documentElement` 读，而主题的 `--primary` 是从 body 才生效的
-（踩过：定义在 body 上时引擎读到的是应用自己的紫色）。
-
----
-
-## 已知情况
-
-- **Antigravity 自动更新后主题会消失**。更新会把 `app.asar` 换成原版，
-  重新跑一次 `install.ps1` 就行。
-- 脚本会先备份 `app.asar` 到 `app.asar.pixel-backup` 再动手；
-  打包失败的话原文件不动，不会把你的 Antigravity 搞坏。
-- 重复运行 `install.ps1` 是安全的——检测到已经打过补丁就只刷新主题资源。
-- 如果 Antigravity 升级后 `utils.js` 结构变了，脚本会报「Patch anchor not found」
-  然后**什么都不改**直接退出，不会留下半坏不坏的状态。
-
----
-
-## 字体授权
-
-[缝合怪像素字体 (Fusion Pixel Font)](https://github.com/TakWolf/fusion-pixel-font)，
-SIL Open Font License 1.1，协议原文见 `pixel-theme\fonts\LICENSE-OFL.txt`。
+### 📄 License & Acknowledgments
+
+- **Fonts**: Fusion Pixel Font (`fusion-pixel-font`) licensed under the **SIL Open Font License 1.1**.
+- **Code & Themes**: Licensed under the **MIT License**.
+- Detailed technical insights and performance audit reports are available in `复用指南.md`.

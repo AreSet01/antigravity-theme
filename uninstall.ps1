@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # PIXEL GRAVITY uninstaller - restores the original app.asar from backup
 # and removes the deployed theme assets.
 # ============================================================================
@@ -37,9 +37,19 @@ else {
     Write-Step "No backup found (app.asar.pixel-backup). If an auto-update already replaced app.asar, the patch is gone anyway - nothing to restore."
 }
 
-if (Test-Path $ThemeDst) {
-    Write-Step "Removing theme assets..."
-    Remove-Item $ThemeDst -Recurse -Force -Confirm:$false
+# 清理 4 套主题资源及激活配置
+$AllThemes = @('pixel-theme', 'doodle-theme', 'matcha-theme', 'phantom-theme')
+foreach ($t in $AllThemes) {
+    $tDst = Join-Path $Resources $t
+    if (Test-Path $tDst) {
+        Write-Step "Removing $t assets..."
+        Remove-Item $tDst -Recurse -Force -Confirm:$false
+    }
+}
+
+$ActiveConfigPath = Join-Path $Resources 'active-theme.json'
+if (Test-Path $ActiveConfigPath) {
+    Remove-Item $ActiveConfigPath -Force -Confirm:$false
 }
 
 Write-Step "Done. Antigravity is back to stock."

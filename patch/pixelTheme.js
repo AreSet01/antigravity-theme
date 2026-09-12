@@ -19,39 +19,56 @@ const fs = require("fs");
 const https = require("https");
 const http = require("http");
 
-const THEME_DIR = path.join(process.resourcesPath || "", "pixel-theme");
+function getThemeDir() {
+    const resources = process.resourcesPath || "";
+    const activeFile = path.join(resources, "active-theme.json");
+    if (fs.existsSync(activeFile)) {
+        try {
+            const data = JSON.parse(fs.readFileSync(activeFile, "utf-8"));
+            if (data.theme && fs.existsSync(path.join(resources, data.theme))) {
+                return path.join(resources, data.theme);
+            }
+        } catch (e) {}
+    }
+    if (fs.existsSync(path.join(resources, "doodle-theme", "doodle.css"))) {
+        return path.join(resources, "doodle-theme");
+    }
+    return path.join(resources, "pixel-theme");
+}
 
 const FONTS = {
     ui: { file: "fusion-pixel-12px-proportional-sc.woff2", family: "Fusion Pixel 12px Proportional SC" },
     mono: { file: "fusion-pixel-12px-monospaced-sc.woff2", family: "Fusion Pixel 12px Monospaced SC" },
 };
 
-// Fonts are cached (large, immutable); pixel.css is re-read on every
+// Fonts are cached (large, immutable); theme CSS is re-read on every
 // navigation so theme edits only need a window reload, not an app restart.
 const fontCssCache = new Map();
 
 function fontFaceCss(key) {
-    if (fontCssCache.has(key)) {
-        return fontCssCache.get(key);
+    const themeDir = getThemeDir();
+    const cacheKey = themeDir + ":" + key;
+    if (fontCssCache.has(cacheKey)) {
+        return fontCssCache.get(cacheKey);
     }
     const f = FONTS[key];
     let css = "";
     try {
-        const p = path.join(THEME_DIR, "fonts", f.file);
+        const p = path.join(themeDir, "fonts", f.file);
         if (fs.existsSync(p)) {
             const b64 = fs.readFileSync(p).toString("base64");
             css =
                 "@font-face{font-family:'" + f.family + "';font-style:normal;font-weight:400;" +
-                "font-display:swap;src:url(data:font/woff2;base64," + b64 + ") format('woff2');}\n";
+                "font-display:optional;src:url(data:font/woff2;base64," + b64 + ") format('woff2');}\n";
         }
         else {
-            console.error("[pixel-theme] font missing:", p);
+            console.error("[theme] font missing:", p);
         }
     }
     catch (e) {
-        console.error("[pixel-theme] font embed failed:", f.file, e);
+        console.error("[theme] font embed failed:", f.file, e);
     }
-    fontCssCache.set(key, css);
+    fontCssCache.set(cacheKey, css);
     return css;
 }
 
@@ -59,13 +76,56 @@ function buildFontCss() {
     return fontFaceCss("ui") + fontFaceCss("mono");
 }
 
+// Disk-read cache keyed by path+mtime+size. readThemeCss() runs on every
+// dom-ready (and readThemeDeclarations() several times per navigation for
+// the chrome/native-caption lookups), each a full 120-180KB read; the
+// stat-sync costs microseconds and still picks up theme edits (any write
+// changes mtime), so the edit-then-Ctrl+R workflow is unaffected.
+const cssReadCache = { path: null, mtime: 0, size: 0, css: null };
+
 function readThemeCss() {
     try {
-        const cssPath = path.join(THEME_DIR, "pixel.css");
-        return fs.existsSync(cssPath) ? fs.readFileSync(cssPath, "utf-8") : "";
+        const themeDir = getThemeDir();
+        const themeBase = path.basename(themeDir).toLowerCase();
+        let target = null;
+
+        // 1. 精准按主题目录前缀匹配对应的 CSS 文件
+        if (themeBase.includes("phantom")) {
+            target = path.join(themeDir, "phantom.css");
+        } else if (themeBase.includes("matcha")) {
+            target = path.join(themeDir, "matcha.css");
+        } else if (themeBase.includes("doodle")) {
+            target = path.join(themeDir, "doodle.css");
+        } else if (themeBase.includes("pixel")) {
+            target = path.join(themeDir, "pixel.css");
+        }
+
+        // 2. 依次检查 4 套主题的主样式文件作为兜底
+        if (!target || !fs.existsSync(target)) {
+            for (const file of ["phantom.css", "matcha.css", "doodle.css", "pixel.css"]) {
+                const p = path.join(themeDir, file);
+                if (fs.existsSync(p)) { target = p; break; }
+            }
+        }
+        if (!target || !fs.existsSync(target)) {
+            return "";
+        }
+
+        const st = fs.statSync(target);
+        if (cssReadCache.path === target &&
+            cssReadCache.mtime === st.mtimeMs &&
+            cssReadCache.size === st.size) {
+            return cssReadCache.css;
+        }
+        const css = fs.readFileSync(target, "utf-8");
+        cssReadCache.path = target;
+        cssReadCache.mtime = st.mtimeMs;
+        cssReadCache.size = st.size;
+        cssReadCache.css = css;
+        return css;
     }
     catch (e) {
-        console.error("[pixel-theme] failed to read pixel.css:", e);
+        console.error("[theme] failed to read theme CSS:", e);
         return "";
     }
 }
@@ -83,8 +143,16 @@ function buildCss() {
  * matches the prose explaining an option instead of the option itself -- which
  * is exactly how `--px-native-caption: off` first read as "on".
  */
+const declCache = { src: null, out: "" };
 function readThemeDeclarations() {
-    return readThemeCss().replace(/\/\*[\s\S]*?\*\//g, "");
+    const src = readThemeCss();
+    // Identity-keyed memo: readThemeCss() now returns the same string object
+    // while the file is unchanged, so the comment-strip regex (a full-file
+    // scan) runs once per file edit instead of once per lookup.
+    if (declCache.src !== src) {
+        declCache = { src, out: src.replace(/\/\*[\s\S]*?\*\//g, "") };
+    }
+    return declCache.out;
 }
 
 // ---------------------------------------------------------------------------
@@ -248,6 +316,41 @@ const WINDOW_CONTROLS_JS = `(() => {
       console.error('[pixel-theme] window control failed', e);
     }
   });
+  return 'installed';
+})()`;
+
+/**
+ * Eager font pre-warming and GPU glyph atlas pre-rasterization.
+ * Preloads both bitmap font families and forces Skia / DirectWrite
+ * to rasterize Latin, CJK, digits and UI symbols into GPU textures
+ * at boot, preventing font decoding and synchronous style recalc /
+ * layout thrashing (FOUT) during animations.
+ */
+const FONT_PREWARM_JS = `(() => {
+  if (window.__pxFontPrewarmed) return 'already-present';
+  window.__pxFontPrewarmed = true;
+  try {
+    if (document.fonts && document.fonts.load) {
+      Promise.all([
+        document.fonts.load('12px "Fusion Pixel 12px Proportional SC"'),
+        document.fonts.load('12px "Fusion Pixel 12px Monospaced SC"')
+      ]).then(() => {
+        const warm = document.createElement('div');
+        warm.setAttribute('aria-hidden', 'true');
+        warm.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;z-index:-1;contain:strict;';
+        // 键盘字符全谱预热。注意：字符集里不能出现反引号字符本身 ——
+        // 本文件用模板字面量定义这段脚本，字符串里混进一个反引号
+        // 字符就会把模板提前截断（历史上真的踩过，整个文件因此无法
+        // 被 node 解析，重新打包即失效）。它只是一个预热字形，删掉
+        // 不影响任何行为。
+        warm.innerHTML = '<span style="font-family:\\'Fusion Pixel 12px Proportional SC\\'">ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()_+-={}|[]\\\\:";\\'<>?,./一二三四五六七八九十百千万亿的基本设置模型通用应用外观浏览器项目会话解析取消确定保存</span><span style="font-family:\\'Fusion Pixel 12px Monospaced SC\\'">ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789</span>';
+        (document.body || document.documentElement).appendChild(warm);
+        requestAnimationFrame(() => {
+          try { warm.remove(); } catch (e) {}
+        });
+      }).catch(() => {});
+    }
+  } catch (e) {}
   return 'installed';
 })()`;
 
@@ -461,49 +564,65 @@ const STREAM_WATCH_JS = `(() => {
   if (window.__pxStreamWatch) return 'already-present';
 
   const STREAM_CLASS = 'px-streaming';
+  const MODAL_CLASS = 'px-modal-open';
   const BOTTOM_SLOP_PX = 48;   // "close enough to the bottom" tolerance
+  // 空闲节流：isStreaming() 是一次全文档 querySelector，而这个 observer
+  // 从不断开，应用空闲时的每次 React 更新都会白付一次查询。空闲态半秒
+  // 查一次足够（光标/停止按钮晚半秒出现/消失，肉眼不可辨）；刚发送
+  // （html.px-sending）时旁路节流——停止按钮紧随发送出现，不能等；
+  // 已在流式中则不节流，滚动跟随每帧都要跑。
+  const IDLE_CHECK_MS = 500;
 
+  let cachedScroller = null;
   const scroller = () => {
+    if (cachedScroller && cachedScroller.isConnected && cachedScroller.scrollHeight > cachedScroller.clientHeight + 20) {
+      return cachedScroller;
+    }
     const list = document.querySelectorAll('[class*="overflow-y-auto"], [class*="overflow-auto"]');
     let best = null;
     for (const el of list) {
       if (el.scrollHeight <= el.clientHeight + 20) continue;
       if (!best || el.clientHeight > best.clientHeight) best = el;
     }
+    cachedScroller = best;
     return best;
   };
 
   const isStreaming = () => {
     // Any visible stop affordance means a reply is in flight.
-    return !!document.querySelector(
-      '[data-testid*="stop"], [aria-label*="Stop"], [aria-label*="停止"], [aria-label*="停止生成"]'
-    );
+    return !!document.querySelector('[data-testid*="stop"], [aria-label*="Stop"], [aria-label*="停止"]');
   };
 
   let pinned = false;
   let raf = 0;
+  let lastIdleCheck = 0;
 
   const tick = () => {
     raf = 0;
-    const streaming = isStreaming();
     const de = document.documentElement;
+    const active = de.classList.contains(STREAM_CLASS);
+    const sending = de.classList.contains('px-sending');
+    if (!active && !sending && (performance.now() - lastIdleCheck) < IDLE_CHECK_MS) {
+      return;   // throttled idle check; next mutation re-arms the rAF
+    }
+    lastIdleCheck = performance.now();
+    const streaming = isStreaming();
     if (streaming) {
       if (!de.classList.contains(STREAM_CLASS)) de.classList.add(STREAM_CLASS);
     } else if (de.classList.contains(STREAM_CLASS)) {
       de.classList.remove(STREAM_CLASS);
       pinned = false;
+      cachedScroller = null;
     }
     if (!streaming) return;
     const sc = scroller();
     if (!sc) return;
     const distance = sc.scrollHeight - sc.clientHeight - sc.scrollTop;
-    // Latch: decide once per streaming session whether to follow, based on
-    // where the user was when it started. Re-checking every frame would
-    // re-engage the moment they scrolled back down for one line.
     if (distance <= BOTTOM_SLOP_PX) pinned = true;
     else if (distance > BOTTOM_SLOP_PX * 4) pinned = false;
     if (pinned) {
-      sc.scrollTo({ top: sc.scrollHeight, behavior: 'smooth' });
+      // Direct assignment eliminates frame-restart jank of smooth scroll
+      sc.scrollTop = sc.scrollHeight;
     }
   };
 
@@ -514,7 +633,123 @@ const STREAM_WATCH_JS = `(() => {
     raf = requestAnimationFrame(tick);
   };
 
-  const mo = new MutationObserver(schedule);
+  // --- modal-open 标记（替代 CSS 里的 body:has([role="dialog"])） ------
+  // :has() 挂在 body 上会跟着任何子树变动一起失效（14.2 实测 4.7 倍），
+  // 而流式输出让会话子树一直在动。本 observer 本来就在收全部变更记录，
+  // 顺带跟踪弹窗不增加第二个全文档 observer：
+  //   - Radix/Ariakit 的弹窗走 Portal，[role=dialog] 元素以新增/移除节点
+  //     出现，matches() 即可命中；
+  //   - 直接挂到 <body> 下的大容器（Portal 容器整块挂载）补一次子树
+  //     querySelector 探测，覆盖「容器和内容同一条记录挂上」的情况。
+  // class 置于 <html>，CSS 用 html.px-modal-open 前缀替代 :has()。
+  const DIALOG_SEL = '[role="dialog"], [role="alertdialog"]';
+  const openDialogs = new Set(document.querySelectorAll(DIALOG_SEL));
+  if (openDialogs.size) document.documentElement.classList.add(MODAL_CLASS);
+
+  const trackDialogs = (muts) => {
+    let touched = false;
+    for (const m of muts) {
+      if (m.type !== 'childList') continue;
+      // 移除 onBody 限制，对任意子树容器递归探测 [role="dialog"]
+      for (const n of m.addedNodes) {
+        if (n.nodeType !== 1) continue;
+        if (n.matches(DIALOG_SEL)) {
+          openDialogs.add(n);
+          touched = true;
+        } else if (n.querySelector) {
+          const d = n.querySelector(DIALOG_SEL);
+          if (d) { openDialogs.add(d); touched = true; }
+        }
+      }
+      for (const n of m.removedNodes) {
+        if (n.nodeType !== 1) continue;
+        if (openDialogs.delete(n)) {
+          touched = true;
+        } else if (n.querySelectorAll) {
+          const inners = n.querySelectorAll(DIALOG_SEL);
+          for (const d of inners) {
+            if (openDialogs.delete(d)) touched = true;
+          }
+        }
+      }
+    }
+    // 必须保留：全量清扫已在深层 DOM 脱链的死节点，根除 Tooltip 永久锁定隐患
+    const stale = [];
+    for (const d of openDialogs) { if (!d.isConnected) stale.push(d); }
+    for (const d of stale) openDialogs.delete(d);
+    const open = openDialogs.size > 0;
+    if (touched || open !== document.documentElement.classList.contains(MODAL_CLASS)) {
+      document.documentElement.classList.toggle(MODAL_CLASS, open);
+    }
+  };
+
+  // --- 菜单/下拉项打标 (px-menu-item / px-listbox-item / px-menu-content) ---
+  // 主题 CSS 原来用 ~140 条 [role=...]:hover * / [class*=...] 后代通配选择器
+  // 给菜单项上色。A/B 实测（右栏 8754 节点长文档，全量样式重算）：这批
+  // 选择器每次重算多花 ~280ms，是 .md 切换 2.2s 长任务里 CSS 侧的大头。
+  // ARIA 角色挂载后不变，所以在挂载瞬间打一次 class，CSS 改用 .px-menu-item
+  // 匹配（类桶索引，O(1)）：
+  //   .px-menu-item     菜单项本体：menuitem / menuitemradio / menuitemcheckbox /
+  //                     标题栏菜单项 / option / select-item / typeahead 项 /
+  //                     radix collection item
+  //   .px-listbox-item  listbox/combobox 上下文中的 option / typeahead 项
+  //   .px-menu-content  弹层面板：popper wrapper 直接子元素、radix 菜单面板、
+  //                     monaco 菜单、标题栏菜单弹层容器、非空 [role=menu/listbox]
+  // class 变更不会触发本 observer 的 childList 记录，React 重渲染也不重写
+  // 未变化的 className 属性，所以打标是幂等且无循环的。
+  // 刻意【不】观察 class 属性变更（曾试过用它对抗个别组件 hover 时整条重写
+  // className 抹掉标签）：如果页面里另有观察 class 并回写 className 的代码，
+  // 双方就会在 MutationObserver 微任务里互相应答，主线程被饿死——实测
+  // 打开模型下拉菜单即必现整个渲染进程卡死。挂载时打一次标就够；万一
+  // 哪个组件事后抹掉标签，代价只是那一个条目失去悬停配色，可接受。
+  const MENU_ITEM_SEL = '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [data-testid="title-menu-bar-option"]';
+  const FAMILY_SEL = '[role="option"], [id*="typeahead-item"], [class*="select-item"], [data-radix-collection-item]';
+  const LISTBOX_CTX = '[role="listbox"], [role="combobox"], [data-radix-popper-content-wrapper"]';
+  const PANEL_SEL = '[data-radix-menu-content], .monaco-menu-container, div.border-menu-border';
+
+  const tagEl = (el) => {
+    try {
+      if (!el || el.nodeType !== 1) return;
+      const cls = typeof el.className === 'string' ? el.className : '';
+      if (el.matches(MENU_ITEM_SEL) || el.matches(FAMILY_SEL)) el.classList.add('px-menu-item');
+      if ((el.getAttribute('role') === 'option' || el.id.indexOf('typeahead-item') !== -1 || cls.indexOf('select-item') !== -1) && el.closest(LISTBOX_CTX)) el.classList.add('px-listbox-item');
+      if (el.matches(PANEL_SEL) || (el.parentElement && el.parentElement.hasAttribute && el.parentElement.hasAttribute('data-radix-popper-content-wrapper'))) el.classList.add('px-menu-content');
+      const role = el.getAttribute('role');
+      // 面板可能在挂载瞬间还是空的（React 分批填内容），所以这里不看
+      // childElementCount：空面板打标无害（不可见），漏打才是回归。
+      if (role === 'menu' || role === 'listbox') el.classList.add('px-menu-content');
+      if (el.tagName === 'DIV' && el.closest('[data-testid="title-menu-bar"]') && (cls.indexOf('z-[8000]') !== -1 || cls.indexOf('min-w-') !== -1)) el.classList.add('px-menu-content');
+    } catch (e) { /* must never break the observer */ }
+  };
+  const tagTree = (root) => {
+    try {
+      if (!root || root.nodeType !== 1) return;
+      tagEl(root);
+      // 必须把 tagEl 能处理的所有形态都列进扫描：曾漏掉 [role=menu] 面板
+      // （模型下拉是自绘弹层：z-[6000] role=presentation 包着 role=menu，
+      // 不是 radix popper），导致菜单边框样式全部失效。
+      const all = root.querySelectorAll(
+        MENU_ITEM_SEL + ', ' + FAMILY_SEL + ', ' + PANEL_SEL +
+        ', [data-radix-popper-content-wrapper], [data-radix-popper-content-wrapper] > *' +
+        ', [role="menu"], [role="listbox"]' +
+        ', [data-testid="title-menu-bar"] div[class*="z-[8000]"], [data-testid="title-menu-bar"] div[class*="min-w-"]');
+      for (const el of all) tagEl(el);
+    } catch (e) { /* same */ }
+  };
+  const tagMutations = (muts) => {
+    for (const m of muts) {
+      if (m.type !== 'childList') continue;
+      for (const n of m.addedNodes) tagTree(n);
+    }
+  };
+  tagTree(document.body);
+
+  const mo = new MutationObserver((muts) => {
+    window.__pxDomGen = (window.__pxDomGen || 0) + 1;
+    try { tagMutations(muts); } catch (e) { /* must never kill schedule() */ }
+    try { trackDialogs(muts); } catch (e) { /* must never kill schedule() */ }
+    schedule();
+  });
   mo.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   window.__pxStreamWatch = { stop: () => { mo.disconnect(); if (raf) cancelAnimationFrame(raf); } };
   tick();
@@ -585,7 +820,9 @@ const THEME_DISSOLVE_JS = `(() => {
  * than a style flicker.
  */
 const CURSOR_JS = `(() => {
-  if (window.__pxCursor) { window.__pxCursor.rebuild(); return 'refreshed'; }
+  if (window.__pxCursor) {
+    try { window.__pxCursor.stop(); } catch (e) {}
+  }
 
   const CFG = {
     // Cursor head size. The art is a 16x16 pixel grid, so this is a multiple
@@ -605,9 +842,6 @@ const CURSOR_JS = `(() => {
     peakAlpha: 0.55,     // "淡淡的"
     alphaSteps: 4,
     idleStopMs: 220,
-    jankMs: 50,          // 2 consecutive frames over this -> hand back OS cursor
-    jankFrames: 2,
-    jankRecoverFrames: 30,
     // Movement gate. NOT instantaneous speed: a real mouse polls at 125-1000Hz,
     // so one pixel of sensor jitter reads as 1px/1ms = 1.0 px/ms -- far above any
     // sane speed threshold, which is why the trail used to keep bleeding while
@@ -640,7 +874,6 @@ const CURSOR_JS = `(() => {
   const de = document.documentElement;
   let canvas = null, ctx = null, dpr = 1, W = 0, H = 0;
   let raf = 0, lastMoveAt = 0, running = false;
-  let jankStreak = 0, healthyStreak = 0, degraded = false;
   const hist = [];          // recent pointer samples, newest last
   const parts = [];
   let cursorKind = 'default';
@@ -662,6 +895,7 @@ const CURSOR_JS = `(() => {
     if (!canvas) {
       canvas = document.createElement('canvas');
       canvas.id = 'px-cursor';
+      canvas.style.cssText = 'position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;pointer-events:none!important;z-index:2147483647!important;';
       (document.body || de).appendChild(canvas);
     }
     dpr = window.devicePixelRatio || 1;
@@ -823,37 +1057,26 @@ const CURSOR_JS = `(() => {
     raf = 0;
     const now = performance.now();
 
-    // --- jank watchdog ---
     let lastGap = 0;
     if (lastFrameAt) {
-      const gap = now - lastFrameAt;
-      lastGap = gap;
-      if (gap > CFG.jankMs) {
-        jankStreak++; healthyStreak = 0;
-        if (!degraded && jankStreak >= CFG.jankFrames) {
-          degraded = true;
-          de.setAttribute('data-px-cursor', 'off');   // OS cursor takes over
-        }
-      } else {
-        jankStreak = 0;
-        if (degraded && ++healthyStreak >= CFG.jankRecoverFrames) {
-          degraded = false; healthyStreak = 0;
-          de.setAttribute('data-px-cursor', 'on');
-        }
-      }
+      lastGap = now - lastFrameAt;
     }
     lastFrameAt = now;
 
-    if (!ctx) build();
+    if (!ctx) {
+      build();
+    }
     ctx.clearRect(0, 0, W, H);
 
     const head = predict(now);
-    if (head && !degraded) {
-      // Emit only when the pointer has genuinely travelled. Gating on speed
-      // instead let sensor jitter keep the trail alive while the hand rested.
-      const moved = travelled(now);
-      if (moved >= CFG.moveMinPx) {
-        emit(head.x, head.y, moved > 26 ? 2 : 1);
+    if (head) {
+      // Emit only when pointer moved and system frame is healthy
+      const isStreaming = de.classList.contains('px-streaming');
+      if (!isStreaming && lastGap < 35) {
+        const moved = travelled(now);
+        if (moved >= CFG.moveMinPx) {
+          emit(head.x, head.y, moved > 26 ? 2 : 1);
+        }
       }
     }
 
@@ -883,12 +1106,9 @@ const CURSOR_JS = `(() => {
     ctx.globalAlpha = 1;
 
     // --- head ---
-    if (head && !degraded) {
+    if (head) {
       const hx = Math.round(head.x / u) * u, hy = Math.round(head.y / u) * u;
       // Head scale. The art is a 16x16 grid, so 1 = 16 device px tall.
-      // Bump this to resize the whole cursor; keep it to quarters (1.25/1.5/
-      // 1.75/2) so each art pixel still lands on a whole number of device
-      // pixels at DPR 1 and stays hard-edged.
       const S = CFG.headScale;
       if (cursorKind === 'text') {
         drawGrid(IBEAM, hx - 1 * u * S, hy - 6 * u * S, colors.head, colors.edge, S);
@@ -898,20 +1118,13 @@ const CURSOR_JS = `(() => {
           // four corner ticks: "this is clickable"
           ctx.fillStyle = colors.head;
           for (const [ox, oy] of [[-4,-4],[4,-4],[-4,4],[4,4]]) {
-            ctx.fillRect(hx + ox * u * 2 * S, hy + oy * u * 2 * S, 2 * u * S, 2 * u * S);
+            ctx.fillRect(hx + ox * u * S, hy + oy * u * S, u * S, u * S);
           }
-        } else if (cursorKind === 'not-allowed') {
-          ctx.fillStyle = colors.head;
-          for (let k = 0; k < 8; k++) {
-            ctx.fillRect(hx + (10 - k) * u * S, hy + (2 + k) * u * S, u * S, u * S);
-          }
-        } else if (cursorKind === 'col-resize') {
-          ctx.fillStyle = colors.head;
-          ctx.fillRect(hx + 12 * u * S, hy + 6 * u * S, 6 * u * S, u * S);
         }
       }
-      // press burst
-      if (pressBurstAt && now - pressBurstAt < 220) {
+
+      // press burst: quick 4-pixel diamond expansion
+      if (pressBurstAt && (now - pressBurstAt) < 220) {
         const t = (now - pressBurstAt) / 220;
         ctx.globalAlpha = (1 - t) * colors.alpha * 1.6;
         ctx.fillStyle = colors.head;
@@ -926,10 +1139,7 @@ const CURSOR_JS = `(() => {
       }
     }
 
-    // Sleep once there is nothing left to ANIMATE -- but the head must stay on
-    // screen, so the last frame draws it and then the loop parks. Without this
-    // the cursor disappeared whenever the hand stopped (clearRect wiped the
-    // head along with the trail).
+    // Sleep once there is nothing left to ANIMATE
     if (alive > 0 || pressBurstAt || (now - lastMoveAt) < CFG.idleStopMs) {
       raf = requestAnimationFrame(frame);
     } else {
@@ -957,24 +1167,22 @@ const CURSOR_JS = `(() => {
   };
 
   let classifyDue = 0;
+  let lastTarget = null;
   const onMove = (e) => {
     const t = performance.now();
     hist.push({ t, x: e.clientX, y: e.clientY });
-    // Prune by age first, then by an absolute cap. Age-bounding is what keeps
-    // the movement gate independent of the mouse's polling rate; the count cap
-    // is only a memory backstop for very high-rate devices.
     while (hist.length > 2 && t - hist[0].t > CFG.histMaxAgeMs) hist.shift();
     while (hist.length > CFG.histMaxSamples) hist.shift();
     lastMoveAt = t;
-    // Classifying costs a getComputedStyle + closest(); 60/s is plenty.
-    if (t > classifyDue) {
-      classifyDue = t + 16;
+    if (e.target !== lastTarget && t > classifyDue) {
+      lastTarget = e.target;
+      classifyDue = t + 32;
       cursorKind = classify(e.target);
     }
     wake();
   };
 
-  const evName = ('onpointerrawupdate' in window) ? 'pointerrawupdate' : 'pointermove';
+  const evName = 'pointermove';
   window.addEventListener(evName, onMove, { capture: true, passive: true });
   window.addEventListener('pointerdown', (e) => {
     pressBurstAt = performance.now();
@@ -993,14 +1201,6 @@ const CURSOR_JS = `(() => {
     if (document.visibilityState !== 'visible') clearAll();
   });
 
-  // DPR or size changes invalidate the backing store.
-  //
-  // resize alone is NOT enough: Ctrl +/- changes devicePixelRatio WITHOUT
-  // firing resize, so the canvas kept a stale transform and the drawn cursor
-  // sat at the wrong place (measured: DPR 1 -> 1.25 left the backing store at
-  // 1920 wide when it needed 2400 -- a 20% position error that grows with
-  // distance from the origin, which is exactly the "zoom breaks the cursor"
-  // report). A resolution media query fires on every DPR change.
   window.addEventListener('resize', () => { build(); wake(); }, { passive: true });
   let dprQuery = null;
   const watchDpr = () => {
@@ -1014,19 +1214,12 @@ const CURSOR_JS = `(() => {
   };
   const onDprChange = () => { build(); watchDpr(); wake(); };
   watchDpr();
-  // Belt and braces, on a timer rather than inside the render loop.
-  //
-  // The frame loop deliberately parks when the pointer rests, so a guard living
-  // there only runs while something is already moving -- measured: zooming with
-  // the pointer still left engineDpr at 1.5 while devicePixelRatio was 1.25,
-  // 2.0 and 0.8 in turn, and the drawn cursor stayed at the old scale. A cheap
-  // interval (two float reads) catches every path: media query, resize, or
-  // neither.
+
   const dprGuard = () => {
     if (ctx && Math.abs((window.devicePixelRatio || 1) - dpr) > 0.001) {
       build();
       watchDpr();
-      wake();   // repaint at the new scale even if the pointer never moves
+      wake();
     }
   };
   const dprTimer = setInterval(dprGuard, 400);
@@ -1045,9 +1238,210 @@ const CURSOR_JS = `(() => {
         de.setAttribute('data-px-cursor', 'off');
       } catch (e) {}
     },
-    stats: () => ({ particles: parts.length, kind: cursorKind, degraded,
+    stats: () => ({ particles: parts.length, kind: cursorKind,
                     running, histLen: hist.length, dpr }),
   };
+
+  return 'installed';
+})()`;
+
+/**
+ * Inline comment hover tracker, v2.
+ *
+ * Measured on the live app (CDP, right pane, 8754-node markdown, 144Hz):
+ * the app's hover handler w() finds the block under the cursor, then g()
+ * extracts comment context by walking EVERY text node of the tracking
+ * container twice through two Ranges (zKa -> wIa). That is ~21k
+ * Element.closest() calls per mousemove (340k calls over 16 moves, 459ms)
+ * plus ~10k Range.intersectsNode calls (154ms) -- every mousemove frame
+ * blocked the main thread for 77-106ms. This is the "markdown 预览里移动
+ * 鼠标卡顿" symptom.
+ *
+ * v1 of this patch only replaced the candidate querySelectorAll with an
+ * O(1) elementFromPoint hit test (the original reflow scan, ~950ms per
+ * move). g() still ran on every frame, so the jank stayed. v2 adds the
+ * missing half:
+ *
+ *  - The patched query now also gates g() itself. A hit is only returned
+ *    when it is a trackable block (p/li/h1..h6/table/th/td/pre,
+ *    div.code-line, div.markdown-frontmatter) AND the tracking container
+ *    is small (<= MD_TRACKER_MAX_NODES elements, counted once per
+ *    mutation generation and cached). Long file previews blow past that
+ *    cap -- for them g() costs 80-100ms per frame, so the query returns
+ *    no candidates and the tracker never runs: hovering a preview costs
+ *    0ms. Chat messages keep their own small per-message containers, so
+ *    the inline-comment bubble still works there.
+ *  - Portaled overlays (menus/dialogs attach to <body>) can never be
+ *    inside the container, so this.contains(hit) already excludes them.
+ */
+const COMMENT_TRACKER_OPT_JS = `(() => {
+  if (window.__pxCommentTrackerOpt) return 'already-present';
+  window.__pxCommentTrackerOpt = true;
+
+  // Above this many descendant elements, g()'s whole-container text walk
+  // costs more per frame than the comment feature is worth (a 3500-node
+  // chat message already runs ~40ms; the 8754-node preview ran 77-106ms).
+  const MD_TRACKER_MAX_NODES = 1200;
+
+  let lastX = 0;
+  let lastY = 0;
+  window.addEventListener('mousemove', (e) => {
+    lastX = e.clientX;
+    lastY = e.clientY;
+  }, { passive: true, capture: true });
+
+  const TARGET_SELECTOR = "p, li, h1, h2, h3, h4, h5, h6, div.code-line, pre:not(:has(.carousel)), table, th, td, div.markdown-frontmatter";
+  const TRACKABLE_TAGS = { P: 1, LI: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, TABLE: 1, TH: 1, TD: 1, PRE: 1 };
+  const isTrackable = (el) =>
+    TRACKABLE_TAGS[el.tagName] === 1 ||
+    el.classList.contains('code-line') ||
+    el.classList.contains('markdown-frontmatter');
+
+  // Node counts are cached per container and invalidated whenever the
+  // stream watcher sees a mutation batch (it bumps window.__pxDomGen on
+  // every batch; see STREAM_WATCH_JS). Without that, a container that
+  // swaps its content (tab switch reuses the same element) would keep a
+  // stale count.
+  let sizeCache = new WeakMap();
+  let sizeGen = -1;
+  const isSmallContainer = (c) => {
+    const gen = window.__pxDomGen || 0;
+    if (gen !== sizeGen) { sizeGen = gen; sizeCache = new WeakMap(); }
+    let n = sizeCache.get(c);
+    if (n === undefined) {
+      try { n = c.querySelectorAll('*').length; } catch (e) { n = 0; }
+      sizeCache.set(c, n);
+    }
+    return n <= MD_TRACKER_MAX_NODES;
+  };
+
+  const origQuerySelectorAll = Element.prototype.querySelectorAll;
+
+  Element.prototype.querySelectorAll = function(sel) {
+    if (typeof sel === 'string' && sel === TARGET_SELECTOR) {
+      if (lastX > 0 && lastY > 0) {
+        const top = document.elementFromPoint(lastX, lastY);
+        if (top) {
+          const hit = top.closest(TARGET_SELECTOR);
+          if (hit && this.contains(hit) && isTrackable(hit) && isSmallContainer(this)) {
+            return [hit];
+          }
+        }
+      }
+      return [];
+    }
+    return origQuerySelectorAll.apply(this, arguments);
+  };
+  return 'installed';
+})()`;
+
+/**
+ * Settings modal graceful exit animation controller.
+ * Intercepts close button clicks, backdrop clicks, and Escape keypresses,
+ * adds 'px-modal-closing' to document.documentElement and 'settings-modal-closing' to modal,
+ * plays the theme's 160ms pop-out exit animation, and then dispatches the unmount action.
+ */
+const SETTINGS_MODAL_JS = `(() => {
+  if (window.__pxSettingsModalController) return 'already-present';
+  window.__pxSettingsModalController = true;
+
+  let isClosing = false;
+
+  const performGracefulClose = (unmountAction) => {
+    if (isClosing) return;
+    const container = document.querySelector('.settings-modal-container') || document.querySelector('[role="dialog"]');
+    if (!container) {
+      unmountAction();
+      return;
+    }
+
+    isClosing = true;
+    document.documentElement.classList.add('px-modal-closing');
+    container.classList.add('settings-modal-closing');
+
+    const backdrop = document.querySelector('.settings-modal-backdrop') || document.querySelector('div.animate-modalFadeIn') || container.parentElement;
+    if (backdrop) backdrop.classList.add('settings-modal-closing');
+
+    setTimeout(() => {
+      try {
+        unmountAction();
+      } catch (err) {
+        console.error('[pixel-theme] modal exit unmountAction failed:', err);
+      }
+
+      // Keep html.px-modal-closing until React completely removes the dialog from DOM
+      const pollStart = Date.now();
+      const pollUnmount = () => {
+        if (!document.querySelector('.settings-modal-container') && !document.querySelector('[role="dialog"]')) {
+          document.documentElement.classList.remove('px-modal-closing');
+          isClosing = false;
+        } else if (Date.now() - pollStart > 1200) {
+          // Failsafe timeout: guarantee reset
+          document.documentElement.classList.remove('px-modal-closing');
+          isClosing = false;
+        } else {
+          setTimeout(pollUnmount, 25);
+        }
+      };
+      setTimeout(pollUnmount, 40);
+    }, 160);
+  };
+
+  document.addEventListener('click', (e) => {
+    if (isClosing) return;
+    const target = e.target;
+    if (!target) return;
+
+    const closeBtn = target.closest && target.closest(
+      '.settings-modal-container button[aria-label="关闭"], ' +
+      '.settings-modal-container button[aria-label="Close"], ' +
+      '.settings-modal-container button.top-4.right-4, ' +
+      '[role="dialog"] button[aria-label="关闭"], ' +
+      '[role="dialog"] button[aria-label="Close"], ' +
+      '[role="dialog"] button.top-4.right-4'
+    );
+
+    const backdrop = document.querySelector('.settings-modal-backdrop') || document.querySelector('div.animate-modalFadeIn');
+    const isBackdrop = target === backdrop;
+
+    if (closeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      performGracefulClose(() => {
+        closeBtn.click();
+      });
+    } else if (isBackdrop) {
+      e.preventDefault();
+      e.stopPropagation();
+      performGracefulClose(() => {
+        backdrop.click();
+      });
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (isClosing) return;
+    if (e.key === 'Escape' || e.code === 'Escape') {
+      const container = document.querySelector('.settings-modal-container') || document.querySelector('[role="dialog"]');
+      if (!container) return;
+
+      const closeBtn = container.querySelector && container.querySelector(
+        'button[aria-label="关闭"], button[aria-label="Close"], button.top-4.right-4'
+      );
+
+      e.preventDefault();
+      e.stopPropagation();
+      performGracefulClose(() => {
+        if (closeBtn) {
+          closeBtn.click();
+        } else {
+          const evt = new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true });
+          document.dispatchEvent(evt);
+        }
+      });
+    }
+  }, true);
+
   return 'installed';
 })()`;
 
@@ -1061,6 +1455,31 @@ function attachPixelTheme(win) {
         // Read by the patched window:set-title-bar-overlay IPC handler: with no
         // native caption there is no overlay to set, and calling it throws.
         win.__pixelNoNativeCaption = !wantsNativeCaption();
+        // insertCSS 的注入是跨导航持久的（官方为此才有 removeInsertedCSS）。
+        // 在每个 dom-ready 上无条件再插一份，会让每次 Ctrl+R、每次 switch
+        // 热切换（Page.reload -> dom-ready）都往同一个 webContents 叠一整份
+        // ~1.7MB（双字体 base64 + 主题 CSS）：内存与样式匹配成本线性增长，
+        // 旧主题的未冲突声明也一直在底下生效。先移除上一份再插入新的。
+        // 串行化：连续两次 dom-ready 若交错执行 remove/insert，会漏删一份
+        // 孤儿 sheet——正是这个泄漏要防的东西。若实测发现注入其实不跨导航
+        // 持久，本逻辑同样成立：remove 变成无害的空操作，insert 照旧。
+        let lastCssKey = null;
+        let cssChain = Promise.resolve();
+        const applyCss = (css) => {
+            cssChain = cssChain.then(async () => {
+                if (wc.isDestroyed()) {
+                    return;
+                }
+                if (lastCssKey) {
+                    try {
+                        await wc.removeInsertedCSS(lastCssKey);
+                    }
+                    catch (e) { /* sheet already gone with the old document */ }
+                    lastCssKey = null;
+                }
+                lastCssKey = await wc.insertCSS(css);
+            }).catch((e) => console.error("[pixel-theme] insertCSS failed:", e));
+        };
         // Chromium persists page zoom PER HOST, and the whole UI lives on
         // 127.0.0.1 -- one accidental Ctrl+wheel (or a stray zoom from a debug
         // session) sticks to every future launch, on every port. Measured on
@@ -1085,8 +1504,11 @@ function attachPixelTheme(win) {
             syncTitleBarOverlay(win);
             const css = buildCss();
             if (css) {
-                wc.insertCSS(css).catch((e) => console.error("[pixel-theme] insertCSS failed:", e));
+                applyCss(css);
             }
+            // Pre-warm font glyph caches and GPU texture atlas immediately at startup
+            wc.executeJavaScript(FONT_PREWARM_JS, true)
+                .catch((e) => console.error("[pixel-theme] font prewarm failed:", e));
             // Must run on every dom-ready, not just once: the grid size depends
             // on DPR, which changes with monitor, OS scale and window zoom.
             wc.executeJavaScript(DPR_SYNC_JS, true)
@@ -1132,6 +1554,22 @@ function attachPixelTheme(win) {
                     })
                     .catch((e) => console.error("[pixel-theme] window controls failed:", e));
             }
+            // Settings modal graceful exit animation controller.
+            wc.executeJavaScript(SETTINGS_MODAL_JS, true)
+                .then((r) => {
+                    if (r !== "installed" && r !== "already-present") {
+                        console.error("[pixel-theme] settings modal controller not installed:", r);
+                    }
+                })
+                .catch((e) => console.error("[pixel-theme] settings modal controller failed:", e));
+            // Inline comment hover tracker O(1) probe to eliminate 950ms mousemove reflows.
+            wc.executeJavaScript(COMMENT_TRACKER_OPT_JS, true)
+                .then((r) => {
+                    if (r !== "installed" && r !== "already-present") {
+                        console.error("[pixel-theme] comment tracker opt not installed:", r);
+                    }
+                })
+                .catch((e) => console.error("[pixel-theme] comment tracker opt failed:", e));
         });
         syncTitleBarOverlay(win);
 

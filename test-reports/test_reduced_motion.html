@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+/* 1. Preceding author rule with class and attribute: html body [role="dialog"].animate-modalScaleIn */
+html body [role="dialog"].animate-modalScaleIn {
+  animation: pixel-modal-pop-in 240ms steps(3) forwards !important;
+}
+
+/* 2. Proposed reduced motion rule placed at the end of stylesheet */
+@media (prefers-reduced-motion: reduce) {
+  html:root body *,
+  html:root body *::before,
+  html:root body *::after,
+  html:root *,
+  html:root *::before,
+  html:root *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+</style>
+</head>
+<body>
+<div id="target" role="dialog" class="animate-modalScaleIn">Test Modal</div>
+</body>
+</html>

@@ -1,0 +1,3296 @@
+/* ============================================================================
+   DOODLE GRAVITY — Antigravity 2.x 纯线稿漫画手绘风主题
+   ----------------------------------------------------------------------------
+   位置：<Antigravity安装目录>\resources\doodle-theme\doodle.css
+   
+   设计理念：
+     - 漫画草稿线稿风（Manga Line Art & Sketch Comic）：
+       强调粗线条勾边、漫画分镜双框线、纯墨水/黑白强烈反色交互，
+       仅在焦点与关键操作处点缀荧光粉红与记号笔亮黄。
+     - 暗色模式：黑板与粉笔线稿（Blackboard & Chalk Sketch）
+     - 亮色模式：漫画原稿纸与墨水线（Manga Paper & G-Pen Ink）
+   
+   模块划分：
+     - 模块一：色彩体系与语义 Token 规范 (Palette & Tokens)          [已完成]
+     - 模块二：字体与排版系统 (Typography & Layout)                 [已完成]
+     - 模块三：手绘几何造型与线条材质 (Geometry & Ink Strokes)        [已完成]
+     - 模块四：基础控件与自绘手绘窗口按钮 (Components & Chrome)       [已完成]
+     - 模块五：涂鸦微动效与交互反馈 (Motion & Micro-interactions)     [已完成]
+     - 模块六：专属涂鸦特效与手绘指针 (Signature Doodle FX)           [已完成]
+   ============================================================================ */
+
+/* ============================================================
+   0. 调色板 (Palette Base)
+   ============================================================ */
+:root {
+  /* ---- 黑板炭黑暗色系 (Dark Blackboard Canvas) ---- */
+  --doodle-charcoal-0:    #121214;  /* 最深 —— 窗口底层/未渲染底色 */
+  --doodle-charcoal-1:    #18181b;  /* 黑板主背景 —— 深沉温润炭黑 */
+  --doodle-charcoal-2:    #202024;  /* 侧边栏 / 顶栏黑板灰 */
+  --doodle-charcoal-3:    #27272a;  /* 卡片 / 面板深灰 */
+  --doodle-charcoal-4:    #323238;  /* 悬停块 / 次级面板 */
+  --doodle-chalk-line:    #3f3f46;  /* 粉笔线 —— 主边框 */
+  --doodle-chalk-dim:     #71717a;  /* 次要粉笔灰 —— 行号 / 占位符 */
+  --doodle-chalk-subtle:  #a1a1aa;  /* 次级文字 —— 辅助信息 */
+  --doodle-chalk-white:   #f4f4f5;  /* 粉笔白 —— 主文字（暗色模式） */
+
+  /* ---- 漫画原稿纸亮色系 (Light Manga Sketch Canvas) ---- */
+  --doodle-paper-0:       #fdfbf7;  /* 漫画原稿纸主背景 —— 微暖米白 */
+  --doodle-paper-1:       #f4efe6;  /* 侧边栏 —— 牛皮原稿纸 */
+  --doodle-paper-2:       #eae3d2;  /* 卡片 / 浮层 —— 浅卡其纸块 */
+  --doodle-paper-3:       #dfd5c0;  /* 悬停高亮纸块 */
+  --doodle-ink:           #18181b;  /* G-Pen 墨水黑 —— 主文字与粗线（亮色模式） */
+  --doodle-ink-dim:       #52525b;  /* 墨水深灰 —— 次级文字 */
+  --doodle-paper-line:    #27272a;  /* 漫画分镜线 —— 纯黑墨水边框 */
+  --doodle-paper-border:  #d4c8b0;  /* 浅色纸张分割线 */
+
+  /* ---- 手绘马克笔 & 彩色粉笔强调色 (Marker & Chalk Accents) ---- */
+  --doodle-pink:          #ff2e93;  /* 核心主强调色：手绘荧光粉红 */
+  --doodle-pink-hover:    #ff5ca8;  /* 荧光粉高亮悬停 */
+  --doodle-pink-active:   #e01a7d;  /* 荧光粉深色按下 */
+  --doodle-pink-dim:      rgba(255, 46, 147, 0.18); /* 荧光粉高亮背景 */
+
+  --doodle-yellow:        #ffd000;  /* 记号笔黄：警告、特别标注、字符串 */
+  --doodle-yellow-dim:    rgba(255, 208, 0, 0.20);
+
+  --doodle-cyan:          #00e5ff;  /* 粉笔青蓝：链接、关键字、选中态 */
+  --doodle-cyan-dim:      rgba(0, 229, 255, 0.18);
+
+  --doodle-lime:          #a3e635;  /* 荧光青柠绿：成功、Diff 新增 */
+  --doodle-lime-dim:      rgba(163, 230, 53, 0.20);
+
+  --doodle-orange:        #ff7828;  /* 记号笔橙：通知、数字、变更 */
+  --doodle-orange-dim:    rgba(255, 120, 40, 0.20);
+
+  --doodle-purple:        #c084fc;  /* 马克笔浅紫：函数、类型名、特殊标记 */
+  --doodle-purple-dim:    rgba(192, 132, 252, 0.20);
+
+  --doodle-red:           #f43f5e;  /* 红墨水：报错、Diff 删除 */
+  --doodle-red-dim:       rgba(244, 63, 94, 0.20);
+
+  /* ---- 阴影与手绘质感基础 ---- */
+  --doodle-shadow:        3px 3px 0 rgba(0, 0, 0, 0.45);
+  --doodle-shadow-paper:  3px 3px 0 rgba(39, 39, 42, 0.25);
+  --doodle-shadow-lg:     5px 5px 0 rgba(0, 0, 0, 0.55);
+
+  /* ---- 字体族定义 ---- */
+  --doodle-font-ui:       'Fusion Pixel 12px Proportional SC', 'Silkscreen', monospace;
+  --doodle-font-mono:     'Fusion Pixel 12px Monospaced SC', 'Fusion Pixel 12px Proportional SC', monospace;
+
+  /* ------------------------------------------------------------------
+     系统窗口按钮（右上角 最小化/最大化/关闭）的配色与配置
+     ------------------------------------------------------------------ */
+  --px-native-caption:    off;
+  --px-chrome-light-bg:   #f4efe6;
+  --px-chrome-light-fg:   #18181b;
+  --px-chrome-dark-bg:    #202024;
+  --px-chrome-dark-fg:    #ff2e93;
+}
+
+/* ============================================================
+   1. 暗色模式配色（黑板与荧光粉笔）
+   （body 没有 theme-light 类时一律按暗色处理）
+   ============================================================ */
+body:not(.theme-light) {
+  /* ---- Tailwind 语义基色 ---- */
+  --background:           var(--doodle-charcoal-1) !important;
+  --foreground:           var(--doodle-chalk-white) !important;
+  --content:              var(--doodle-charcoal-1) !important;
+  --primary:              var(--doodle-pink) !important;
+  --primary-foreground:   var(--doodle-charcoal-0) !important;
+  --secondary:            var(--doodle-charcoal-3) !important;
+  --secondary-foreground: var(--doodle-chalk-white) !important;
+  --muted:                var(--doodle-charcoal-2) !important;
+  --muted-foreground:     var(--doodle-chalk-subtle) !important;
+  --placeholder:          var(--doodle-chalk-dim) !important;
+  --sidebar:              var(--doodle-charcoal-2) !important;
+  --sidebar-secondary:    var(--doodle-charcoal-3) !important;
+  --sidebar-muted:        var(--doodle-charcoal-0) !important;
+  --card:                 var(--doodle-charcoal-3) !important;
+  --card-border:          var(--doodle-chalk-line) !important;
+  --border:               var(--doodle-chalk-line) !important;
+
+  /* ---- 内嵌 IDE / Monaco 编辑器语法与组件 ---- */
+  --vscode-foreground:                       var(--doodle-chalk-white) !important;
+  --vscode-editor-background:                var(--doodle-charcoal-1) !important;
+  --vscode-editor-foreground:                var(--doodle-chalk-white) !important;
+  --vscode-sideBar-background:               var(--doodle-charcoal-2) !important;
+  --vscode-sideBar-foreground:               var(--doodle-chalk-subtle) !important;
+  --vscode-titleBar-activeBackground:        var(--doodle-charcoal-2) !important;
+  --vscode-titleBar-activeForeground:        var(--doodle-chalk-white) !important;
+  --vscode-activityBar-background:           var(--doodle-charcoal-2) !important;
+  --vscode-activityBar-foreground:           var(--doodle-pink) !important;
+  --vscode-activityBarBadge-background:      var(--doodle-pink) !important;
+  --vscode-activityBarBadge-foreground:      var(--doodle-charcoal-0) !important;
+  --vscode-editorWidget-background:          var(--doodle-charcoal-3) !important;
+  --vscode-editorWidget-border:              var(--doodle-chalk-line) !important;
+  --vscode-editorInlayHint-background:       var(--doodle-charcoal-4) !important;
+  --vscode-editorInlayHint-foreground:       var(--doodle-chalk-dim) !important;
+  --vscode-editorLineNumber-foreground:      var(--doodle-chalk-dim) !important;
+  --vscode-editorLineNumber-activeForeground: var(--doodle-pink) !important;
+  --vscode-notebook-cellEditorBackground:    var(--doodle-charcoal-3) !important;
+  --vscode-input-background:                 var(--doodle-charcoal-3) !important;
+  --vscode-input-foreground:                 var(--doodle-chalk-white) !important;
+  --vscode-input-border:                     var(--doodle-chalk-line) !important;
+  --vscode-button-background:                var(--doodle-pink) !important;
+  --vscode-button-foreground:                var(--doodle-charcoal-0) !important;
+  --vscode-button-hoverBackground:           var(--doodle-pink-hover) !important;
+  --vscode-focusBorder:                      var(--doodle-pink) !important;
+  --vscode-list-focusOutline:                var(--doodle-pink) !important;
+  --vscode-list-hoverBackground:             var(--doodle-charcoal-4) !important;
+  --vscode-list-hoverBackground-subtle:      var(--doodle-charcoal-2) !important;
+  --vscode-list-activeSelectionBackground:   var(--doodle-pink-dim) !important;
+  --vscode-list-activeSelectionForeground:   var(--doodle-pink) !important;
+  --vscode-list-highlightForeground:         var(--doodle-yellow) !important;
+  --vscode-textLink-foreground:              var(--doodle-cyan) !important;
+  --vscode-textPreformat-foreground:         var(--doodle-yellow) !important;
+  --vscode-textPreformat-background:         var(--doodle-charcoal-3) !important;
+  --vscode-toolbar-hoverBackground:          var(--doodle-charcoal-4) !important;
+  --vscode-commandCenter-inactiveBorder:     var(--doodle-chalk-line) !important;
+  --vscode-notifications-background:         var(--doodle-charcoal-3) !important;
+  --vscode-notifications-foreground:         var(--doodle-chalk-white) !important;
+  --vscode-notifications-border:             var(--doodle-pink) !important;
+  --vscode-editorWarning-foreground:         var(--doodle-yellow) !important;
+  --vscode-editorError-foreground:           var(--doodle-red) !important;
+  --vscode-editorGroup-dropBackground:       rgba(255, 46, 147, 0.15) !important;
+  --vscode-diffEditor-insertedLineBackground: rgba(163, 230, 53, 0.18) !important;
+  --vscode-diffEditor-removedLineBackground:  rgba(244, 63, 94, 0.18) !important;
+  --vscode-diffEditor-insertedTextBackground: rgba(163, 230, 53, 0.28) !important;
+  --vscode-diffEditor-removedTextBackground:  rgba(244, 63, 94, 0.28) !important;
+  --codeium-active-selection-color:          var(--doodle-pink) !important;
+
+  /* 动效闪光滤镜 (暗色模式往亮闪) */
+  --px-flash:                                brightness(1.4);
+}
+
+/* ============================================================
+   2. 亮色模式配色（漫画原稿纸与墨水手绘）
+   ============================================================ */
+body.theme-light {
+  /* ---- Tailwind 语义基色 ---- */
+  --background:           var(--doodle-paper-0) !important;
+  --foreground:           var(--doodle-ink) !important;
+  --content:              var(--doodle-paper-0) !important;
+  --primary:              var(--doodle-pink) !important;
+  --primary-foreground:   #ffffff !important;
+  --secondary:            var(--doodle-paper-1) !important;
+  --secondary-foreground: var(--doodle-ink) !important;
+  --muted:                var(--doodle-paper-1) !important;
+  --muted-foreground:     var(--doodle-ink-dim) !important;
+  --placeholder:          #78716c !important;
+  --sidebar:              var(--doodle-paper-1) !important;
+  --sidebar-secondary:    var(--doodle-paper-2) !important;
+  --sidebar-muted:        var(--doodle-paper-3) !important;
+  --card:                 var(--doodle-paper-0) !important;
+  --card-border:          var(--doodle-paper-line) !important;
+  --border:               var(--doodle-paper-line) !important;
+
+  /* ---- 内嵌 IDE / Monaco 编辑器语法与组件 ---- */
+  --vscode-foreground:                       var(--doodle-ink) !important;
+  --vscode-editor-background:                var(--doodle-paper-0) !important;
+  --vscode-editor-foreground:                var(--doodle-ink) !important;
+  --vscode-sideBar-background:               var(--doodle-paper-1) !important;
+  --vscode-sideBar-foreground:               var(--doodle-ink-dim) !important;
+  --vscode-titleBar-activeBackground:        var(--doodle-paper-1) !important;
+  --vscode-titleBar-activeForeground:        var(--doodle-ink) !important;
+  --vscode-activityBar-background:           var(--doodle-paper-1) !important;
+  --vscode-activityBar-foreground:           var(--doodle-pink) !important;
+  --vscode-activityBarBadge-background:      var(--doodle-pink) !important;
+  --vscode-activityBarBadge-foreground:      #ffffff !important;
+  --vscode-editorWidget-background:          var(--doodle-paper-1) !important;
+  --vscode-editorWidget-border:              var(--doodle-paper-line) !important;
+  --vscode-editorInlayHint-background:       var(--doodle-paper-2) !important;
+  --vscode-editorInlayHint-foreground:       var(--doodle-ink-dim) !important;
+  --vscode-editorLineNumber-foreground:      #a8a29e !important;
+  --vscode-editorLineNumber-activeForeground: var(--doodle-pink) !important;
+  --vscode-notebook-cellEditorBackground:    var(--doodle-paper-1) !important;
+  --vscode-input-background:                 var(--doodle-paper-0) !important;
+  --vscode-input-foreground:                 var(--doodle-ink) !important;
+  --vscode-input-border:                     var(--doodle-paper-line) !important;
+  --vscode-button-background:                var(--doodle-pink) !important;
+  --vscode-button-foreground:                #ffffff !important;
+  --vscode-button-hoverBackground:           var(--doodle-pink-hover) !important;
+  --vscode-focusBorder:                      var(--doodle-pink) !important;
+  --vscode-list-focusOutline:                var(--doodle-pink) !important;
+  --vscode-list-hoverBackground:             var(--doodle-paper-2) !important;
+  --vscode-list-hoverBackground-subtle:      var(--doodle-paper-1) !important;
+  --vscode-list-activeSelectionBackground:   rgba(255, 46, 147, 0.15) !important;
+  --vscode-list-activeSelectionForeground:   var(--doodle-pink) !important;
+  --vscode-list-highlightForeground:         #d97706 !important;
+  --vscode-textLink-foreground:              #0284c7 !important;
+  --vscode-textPreformat-foreground:         #dc2626 !important;
+  --vscode-textPreformat-background:         var(--doodle-paper-1) !important;
+  --vscode-toolbar-hoverBackground:          var(--doodle-paper-2) !important;
+  --vscode-commandCenter-inactiveBorder:     var(--doodle-paper-line) !important;
+  --vscode-notifications-background:         var(--doodle-paper-0) !important;
+  --vscode-notifications-foreground:         var(--doodle-ink) !important;
+  --vscode-notifications-border:             var(--doodle-pink) !important;
+  --vscode-editorWarning-foreground:         #d97706 !important;
+  --vscode-editorError-foreground:           var(--doodle-red) !important;
+  --vscode-editorGroup-dropBackground:       rgba(255, 46, 147, 0.12) !important;
+  --vscode-diffEditor-insertedLineBackground: rgba(163, 230, 53, 0.20) !important;
+  --vscode-diffEditor-removedLineBackground:  rgba(244, 63, 94, 0.15) !important;
+  --vscode-diffEditor-insertedTextBackground: rgba(163, 230, 53, 0.35) !important;
+  --vscode-diffEditor-removedTextBackground:  rgba(244, 63, 94, 0.25) !important;
+  --codeium-active-selection-color:          var(--doodle-pink) !important;
+
+  /* 动效闪光滤镜 (亮色模式往暗走，避免白闪溢出) */
+  --px-flash:                                brightness(0.85);
+}
+
+/* ============================================================
+   3. 字体与排版系统 (Typography & Layout)
+   ============================================================ */
+
+/* 覆盖 Tailwind 字体 Token */
+:root,
+:host,
+body {
+  --font-sans:                var(--doodle-font-ui) !important;
+  --font-mono:                var(--doodle-font-mono) !important;
+  --default-font-family:      var(--doodle-font-ui) !important;
+  --default-mono-font-family: var(--doodle-font-mono) !important;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea,
+[contenteditable] {
+  font-family: var(--doodle-font-ui) !important;
+}
+
+pre,
+code,
+kbd,
+samp,
+.monaco-editor,
+[class*="font-mono"] {
+  font-family: var(--doodle-font-mono) !important;
+}
+
+/* 关掉抗锯齿与伪粗体，保持点阵边缘锐利清晰 */
+:root {
+  -webkit-font-smoothing: none !important;
+  -moz-osx-font-smoothing: unset !important;
+  font-synthesis: none !important;
+}
+
+/* 统一字重压平为 400（点阵字体无真粗体，靠颜色与底衬区分层级） */
+b,
+strong,
+h1, h2, h3, h4, h5, h6,
+[class*="font-bold"],
+[class*="font-semibold"],
+[class*="font-medium"] {
+  font-weight: 400 !important;
+}
+
+/* ------------------------------------------------------------
+   3.1 像素栅格对齐 (12px 点阵倍数对齐)
+   ------------------------------------------------------------ */
+:root,
+:host,
+body {
+  --doodle-unit:  12px;
+  --doodle-cells: 1;
+  --doodle-fs:    calc(var(--doodle-unit) * var(--doodle-cells));
+  --doodle-fs-lg: calc(var(--doodle-unit) * var(--doodle-cells) * 2);
+}
+
+/* DPR 兜底对照表 (正常情况下由注入器动态写入 --px-unit 与 --px-cells) */
+@media (min-resolution: 1.2490dppx) and (max-resolution: 1.2510dppx) {
+  :root, :host, body { --doodle-unit: 9.6px;    --doodle-cells: 1; }
+}
+@media (min-resolution: 1.3688dppx) and (max-resolution: 1.3698dppx) {
+  :root, :host, body { --doodle-unit: 8.7636px; --doodle-cells: 1; }
+}
+@media (min-resolution: 1.4990dppx) and (max-resolution: 1.5010dppx) {
+  :root, :host, body { --doodle-unit: 8px;      --doodle-cells: 2; }
+}
+@media (min-resolution: 1.6425dppx) and (max-resolution: 1.6438dppx) {
+  :root, :host, body { --doodle-unit: 7.3030px; --doodle-cells: 2; }
+}
+@media (min-resolution: 1.7490dppx) and (max-resolution: 1.7510dppx) {
+  :root, :host, body { --doodle-unit: 6.8571px; --doodle-cells: 2; }
+}
+@media (min-resolution: 1.9990dppx) and (max-resolution: 2.0010dppx) {
+  :root, :host, body { --doodle-unit: 6px;      --doodle-cells: 2; }
+}
+@media (min-resolution: 2.2490dppx) and (max-resolution: 2.2510dppx) {
+  :root, :host, body { --doodle-unit: 5.3333px; --doodle-cells: 2; }
+}
+@media (min-resolution: 2.4990dppx) and (max-resolution: 2.5010dppx) {
+  :root, :host, body { --doodle-unit: 4.8px;    --doodle-cells: 2; }
+}
+
+/* 挂载在 body 保持 rem 不受影响 */
+body {
+  font-size: var(--doodle-fs) !important;
+}
+
+/* 正文与常规文字统一收归栅格 */
+[class~="text-sm"],
+[class~="text-base"],
+[class~="text-xs"],
+[class*="text-[11px]"],
+[class*="text-[13px]"],
+[class*="text-[0.9em]"],
+p,
+li {
+  font-size: var(--doodle-fs) !important;
+  line-height: 1.5 !important;
+}
+
+/* 菜单栏按钮 */
+button[class*="inline-flex"][class*="font-medium"] {
+  font-size: var(--doodle-fs) !important;
+}
+
+/* ------------------------------------------------------------
+   3.2 手绘排版与文字层级 (Typography & Text Hierarchy)
+   ------------------------------------------------------------ */
+
+/* 1. 加粗文字：保持干净高对比度，不铺大面积底色 */
+strong,
+b,
+[class*="font-bold"],
+[class*="font-semibold"] {
+  font-size: var(--doodle-fs) !important;
+  line-height: 1.5 !important;
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+body.theme-light strong,
+body.theme-light b,
+body.theme-light [class*="font-bold"],
+body.theme-light [class*="font-semibold"] {
+  background: transparent !important;
+  color: var(--doodle-ink) !important;
+  box-shadow: none !important;
+}
+
+/* 仅针对显式 <mark> 标签提供手绘马克笔高亮 */
+mark {
+  background: var(--doodle-pink-dim) !important;
+  color: var(--doodle-pink) !important;
+  padding: 0 4px !important;
+}
+
+body.theme-light mark {
+  background: rgba(255, 46, 147, 0.20) !important;
+  color: var(--doodle-ink) !important;
+}
+
+/* 2. 主标题 (h1, h2)：2×点阵字号，纯净无额外多余假框线 */
+h1,
+h2 {
+  font-size: var(--doodle-fs-lg) !important;
+  line-height: 1.5 !important;
+  color: var(--doodle-chalk-white) !important;
+  border-left: none !important;
+  padding-left: 0 !important;
+  margin: 12px 0 8px 0 !important;
+}
+
+body.theme-light h1,
+body.theme-light h2 {
+  color: var(--doodle-ink) !important;
+  border-left: none !important;
+  padding-left: 0 !important;
+}
+
+/* 3. 次级标题 (h3, h4, h5, h6)：1×点阵字号 + 纯净高对比文字 */
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--doodle-fs) !important;
+  line-height: 1.5 !important;
+  color: var(--doodle-chalk-white) !important;
+  border-left: none !important;
+  padding-left: 0 !important;
+  margin: 8px 0 4px 0 !important;
+}
+
+body.theme-light h3,
+body.theme-light h4,
+body.theme-light h5,
+body.theme-light h6 {
+  color: var(--doodle-ink) !important;
+  border-left: none !important;
+  padding-left: 0 !important;
+}
+
+/* 4. 行内代码：呈现「手绘便签/贴纸块」（微弱底色 + 手绘虚线框） */
+code,
+kbd,
+samp {
+  font-size: var(--doodle-fs) !important;
+  line-height: 1.5 !important;
+  padding: 1px 5px !important;
+  background: var(--doodle-charcoal-3) !important;
+  color: var(--doodle-yellow) !important;
+  border: 1px dashed var(--doodle-chalk-line) !important;
+}
+
+body.theme-light code,
+body.theme-light kbd,
+body.theme-light samp {
+  background: var(--doodle-paper-2) !important;
+  color: var(--doodle-ink) !important;
+  border: 1px dashed var(--doodle-paper-border) !important;
+}
+
+/* 5. 超链接：手绘细下划线 + 悬停粉红高亮（排除带有按钮类的 a 标签，防止文字颜色丢失） */
+a:not([class*="bg-"]):not([class~="border"]):not([role="button"]):not([class*="btn"]) {
+  color: var(--doodle-cyan) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  transition: color 150ms ease !important;
+}
+
+body.theme-light a:not([class*="bg-"]):not([class~="border"]):not([role="button"]):not([class*="btn"]) {
+  color: #0284c7 !important;
+}
+
+a:not([class*="bg-"]):not([class~="border"]):not([role="button"]):not([class*="btn"]):hover {
+  color: var(--doodle-pink) !important;
+}
+
+/* ============================================================
+   4. 几何造型与全直角化 (Geometry & Sharp Angles)
+   ------------------------------------------------------------
+   纯线稿漫画草稿风格：全直角切割，零圆角。
+   ============================================================ */
+:root,
+:host {
+  --radius-xs:   0 !important;
+  --radius-sm:   0 !important;
+  --radius-md:   0 !important;
+  --radius-lg:   0 !important;
+  --radius-xl:   0 !important;
+  --radius-2xl:  0 !important;
+  --radius-3xl:  0 !important;
+  --radius-full: 0 !important;
+}
+
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+/* ============================================================
+   5. 表面材质去模糊与纯净纯色 (Clean Surfaces & Zero Blur)
+   ============================================================ */
+* {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  text-shadow: none !important;
+}
+
+/* ============================================================
+   6. 漫画分镜双层框线与手绘硬阴影 (Comic Panel Borders & Shadows)
+   ============================================================ */
+
+/* 常规 2px 边框 */
+[class~="border"] {
+  border-width: 2px !important;
+}
+[class~="border-t"] { border-top-width: 2px !important; }
+[class~="border-b"] { border-bottom-width: 2px !important; }
+[class~="border-l"] { border-left-width: 2px !important; }
+[class~="border-r"] { border-right-width: 2px !important; }
+
+/* 普通卡片与基础阴影元素 */
+[class*="shadow-"]:not([class*="shadow-none"]) {
+  box-shadow: var(--doodle-shadow) !important;
+}
+
+body.theme-light [class*="shadow-"]:not([class*="shadow-none"]) {
+  box-shadow: var(--doodle-shadow-paper) !important;
+}
+
+/* 漫画情报卡盒：全站下拉菜单、右键菜单、模型选择框全量统一至图四规范 */
+/* v2 选择器提速：菜单项 / listbox 项 / 弹层面板由注入器在挂载瞬间打上
+   .px-menu-item / .px-listbox-item / .px-menu-content 类（ARIA 角色挂载后
+   不变，类桶匹配 O(1)），替代原来每次样式重算都要全树逐元素扫描的
+   后代通配选择器。机制见 patch/pixelTheme.js 的 STREAM_WATCH_JS。 */
+.px-menu-content {
+  border: 2px solid #111113 !important;
+  border-left: 5px solid #FF3366 !important;
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 #111113 !important;
+  background-color: #FFFFFF !important;
+  padding: 4px 0 !important;
+}
+
+body.theme-light .px-menu-content {
+  border: 2px solid #111113 !important;
+  border-left: 5px solid #FF3366 !important;
+  box-shadow: 4px 4px 0 #111113 !important;
+  background-color: #FFFFFF !important;
+}
+
+body:not(.theme-light) .px-menu-content {
+  border: 2px solid #FFFFFF !important;
+  border-left: 5px solid #FF3366 !important;
+  background-color: #1A1A1E !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+}
+
+/* 全站菜单项统一悬停：漫画荧光粉高亮 + 纯白文字 + 3px 右滑位移动效（对齐图四上下文菜单） */
+[role="menuitem"],
+[role="option"],
+[data-testid="title-menu-bar-option"],
+div.border-menu-border button,
+[class*="border-menu-border"] button,
+.monaco-menu .action-item,
+[data-radix-collection-item] {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: var(--foreground) !important;
+  background: transparent !important;
+  border: none !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  text-align: left !important;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease !important;
+}
+
+/* 菜单项内部次级图标/子菜单箭头/快捷键标签自动靠右对齐 */
+[role="menuitem"] > svg:last-child:not(:first-child),
+[role="menuitem"] > span.flex.shrink-0,
+[role="menuitem"] > span.ml-auto,
+[role="menuitem"] > [class*="opacity-50"]:last-child,
+div.border-menu-border button > svg:last-child:not(:first-child),
+[class*="border-menu-border"] button > svg:last-child:not(:first-child),
+[data-testid="title-menu-bar-option"] > svg:last-child:not(:first-child) {
+  margin-left: auto !important;
+}
+
+body.theme-light [role="menuitem"],
+body.theme-light [role="option"],
+body.theme-light [data-testid="title-menu-bar-option"],
+body.theme-light div.border-menu-border button,
+body.theme-light [class*="border-menu-border"] button,
+body.theme-light .monaco-menu .action-item {
+  color: #111113 !important;
+}
+
+[role="menuitem"]:hover,
+[role="menuitem"]:focus,
+[role="menuitem"][data-highlighted],
+[role="option"]:hover,
+[role="option"]:focus,
+[role="option"][data-highlighted],
+[data-testid="title-menu-bar-option"]:hover,
+[data-testid="title-menu-bar-option"]:focus,
+[data-testid="title-menu-bar-option"][data-highlighted],
+div.border-menu-border button:hover,
+div.border-menu-border button:focus,
+[class*="border-menu-border"] button:hover,
+[class*="border-menu-border"] button:focus,
+.monaco-menu .action-item:hover,
+.monaco-menu .action-item:focus {
+  background-color: #FF3366 !important;
+  color: #FFFFFF !important;
+  transform: translateX(3px) !important;
+  box-shadow: none !important;
+}
+
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted] *,
+div.border-menu-border button:hover *,
+div.border-menu-border button:focus *,
+[class*="border-menu-border"] button:hover *,
+[class*="border-menu-border"] button:focus * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* 分割线：图四标准纯实线分割 */
+div.border-menu-border hr,
+div.border-menu-border [class*="h-px"],
+[class*="border-menu-border"] hr,
+[class*="border-menu-border"] [class*="h-px"] {
+  border: none !important;
+  border-top: 1px solid #000000 !important;
+  margin: 4px 0 !important;
+  opacity: 0.2 !important;
+}
+
+body:not(.theme-light) div.border-menu-border hr,
+body:not(.theme-light) div.border-menu-border [class*="h-px"],
+body:not(.theme-light) [class*="border-menu-border"] hr,
+body:not(.theme-light) [class*="border-menu-border"] [class*="h-px"] {
+  border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Tooltip 柔和纸条 */
+[role="tooltip"]:not(:empty) {
+  border: 1px solid var(--doodle-pink) !important;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15) !important;
+  font-size: var(--doodle-fs) !important;
+}
+
+body.theme-light [role="tooltip"]:not(:empty) {
+  box-shadow: 2px 2px 8px rgba(39, 39, 42, 0.08) !important;
+}
+
+/* 3.1 漫画原稿分镜墨水框：纯直角 0px + G-Pen 墨水描边 + 实体纸张硬投影 */
+[class*="group/user-input-step"] [class~="bg-card-border"] {
+  position: relative !important;
+  border: 2px solid #111113 !important;
+  box-shadow: 4px 4px 0 rgba(17, 17, 19, 0.35) !important;
+  border-radius: 0 !important;
+  background-color: #FFFFFF !important;
+  padding: 3px !important;
+  margin-top: 14px !important;
+}
+
+body:not(.theme-light) [class*="group/user-input-step"] [class~="bg-card-border"] {
+  border-color: #FFFFFF !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #1A231C !important;
+}
+
+/* 漫画分镜角标：G-Pen 原稿分镜「 漫画原稿 」 */
+[class*="user-input-step"] [class~="bg-card-border"]::before {
+  content: "「 漫画原稿 」" !important;
+  position: absolute !important;
+  top: -12px !important;
+  left: 12px !important;
+  background-color: #111113 !important;
+  color: #FFFFFF !important;
+  font-family: var(--doodle-font-mono, monospace) !important;
+  font-weight: bold !important;
+  font-size: 10px !important;
+  letter-spacing: 1px !important;
+  padding: 1px 8px !important;
+  border: 1px solid var(--doodle-pink) !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35) !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+body:not(.theme-light) [class*="group/user-input-step"] [class~="bg-card-border"]::before {
+  background-color: var(--doodle-pink) !important;
+  color: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+}
+
+/* 3.2 漫画工作绘图板 (Manga Drafting Board) */
+.shrink-0 > [class~="bg-card-border"],
+[class*="shrink-0"] > [class~="bg-card-border"],
+form [class~="bg-card-border"] {
+  position: relative !important;
+  border: 2px solid #111113 !important;
+  box-shadow: 4px 4px 0 rgba(17, 17, 19, 0.25) !important;
+  border-radius: 0 !important;
+  background-color: #FFFFFF !important;
+  padding: 3px !important;
+}
+
+body:not(.theme-light) .shrink-0 > [class~="bg-card-border"],
+body:not(.theme-light) [class*="shrink-0"] > [class~="bg-card-border"],
+body:not(.theme-light) form [class~="bg-card-border"] {
+  border-color: #3A4F3E !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #141B15 !important;
+}
+
+/* 3.3 漫画思考折叠面板：速写本便签纸夹 (Draft Sketchpad Memo Clip) */
+button[class*="tabular-nums"],
+button.tabular-nums,
+[data-testid="thinking-collapsible-trigger"],
+[class*="group/thinking"],
+details summary {
+  border: 2px solid var(--border) !important;
+  border-top: 4px solid var(--doodle-pink) !important;
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25) !important;
+  padding: 6px 12px !important;
+  margin: 6px 0 !important;
+  border-radius: 0 !important;
+  transition: transform 150ms ease, background-color 150ms ease !important;
+}
+
+button[class*="tabular-nums"]:hover,
+button.tabular-nums:hover,
+[data-testid="thinking-collapsible-trigger"]:hover,
+[class*="group/thinking"]:hover,
+details summary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35) !important;
+}
+
+body.theme-light button[class*="tabular-nums"],
+body.theme-light button.tabular-nums,
+body.theme-light [data-testid="thinking-collapsible-trigger"],
+body.theme-light [class*="group/thinking"],
+body.theme-light details summary {
+  background-color: var(--doodle-paper-0) !important;
+  color: var(--doodle-ink) !important;
+  border-color: #111113 !important;
+  border-top: 4px solid var(--doodle-pink) !important;
+  box-shadow: 2px 2px 0 rgba(39, 39, 42, 0.12) !important;
+}
+
+/* 3.4 Artifact 任务卡片（.artifact-card）：原稿卡片 */
+.artifact-card {
+  border: 2px solid var(--border) !important;
+  border-top: 3px solid var(--doodle-pink) !important;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25) !important;
+  border-radius: 0 !important;
+  transition: transform 150ms ease, box-shadow 150ms ease !important;
+}
+
+.artifact-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.35) !important;
+}
+
+body.theme-light .artifact-card {
+  border-color: #111113 !important;
+  border-top: 3px solid var(--doodle-pink) !important;
+  background-color: #FFFFFF !important;
+}
+
+/* 发送按钮：手绘荧光粉印章键 + 纯白高对比度箭头 */
+button[data-tooltip-id*="input-send-button"]:not([data-tooltip-id*="record"]):not([data-tooltip-id*="cancel"]),
+[data-testid="send-button"],
+button[data-testid="send-button"],
+button.bg-primary {
+  background-color: var(--doodle-pink) !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid var(--doodle-pink) !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35) !important;
+  border-radius: 0 !important;
+}
+
+button[data-tooltip-id*="input-send-button"]:not([data-tooltip-id*="record"]):not([data-tooltip-id*="cancel"]) svg,
+[data-testid="send-button"] svg,
+button[data-testid="send-button"] svg,
+button.bg-primary svg {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* 录音与停止生成按钮高对比度守卫 */
+button[data-tooltip-id*="record"] svg {
+  color: var(--foreground) !important;
+  fill: currentColor !important;
+}
+
+button[data-tooltip-id*="cancel"] {
+  border: 1.5px solid var(--border) !important;
+  border-radius: 0 !important;
+  background-color: var(--card) !important;
+}
+
+button[data-tooltip-id*="cancel"] div,
+button[data-tooltip-id*="cancel"] [class*="bg-red"] {
+  background-color: var(--doodle-pink) !important;
+  border-radius: 0 !important;
+}
+
+/* ============================================================
+   7. 按钮交互系统 (Buttons & Press States - Manga Invert & Line Art)
+   ------------------------------------------------------------
+   设计特征：
+     - 强调粗线条轮廓 + 漫画强烈黑白反色悬停反馈。
+     - 按下时下沉 1px~2px 位移，阴影贴平。
+     - 禁用态采用 45° 漫画手绘排线（Hatching lines）。
+   ============================================================ */
+button,
+[role="button"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+/* 普通带边框按钮与卡片按钮 */
+button[class~="border"],
+[role="button"][class~="border"],
+button[class*="bg-card"] {
+  border: 2px solid var(--border) !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45) !important;
+  transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease, color 150ms ease !important;
+}
+
+/* 按钮悬停：漫画高对比反色 + 抬起 1px */
+button[class~="border"]:hover:not(:disabled),
+[role="button"][class~="border"]:hover:not([aria-disabled="true"]),
+button[class*="bg-card"]:hover:not(:disabled) {
+  background-color: var(--foreground) !important;
+  color: var(--background) !important;
+  transform: translate(0, -1px) !important;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55) !important;
+}
+
+/* 主按钮（带有 bg-primary）：荧光粉红印章块 */
+button[class*="bg-primary"],
+[role="button"][class*="bg-primary"] {
+  background-color: var(--doodle-pink) !important;
+  color: #ffffff !important;
+  border: 2px solid var(--doodle-pink) !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45) !important;
+  transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease, color 150ms ease !important;
+}
+
+button[class*="bg-primary"]:hover:not(:disabled) {
+  background-color: var(--doodle-pink-hover) !important;
+  color: #ffffff !important;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55) !important;
+}
+
+/* 按钮按下态 (Active)：下压 1px~2px，阴影收回贴平 */
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]),
+[class*="cursor-pointer"]:active {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0) !important;
+}
+
+/* 禁用态：45° 漫画手绘素描排线（Hatching） */
+button:disabled,
+[role="button"][aria-disabled="true"],
+[disabled] {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 3px,
+    rgba(0, 0, 0, 0.22) 3px,
+    rgba(0, 0, 0, 0.22) 5px
+  ) !important;
+}
+
+body.theme-light button:disabled,
+body.theme-light [role="button"][aria-disabled="true"],
+body.theme-light [disabled] {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 3px,
+    rgba(39, 39, 42, 0.18) 3px,
+    rgba(39, 39, 42, 0.18) 5px
+  ) !important;
+}
+
+/* 发送键禁用态豁免（避免常态下输入区背景杂乱） */
+[data-testid="send-button"]:disabled {
+  background-image: none !important;
+}
+
+/* ============================================================
+   8. 输入框与表单控件 (Inputs & Caret - Inky Focus)
+   ============================================================ */
+input,
+textarea,
+[contenteditable] {
+  caret-color: var(--doodle-pink) !important;
+  caret-shape: block; /* 方块光标，像终端与打字机 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder) !important;
+}
+
+input[type="checkbox"],
+input[type="radio"],
+progress {
+  accent-color: var(--doodle-pink) !important;
+}
+
+/* 焦点框：纯线稿中的荧光粉红点睛 */
+:focus-visible {
+  outline: 2px solid var(--doodle-pink) !important;
+  outline-offset: 1px !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   9. 滚动条 (Scrollbars - Manga Ink Bar)
+   ------------------------------------------------------------
+   重置 scrollbar-color 为 auto，使用 webkit 伪元素定制手绘粉笔/墨块滑块。
+   ============================================================ */
+/* v2：scrollbar-* 不可继承，改为只命中真正的滚动容器（Tailwind 的
+   overflow-* 类 + 应用自己的 .md-table-scroll），等价于原 body * 写法，
+   但不再给全树每个元素背这条规则。 */
+[class*="overflow"],
+.md-table-scroll {
+  scrollbar-color: auto !important;
+  scrollbar-width: auto !important;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 静止态滑块：粉笔灰/墨水灰块 + 2px 底色边框 */
+::-webkit-scrollbar-thumb {
+  background: var(--doodle-chalk-dim);
+  border: 2px solid var(--background);
+}
+
+body.theme-light ::-webkit-scrollbar-thumb {
+  background: #a8a29e;
+}
+
+/* 悬停态：黑白强烈反色 */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--doodle-chalk-white);
+  border-width: 1px;
+}
+
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: var(--doodle-ink);
+}
+
+/* 拖拽激活态 (Active)：激活荧光粉红 */
+::-webkit-scrollbar-thumb:active {
+  background: var(--doodle-pink) !important;
+  border-width: 0 !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ============================================================
+   10. 自绘手绘风格窗口按钮 (Doodle Window Chrome Controls)
+   ------------------------------------------------------------
+   右上角最小化/最大化/关闭按钮采用漫画线稿纯 CSS 几何自绘。
+   ============================================================ */
+#px-window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 2147483644;
+  display: flex;
+  height: 35px;
+  -webkit-app-region: no-drag;
+}
+
+#px-window-controls .px-wc-btn {
+  all: unset;
+  box-sizing: border-box;
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+/* 悬停反色 */
+#px-window-controls .px-wc-btn:hover {
+  background: var(--doodle-charcoal-4);
+}
+
+body.theme-light #px-window-controls .px-wc-btn:hover {
+  background: var(--doodle-paper-3);
+}
+
+/* 关闭按钮悬停：漫画红墨水实心高亮反白 */
+#px-window-controls .px-wc-close:hover {
+  background: var(--doodle-red) !important;
+}
+
+#px-window-controls i {
+  display: block;
+  color: var(--foreground);
+}
+
+#px-window-controls .px-wc-close:hover i {
+  color: #ffffff !important;
+}
+
+/* 最小化：粗 2px 手绘横线 */
+#px-window-controls .px-wc-min i {
+  width: 10px;
+  height: 2px;
+  background: currentColor;
+}
+
+/* 最大化：漫画单线分镜方框 */
+#px-window-controls .px-wc-max i {
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+}
+
+/* 最大化还原：两个错落手绘小方块 */
+#px-window-controls[data-maximized="1"] .px-wc-max i {
+  width: 8px;
+  height: 8px;
+  box-shadow: 4px -4px 0 -2px var(--background), 4px -4px 0 0 currentColor;
+  translate: -2px 2px;
+}
+
+/* 关闭：两条交叉 2px 粗斜线 */
+#px-window-controls .px-wc-close i {
+  position: relative;
+  width: 12px;
+  height: 12px;
+}
+
+#px-window-controls .px-wc-close i::before,
+#px-window-controls .px-wc-close i::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: -1px;
+  width: 14px;
+  height: 2px;
+  background: currentColor;
+}
+
+#px-window-controls .px-wc-close i::before { transform: rotate(45deg); }
+#px-window-controls .px-wc-close i::after  { transform: rotate(-45deg); }
+
+/* ============================================================
+   11. 漫画涂鸦微动效与交互反馈 (Motion & Micro-interactions)
+   ------------------------------------------------------------
+   设计特征：
+     - 缓动曲线：漫画利落干脆的微弹跳 (Snap & Pop / 80~140ms)。
+     - 侧栏悬停：长出 3px 手绘粉红竖条 + 右移 2px。
+     - 发送消息：荧光粉红手绘墨迹上窜 + 输入框微回弹。
+     - AI 回复流式输出：手绘打字机方块光标跟随。
+     - 复制按钮：手绘荧光绿对勾反馈。
+   ============================================================ */
+:root {
+  --doodle-ease-snap:  cubic-bezier(0.18, 0.89, 0.32, 1.28); /* 漫画弹性微弹跳 */
+  --doodle-ease-out:   cubic-bezier(0.16, 1, 0.3, 1);        /* 利落快速入场 */
+  --doodle-t-fast:     150ms; /* 消除闪烁感的平滑基础时间 */
+  --doodle-t-snap:     120ms;
+  --doodle-t-send:     380ms;
+}
+
+/* ------------------------------------------------------------
+   【P0 性能屏障】阻断侧栏全树样式重排
+   掐灭根节点继承型 @property 变量动画，消除全 DOM 树逐帧 RecalcStyle
+   ------------------------------------------------------------ */
+.h-screen.w-screen.flex.flex-col.bg-background {
+  transition-property: none !important;
+}
+
+[style*="36px - var(--aux-pane-width)"] {
+  transition: padding-right 500ms var(--ease-expo-out, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+}
+
+/* 11.1 接管通用过渡的缓动曲线 */
+[class*="transition"] {
+  transition-timing-function: var(--doodle-ease-snap) !important;
+}
+
+/* 11.2 侧边栏条目基础过渡属性（已移除所有强制的局部纯色背景贴纸） */
+[class*="bg-sidebar"] a,
+[class*="bg-sidebar"] button,
+[class*="bg-sidebar"] [role="button"],
+[class*="bg-sidebar"] .main-row-trigger,
+[class*="bg-sidebar"] [class*="cursor-pointer"],
+.w-full.group > [class*="cursor-pointer"],
+.main-row-trigger,
+[class*="hover:bg-muted"],
+[class*="hover:bg-sidebar-muted"],
+[class*="hover:bg-sidebar-secondary"] {
+  background-color: transparent;
+  transition-property: box-shadow, transform, background-color, color !important;
+  /* 延长过渡时间，消除闪烁感，改为 200ms 的平滑淡入 */
+  transition-duration: 200ms !important;
+  /* 使用标准平滑缓动，避免微弹跳带来的突兀感 */
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 侧边栏条目的胶带遮蔽样式已移除（采用纯色侧边栏方案，无需局部遮挡） */
+
+/* 仅针对全行的会话记录/主菜单项进行悬停高亮（带粉色竖线与位移），防止破坏普通标题与图标按钮 */
+.main-row-trigger:hover,
+.w-full.group > [class*="cursor-pointer"]:hover {
+  box-shadow: inset 3px 0 0 var(--doodle-pink) !important;
+  transform: translateX(2px) !important;
+  background-color: var(--doodle-charcoal-4) !important;
+}
+
+body.theme-light .main-row-trigger:hover,
+body.theme-light .w-full.group > [class*="cursor-pointer"]:hover {
+  background-color: var(--doodle-paper-3) !important;
+}
+
+/* 选中会话行 (Active / Selected Convo)：荧光粉红竖标常驻 + 背景底色高亮 + 标题文字高亮 */
+[data-selected="true"],
+[data-testid="conversation-row-sidebar"][data-selected="true"],
+.w-full.group [class~="bg-sidebar-secondary"],
+[class*="bg-sidebar-secondary"][data-selected="true"],
+.w-full.group [data-selected="true"] {
+  box-shadow: inset 3px 0 0 var(--doodle-pink) !important;
+  background-color: var(--doodle-charcoal-4) !important;
+}
+
+body.theme-light [data-selected="true"],
+body.theme-light [data-testid="conversation-row-sidebar"][data-selected="true"],
+body.theme-light .w-full.group [class~="bg-sidebar-secondary"],
+body.theme-light [class*="bg-sidebar-secondary"][data-selected="true"],
+body.theme-light .w-full.group [data-selected="true"] {
+  background-color: var(--doodle-paper-3) !important;
+}
+
+/* 选中态内部文字与标题加粗高亮 */
+[data-selected="true"] a,
+[data-selected="true"] span,
+[data-selected="true"] .truncate,
+.w-full.group [data-selected="true"] a,
+.w-full.group [data-selected="true"] span {
+  color: var(--foreground) !important;
+  font-weight: 500 !important;
+}
+
+body:not(.theme-light) [data-selected="true"] a,
+body:not(.theme-light) [data-selected="true"] span {
+  color: #ffffff !important;
+}
+
+/* 11.2.1 侧边栏项目卡片（对齐“新建会话”按钮质感） */
+button[class*="group/headerbtn"],
+button[data-project-card="true"],
+[data-testid="lifted-context-menu-trigger"] > button[class*="group/headerbtn"] {
+  border: 2px solid var(--border) !important;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  height: 32px !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35) !important;
+  transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease, color 150ms ease !important;
+}
+
+body.theme-light button[class*="group/headerbtn"],
+body.theme-light button[data-project-card="true"],
+body.theme-light [data-testid="lifted-context-menu-trigger"] > button[class*="group/headerbtn"] {
+  box-shadow: 2px 2px 0 rgba(39, 39, 42, 0.15) !important;
+}
+
+/* 项目卡片悬停反馈：轻微位移与底色加深 */
+button[class*="group/headerbtn"]:hover,
+button[data-project-card="true"]:hover,
+[data-testid="lifted-context-menu-trigger"] > button[class*="group/headerbtn"]:hover {
+  background-color: var(--doodle-charcoal-4) !important;
+  color: #ffffff !important;
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45) !important;
+}
+
+body.theme-light button[class*="group/headerbtn"]:hover,
+body.theme-light button[data-project-card="true"]:hover,
+body.theme-light [data-testid="lifted-context-menu-trigger"] > button[class*="group/headerbtn"]:hover {
+  background-color: var(--doodle-paper-2) !important;
+  color: var(--doodle-ink) !important;
+  box-shadow: 3px 3px 0 rgba(39, 39, 42, 0.25) !important;
+}
+
+/* 项目右侧操作小按钮（+号与更多操作）定位对齐 */
+.group\/header .absolute.right-1 {
+  right: 6px !important;
+  z-index: 5 !important;
+}
+
+/* 11.2.2 侧边栏折叠/展开手绘增强微动效 */
+/* 图标展开态：微旋转 + 粉色手绘强调 */
+button[class*="group/headerbtn"] svg,
+button[data-project-card="true"] svg {
+  transition: transform 180ms cubic-bezier(0.18, 0.89, 0.32, 1.28) !important;
+}
+
+button[class*="group/headerbtn"][aria-expanded="true"] svg,
+button[data-project-card="true"][aria-expanded="true"] svg {
+  transform: rotate(-8deg) scale(1.08) !important;
+  color: var(--doodle-pink) !important;
+}
+
+/* 子条目展开挂载入场：仅限定在侧边栏会话列表中，避免对全局所有 group 重复计算 */
+@keyframes doodle-expand-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-testid="conversation-list-sidebar"] .w-full.group {
+  animation: none !important;
+}
+
+/* 11.3 顶栏菜单、下拉菜单、浮动抽屉与气泡菜单入场动效 */
+@keyframes doodle-menu-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.px-menu-content {
+  animation: doodle-menu-pop 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  transform-origin: top left !important;
+}
+
+.animate-slideIn {
+  transition-property: opacity, transform, box-shadow !important;
+  transition-duration: var(--doodle-t-snap) !important;
+  transition-timing-function: var(--doodle-ease-snap) !important;
+}
+
+.animate-slideIn[data-starting-style],
+.animate-slideIn[data-ending-style] {
+  opacity: 0 !important;
+  transform: translateY(-6px) !important;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0) !important;
+}
+
+/* 11.4 图标悬停微弹跳 */
+button:hover:not(:disabled):not(.main-row-trigger) > svg,
+button:hover:not(:disabled):not(.main-row-trigger) > * > svg,
+[role="button"]:hover > svg {
+  animation: doodle-jiggle 0.18s var(--doodle-ease-snap) 2;
+}
+
+@keyframes doodle-jiggle {
+  50% { translate: 0 -2px; }
+}
+
+/* 发送键悬停：箭头向右顶 */
+[data-testid="send-button"]:hover:not(:disabled) svg {
+  animation: doodle-nudge 0.5s var(--doodle-ease-snap) infinite;
+}
+
+@keyframes doodle-nudge {
+  50% { translate: 2px 0; }
+}
+
+/* 11.5 发送动作：手绘荧光墨迹光柱上窜 + 输入框微回弹 */
+html.px-sending body::after {
+  content: "" !important;
+  position: fixed !important;
+  bottom: 14vh !important;
+  left: 50% !important;
+  inset: auto auto 14vh 50% !important;
+  width: 8px !important;
+  height: 16px !important;
+  background-color: var(--doodle-pink) !important;
+  background-image: none !important;
+  box-shadow:
+    0 8px 0 0 color-mix(in srgb, var(--doodle-pink) 65%, transparent),
+    0 16px 0 0 color-mix(in srgb, var(--doodle-pink) 35%, transparent),
+    0 24px 0 0 color-mix(in srgb, var(--doodle-pink) 15%, transparent) !important;
+  pointer-events: none !important;
+  z-index: 2147483644 !important;
+  animation: doodle-packet var(--doodle-t-send) var(--doodle-ease-out) 1 both !important;
+}
+
+@keyframes doodle-packet {
+  0%   { bottom: 14vh; opacity: 1; }
+  80%  { opacity: 1; }
+  100% { bottom: 86vh; opacity: 0; }
+}
+
+/* 输入框发送回弹 */
+html.px-sending [class~="p-px"][class~="bg-card-border"] {
+  animation: doodle-recoil 120ms var(--doodle-ease-snap) 1;
+}
+
+@keyframes doodle-recoil {
+  50% { transform: translateY(2px); }
+}
+
+/* 11.6 AI 流式输出打字机光标 */
+html.px-streaming .relative.flex.flex-col.gap-y-3::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  background: var(--doodle-pink);
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: doodle-caret 0.8s steps(2, end) infinite;
+  pointer-events: none;
+}
+
+@keyframes doodle-caret {
+  50% { opacity: 0; }
+}
+
+/* 11.7 复制成功手绘对勾 */
+.px-copied {
+  position: relative;
+}
+
+.px-copied > svg {
+  opacity: 0 !important;
+}
+
+.px-copied::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 8px;
+  margin: -5px 0 0 -2px;
+  border: solid var(--doodle-lime, #a3e635);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  animation: doodle-check 160ms var(--doodle-ease-snap) 1;
+  pointer-events: none;
+}
+
+@keyframes doodle-check {
+  from { opacity: 0; transform: rotate(45deg) translateY(-2px); }
+  to   { opacity: 1; transform: rotate(45deg) translateY(0); }
+}
+
+/* ============================================================
+   12. 手绘草稿本方格坐标网格背景 (Sketchbook Draft Grid Canvas)
+   ------------------------------------------------------------
+   设计特征：
+     - 亮色模式（素描纸）：在白色/米纸背景上渲染清晰温和的浅灰色 20×20px 方格线条（rgba(0,0,0,0.065)）
+     - 暗色模式（黑板）：在深炭黑背景上渲染低调温和的深灰 20×20px 方格线条（rgba(255,255,255,0.055)）
+     - 应用于所有底层工作区、侧边栏、代码编辑器与会话主背景
+     - 按钮、输入框、下拉菜单与弹窗内部保持纯色底，清爽整洁
+   ============================================================ */
+:root {
+  --doodle-grid: rgba(255, 255, 255, 0.08);
+}
+
+body.theme-light,
+html:has(body.theme-light) {
+  --doodle-grid: rgba(0, 0, 0, 0.09);
+}
+
+/* 手绘草稿本方格坐标网格背景：铺设在最外层 body 及底层视口容器上，弹窗与卡片内部保持纯色 */
+body,
+.bg-background:not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([class*="bg-card"]),
+[class*="bg-background"]:not([role="dialog"]):not([role="menu"]):not([role="listbox"]):not([class*="bg-card"]) {
+  background-image:
+    linear-gradient(to right, var(--doodle-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--doodle-grid) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+}
+
+/* ============================================================
+   12.1 弹窗与组件纯净化 (Clean Modal Sheets)
+   确保所有弹窗、卡片面板和按钮控件都不包含网格，呈现为干干净净的一整张“纯色纸张”
+   ============================================================ */
+/* 1. 净化弹窗、下拉菜单、卡片：整块面板使用纯净的纯色底，彻底隔绝网格干扰（精确排除 bg-card-border） */
+[role="dialog"],
+[role="alertdialog"],
+[role="menu"],
+[role="listbox"],
+[role="tooltip"],
+[class~="bg-card"],
+[class*="bg-card"]:not([class*="bg-card-border"]),
+/* 强制清除弹窗内部可能自带 bg-background 类名的子面板，防止网格复燃 */
+[role="dialog"] [class*="bg-background"],
+[role="dialog"] [class*="bg-content"] {
+  background-image: none !important;
+  background-color: var(--card) !important;
+}
+
+/* 2. 净化按钮与小组件 */
+button,
+[role="button"],
+input,
+textarea,
+[class*="bg-primary"],
+[class*="bg-secondary"] {
+  background-image: none !important;
+}
+
+/* 彻底禁用旧的 html::after 浮层，杜绝任何线条遮挡字符 */
+html::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* ============================================================
+   13. 手绘指针画布与拖尾引擎 (Signature Doodle Cursor & Canvas)
+   ------------------------------------------------------------
+   由 patch/pixelTheme.js 中的指针与粒子引擎驱动：
+     - 固定定位于视口（position: fixed; inset: 0; width: 100vw; height: 100vh;）
+     - 杜绝画布进入文档流导致页面被顶开/右侧空白布局坍塌
+   ============================================================ */
+html[data-px-cursor="on"],
+html[data-px-cursor="on"] * {
+  cursor: none !important;
+}
+
+html[data-px-cursor="off"] #px-cursor {
+  display: none !important;
+}
+
+#px-cursor {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 2147483646 !important;
+}
+
+/* 顶栏拖拽区与菜单缝隙修正（防止系统箭头与像素指针冲突） */
+[style*="app-region: drag"] > .relative,
+[style*="app-region:drag"] > .relative {
+  align-self: stretch !important;
+  margin-right: -4px !important;
+  padding-right: 4px !important;
+}
+
+[style*="app-region: drag"] > .relative > button,
+[style*="app-region:drag"] > .relative > button {
+  height: 100% !important;
+}
+
+[style*="app-region: drag"] > .relative > [class*="absolute"],
+[style*="app-region:drag"] > .relative > [class*="absolute"] {
+  height: auto !important;
+}
+
+[style*="app-region: drag"] > .relative:first-child,
+[style*="app-region:drag"] > .relative:first-child {
+  margin-left: -8px !important;
+  padding-left: 8px !important;
+}
+
+/* 指针与拖尾配色 Token（必须挂载在 html 级供注入器读取） */
+html[data-px-cursor] {
+  --px-cursor-trail:  var(--doodle-pink);
+  --px-cursor-head:   var(--doodle-pink);
+  --px-cursor-edge:   var(--doodle-charcoal-0);
+  --px-cursor-alpha:  0.65;
+  --px-cursor-radius: 0;
+}
+
+html[data-px-cursor]:has(body.theme-light) {
+  --px-cursor-trail:  var(--doodle-ink);
+  --px-cursor-head:   var(--doodle-pink);
+  --px-cursor-edge:   var(--doodle-paper-0);
+  --px-cursor-alpha:  0.55;
+  --px-cursor-radius: 0;
+}
+
+/* ============================================================
+   14. 选区与基础高亮 (Selection & Highlighting)
+   ============================================================ */
+::selection {
+  background: var(--doodle-pink-dim);
+  color: var(--doodle-pink);
+}
+
+body.theme-light ::selection {
+  background: rgba(255, 46, 147, 0.25);
+  color: var(--doodle-ink);
+}
+
+/* ============================================================
+   15. 尊重系统的「减少动态效果」(Reduced Motion)
+   （已移至全文件最末尾 Section 24，确保特异性与声明顺序绝对生效）
+   ============================================================ */
+
+/* ============================================================
+   16. 视口基础保障 (Viewport Safety)
+   ============================================================ */
+html,
+body {
+  overflow: hidden !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+
+/* ============================================================
+   17. 消除所有网格上的脏污渐变与阴影 (Eliminate Smudged Gradients & Masks)
+   ============================================================ */
+/* 1. 消除聊天列表底部、输入框顶部的渐变暗角遮罩（精准类名定位，避免昂贵的 [style*] 子串匹配） */
+/* 1. 消除聊天列表底部、输入框顶部的渐变暗角遮罩（精确排除用户输入框按钮容器） */
+.absolute.bottom-0.inset-x-4.pointer-events-none,
+[class*="bottom-0"][class*="pointer-events-none"]:not([class*="user-input-buttons"]) {
+  display: none !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+/* 2. 消除用户/AI置顶消息下方的伪元素渐变黑影（Tailwind after:bg-gradient-to-b） */
+[class*="after:bg-gradient-to-b"]::after,
+[class*="after:from-background"]::after,
+[class*="sticky"][class*="after:absolute"]::after {
+  display: none !important;
+  content: none !important;
+  background-image: none !important;
+}
+
+/* 3. 消除文本溢出蒙版（mask-image）在网格上造成的半透明发灰/发白脏污感 */
+.flex-1.p-0\.5.max-h-\[10vh\],
+[data-testid="conversation-list-sidebar"] {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* 4. 消除所有通配的渐变类名 */
+[class*="bg-gradient-to-t"],
+[class*="bg-gradient-to-b"],
+[class*="from-background"],
+[class*="to-transparent"] {
+  background-image: none !important;
+}
+
+/* ============================================================================
+   TOP SYSTEM MENU BAR & DROPDOWN MENUS (顶部系统菜单栏与下拉菜单 - 漫画风)
+   ============================================================================ */
+
+/* 1. 顶部菜单项按钮：Antigravity / 文件 / 视图 / 窗口 */
+[data-testid="title-menu-bar"] button:not([data-testid="title-menu-bar-option"]) {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  border-radius: 0 !important;
+  padding: 3px 10px !important;
+  height: 24px !important;
+  color: var(--foreground) !important;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease, box-shadow 120ms ease !important;
+}
+
+[data-testid="title-menu-bar"] button:not([data-testid="title-menu-bar-option"]):hover,
+[data-testid="title-menu-bar"] button:not([data-testid="title-menu-bar-option"]):focus-visible {
+  background-color: var(--doodle-pink) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #111113 !important;
+  box-shadow: 2px 2px 0 #111113 !important;
+  transform: translate(-1px, -1px) !important;
+}
+
+/* 2. 顶部下拉菜单容器（分镜便签框） */
+[data-testid="title-menu-bar"] div[class*="min-w-"],
+div.border-menu-border,
+[data-testid="title-menu-bar"] div[class*="z-[8000]"] {
+  border-radius: 0 !important;
+  border: 2px solid #111113 !important;
+  border-top: 4px solid var(--doodle-pink) !important;
+  box-shadow: 4px 4px 0 rgba(17, 17, 19, 0.35) !important;
+  background-color: #FFFFFF !important;
+  padding: 4px 0 !important;
+}
+
+body:not(.theme-light) [data-testid="title-menu-bar"] div[class*="min-w-"],
+body:not(.theme-light) div.border-menu-border,
+body:not(.theme-light) [data-testid="title-menu-bar"] div[class*="z-[8000]"] {
+  border-color: #FFFFFF !important;
+  border-top: 4px solid var(--doodle-pink) !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #1A231C !important;
+}
+
+/* 3. 下拉菜单子项 */
+[data-testid="title-menu-bar-option"] {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: var(--foreground) !important;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease !important;
+}
+
+body.theme-light [data-testid="title-menu-bar-option"] {
+  color: #111113 !important;
+}
+
+[data-testid="title-menu-bar-option"]:hover,
+[data-testid="title-menu-bar-option"]:focus,
+[data-testid="title-menu-bar-option"][data-highlighted] {
+  background-color: var(--doodle-pink) !important;
+  color: #FFFFFF !important;
+  transform: translateX(3px) !important;
+}
+
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted] * {
+  color: #FFFFFF !important;
+}
+
+/* 分割线 */
+[data-testid="title-menu-bar"] hr,
+[data-testid="title-menu-bar"] div[class*="border-t"],
+[data-testid="title-menu-bar"] div[class*="h-px"] {
+  border-color: rgba(17, 17, 19, 0.2) !important;
+  margin: 4px 0 !important;
+}
+
+/* ============================================================
+   17. 设置面板分段控件选中态与漫画粉强化 (Segmented Controls & Active State)
+   ============================================================ */
+
+div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"],
+div[class*="rounded-xl"][class*="border-border"],
+[role="radiogroup"],
+[role="group"]:has(button[aria-pressed]),
+[role="group"]:has(button[data-pressed]) {
+  border: 1.5px solid #000000 !important;
+  border-radius: 4px !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3) !important;
+  padding: 2px !important;
+}
+
+body.theme-light div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"],
+body.theme-light div[class*="rounded-xl"][class*="border-border"] {
+  background-color: #ECECEE !important;
+  border-color: #000000 !important;
+}
+
+body:not(.theme-light) div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"],
+body:not(.theme-light) div[class*="rounded-xl"][class*="border-border"] {
+  background-color: #141418 !important;
+  border-color: #FFFFFF !important;
+}
+
+div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"] button:not([data-pressed]):not([aria-pressed="true"]),
+button[aria-pressed="false"],
+button[aria-selected="false"] {
+  border-radius: 3px !important;
+  border: none !important;
+  box-shadow: none !important;
+  transition: all 120ms ease !important;
+}
+
+/* 选中态：漫画原稿荧光粉实体高亮 */
+button[data-pressed],
+button[aria-pressed="true"],
+button[data-state="on"],
+button[aria-selected="true"],
+div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"] button[data-pressed],
+div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"] button[aria-pressed="true"] {
+  background-color: var(--doodle-pink) !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #000000 !important;
+  border-radius: 3px !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+  font-weight: 700 !important;
+  transform: translateY(-1px) !important;
+}
+
+button[data-pressed]:not([role="combobox"]):not([data-popup-open]):not([aria-haspopup="listbox"]) *,
+button[aria-pressed="true"]:not([role="combobox"]):not([data-popup-open]):not([aria-haspopup="listbox"]) *,
+button[data-state="on"]:not([role="combobox"]):not([data-popup-open]):not([aria-haspopup="listbox"]) *,
+button[aria-selected="true"]:not([role="combobox"]):not([data-popup-open]):not([aria-haspopup="listbox"]) * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+button[role="combobox"],
+button[role="combobox"] * {
+  color: var(--foreground) !important;
+}
+body.theme-light button[role="combobox"],
+body.theme-light button[role="combobox"] * {
+  color: #111113 !important;
+}
+
+/* ============================================================
+   18. 全局操作按钮与交互卡片禁用态高对比度修复 (Submit / Skip / Action Buttons)
+   ============================================================ */
+
+button[type="submit"]:not(:disabled),
+button[class*="bg-primary"]:not(:disabled),
+button[class*="bg-primary"]:not([disabled]):not([aria-disabled="true"]),
+[data-testid="send-button"]:not(:disabled),
+button[data-testid="send-button"]:not(:disabled) {
+  background-color: var(--doodle-pink) !important;
+  color: #FFFFFF !important;
+  border: 2px solid #000000 !important;
+  border-radius: 4px !important;
+  box-shadow: 3px 3px 0 #000000 !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+}
+
+button[type="submit"]:not(:disabled) *,
+button[class*="bg-primary"]:not(:disabled) *,
+[data-testid="send-button"]:not(:disabled) *,
+button[data-testid="send-button"]:not(:disabled) * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+body.theme-light button[type="submit"]:not(:disabled),
+body.theme-light button[class*="bg-primary"]:not(:disabled),
+body.theme-light button[class*="bg-primary"]:not([disabled]):not([aria-disabled="true"]),
+body.theme-light [data-testid="send-button"]:not(:disabled),
+body.theme-light button[data-testid="send-button"]:not(:disabled) {
+  color: #121214 !important;
+}
+
+body.theme-light button[type="submit"]:not(:disabled) *,
+body.theme-light button[class*="bg-primary"]:not(:disabled) *,
+body.theme-light [data-testid="send-button"]:not(:disabled) *,
+body.theme-light button[data-testid="send-button"]:not(:disabled) * {
+  color: #121214 !important;
+  fill: #121214 !important;
+}
+
+[data-testid="send-button"]:disabled,
+button[data-testid="send-button"]:disabled {
+  background-color: #71717A !important;
+  border: 1px solid transparent !important;
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+button[disabled],
+button[class*="disabled:opacity-50"]:disabled {
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+body.theme-light button:disabled,
+body.theme-light [role="button"][aria-disabled="true"],
+body.theme-light button[disabled],
+body.theme-light button[class*="disabled:opacity-50"]:disabled {
+  background-color: #E4E4E8 !important;
+  color: #71717A !important;
+  border: 1.5px solid #D1D1D6 !important;
+}
+
+body.theme-light button:disabled *,
+body.theme-light [role="button"][aria-disabled="true"] *,
+body.theme-light button[disabled] * {
+  color: #71717A !important;
+  fill: #71717A !important;
+}
+
+body:not(.theme-light) button:disabled,
+body:not(.theme-light) [role="button"][aria-disabled="true"],
+body:not(.theme-light) button[disabled],
+body:not(.theme-light) button[class*="disabled:opacity-50"]:disabled {
+  background-color: #27272A !important;
+  color: #A1A1AA !important;
+  border: 1.5px solid #3F3F46 !important;
+}
+
+body:not(.theme-light) button:disabled *,
+body:not(.theme-light) [role="button"][aria-disabled="true"] *,
+body:not(.theme-light) button[disabled] * {
+  color: #A1A1AA !important;
+  fill: #A1A1AA !important;
+}
+
+body.theme-light button:not([class*="bg-primary"]):not(:disabled) {
+  color: #111113 !important;
+}
+
+/* ============================================================
+   19. 全站菜单与选择框进出场动效统一（全量严格对齐图四）
+   ============================================================ */
+
+@keyframes doodle-menu-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes doodle-menu-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* 图二模型选择框、图三右键上下文菜单、图四顶栏系统菜单全量统一动效 (解耦弹窗选择器) */
+.px-menu-content {
+  animation: doodle-menu-enter 120ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  transform-origin: top left !important;
+}
+
+/* 退出动效 (收敛限定至菜单容器，解除对手风琴、标签页与弹窗的误伤) */
+[role="menu"][data-state="closed"],
+[role="listbox"][data-state="closed"],
+[data-radix-menu-content][data-state="closed"],
+[role="menu"][data-state="exiting"],
+[role="listbox"][data-state="exiting"] {
+  animation: doodle-menu-exit 80ms ease-out forwards !important;
+}
+
+/* ============================================================
+   20. 底部输入栏模型选择器按钮高对比度加固 (Fix Model Trigger Readability)
+   ============================================================ */
+[data-testid="model-selector-trigger"] {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 12px !important;
+  border: 1px solid transparent !important;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease !important;
+}
+
+body.theme-light [data-testid="model-selector-trigger"],
+body.theme-light [data-testid="model-selector-trigger"] *,
+body.theme-light [data-testid="model-selector-trigger"] span,
+body.theme-light [data-testid="model-selector-trigger"] .text-secondary-foreground {
+  color: #111113 !important;
+  fill: #111113 !important;
+}
+
+body.theme-light [data-testid="model-selector-trigger"]:hover,
+body.theme-light [data-testid="model-selector-trigger"]:focus-visible,
+body.theme-light [data-testid="model-selector-trigger"][aria-expanded="true"] {
+  background-color: #EFEFF4 !important;
+  border-color: #D1D1D6 !important;
+}
+
+body:not(.theme-light) [data-testid="model-selector-trigger"],
+body:not(.theme-light) [data-testid="model-selector-trigger"] *,
+body:not(.theme-light) [data-testid="model-selector-trigger"] span,
+body:not(.theme-light) [data-testid="model-selector-trigger"] .text-secondary-foreground {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+body:not(.theme-light) [data-testid="model-selector-trigger"]:hover,
+body:not(.theme-light) [data-testid="model-selector-trigger"]:focus-visible,
+body:not(.theme-light) [data-testid="model-selector-trigger"][aria-expanded="true"] {
+  background-color: #27272A !important;
+  border-color: #3F3F46 !important;
+}
+
+/* ============================================================
+   21. 144Hz 极清高刷硬件加速与布局边界隔离 (High-Performance Hardware Compositing)
+   ============================================================ */
+
+/* 1. 左右侧边栏与辅助栏容器绝对隔离：防止外层宽度 500ms 折叠/展开时对其子项反复触发重排 */
+div.flex > div.h-full.w-full[style*="position: absolute"],
+[data-testid="conversation-list-sidebar"],
+div.flex[style*="transition: width 500ms"],
+div[style*="--aux-pane-width"],
+[data-testid*="sidebar"],
+[data-testid*="aux"] {
+  transform: translateZ(0) !important;
+  contain: layout style !important;
+}
+
+/* 2. 移除列表节点挂载时的全量并发动画风暴，平抑会话切换 35ms 顿挫 */
+[data-testid="conversation-list-sidebar"] .w-full.group {
+  animation: none !important;
+}
+
+[data-testid="conversation-row-sidebar"] {
+  content-visibility: auto !important;
+  contain-intrinsic-size: 0 38px !important;
+}
+
+/* 3. 背景点阵显存纹理固化（滚动时零重绘） */
+body {
+  background-attachment: fixed !important;
+}
+
+/* 4. 会话流式加载器与旋转指示器 100% GPU Compositor 独立通道 */
+svg[class*="animate-spin"],
+[class*="animate-spin"],
+svg[style*="animation: spin"],
+svg[style*="animation:spin"] {
+  will-change: transform !important;
+  transform: translateZ(0) !important;
+  contain: layout paint !important;
+}
+
+/* 5. 消息气泡与代码块布局边界固化 */
+[class*="group/user-input-step"],
+pre,
+code {
+  contain: layout style !important;
+}
+
+/* ============================================================
+   22. 四大主题专属全景背景特征点（专属暗纹 + 画布四角漫画原稿规线系统）
+   ============================================================ */
+
+/* 1. 专业 B4 漫画原稿纸中央套印十字准星与安全框线暗纹 (4%~6% 极细铅笔规线) */
+body::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.06 !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-size: 640px 420px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420' fill='none'%3E%3C!-- Outer Safety Box --%3E%3Crect x='40' y='30' width='560' height='360' stroke='%23111113' stroke-width='1.5' stroke-dasharray='8 4'/%3E%3C!-- Inner Manga Live Area --%3E%3Crect x='80' y='60' width='480' height='300' stroke='%23111113' stroke-width='1.5'/%3E%3C!-- Center Registration Crosshair --%3E%3Ccircle cx='320' cy='210' r='18' stroke='%23111113' stroke-width='1'/%3E%3Cline x1='290' y1='210' x2='350' y2='210' stroke='%23111113' stroke-width='1.5'/%3E%3Cline x1='320' y1='180' x2='320' y2='240' stroke='%23111113' stroke-width='1.5'/%3E%3C!-- Millimeter Tick Marks --%3E%3Cline x1='80' y1='52' x2='80' y2='60' stroke='%23111113' stroke-width='1'/%3E%3Cline x1='160' y1='52' x2='160' y2='60' stroke='%23111113' stroke-width='1'/%3E%3Cline x1='240' y1='52' x2='240' y2='60' stroke='%23111113' stroke-width='1'/%3E%3Cline x1='320' y1='52' x2='320' y2='60' stroke='%23111113' stroke-width='1'/%3E%3Cline x1='400' y1='52' x2='400' y2='60' stroke='%23111113' stroke-width='1'/%3E%3Cline x1='480' y1='52' x2='480' y2='60' stroke='%23111113' stroke-width='1'/%3E%3Cline x1='560' y1='52' x2='560' y2='60' stroke='%23111113' stroke-width='1'/%3E%3Ctext x='320' y='382' font-family='monospace,sans-serif' font-size='10' letter-spacing='3' fill='%23111113' text-anchor='middle'%3E★ B4 MANUSCRIPT SHEET // 180mm x 270mm ★%3C/text%3E%3C/svg%3E") !important;
+}
+
+body:not(.theme-light)::before {
+  opacity: 0.08 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 420' fill='none'%3E%3Crect x='40' y='30' width='560' height='360' stroke='%23FFFFFF' stroke-width='1.5' stroke-dasharray='8 4'/%3E%3Crect x='80' y='60' width='480' height='300' stroke='%23FFFFFF' stroke-width='1.5'/%3E%3Ccircle cx='320' cy='210' r='18' stroke='%23FFFFFF' stroke-width='1'/%3E%3Cline x1='290' y1='210' x2='350' y2='210' stroke='%23FFFFFF' stroke-width='1.5'/%3E%3Cline x1='320' y1='180' x2='320' y2='240' stroke='%23FFFFFF' stroke-width='1.5'/%3E%3Cline x1='80' y1='52' x2='80' y2='60' stroke='%23FFFFFF' stroke-width='1'/%3E%3Cline x1='160' y1='52' x2='160' y2='60' stroke='%23FFFFFF' stroke-width='1'/%3E%3Cline x1='240' y1='52' x2='240' y2='60' stroke='%23FFFFFF' stroke-width='1'/%3E%3Cline x1='320' y1='52' x2='320' y2='60' stroke='%23FFFFFF' stroke-width='1'/%3E%3Cline x1='400' y1='52' x2='400' y2='60' stroke='%23FFFFFF' stroke-width='1'/%3E%3Cline x1='480' y1='52' x2='480' y2='60' stroke='%23FFFFFF' stroke-width='1'/%3E%3Cline x1='560' y1='52' x2='560' y2='60' stroke='%23FFFFFF' stroke-width='1'/%3E%3Ctext x='320' y='382' font-family='monospace,sans-serif' font-size='10' letter-spacing='3' fill='%23FFFFFF' text-anchor='middle'%3E★ B4 MANUSCRIPT SHEET // 180mm x 270mm ★%3C/text%3E%3C/svg%3E") !important;
+}
+
+/* 2. 印刷裁切与对位标记系统 (Manga Crop & Registration Marks) */
+html:not(.px-sending) body::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 12px !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.14 !important;
+  background-position: top left, top right, bottom left, bottom right !important;
+  background-repeat: no-repeat !important;
+  background-size: 160px 48px, 90px 48px, 160px 48px, 170px 48px !important;
+  background-image:
+    /* Top-Left: L-Crop mark + Title */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Cline x1='0' y1='0' x2='60' y2='0' stroke='%23111113' stroke-width='2'/%3E%3Cline x1='0' y1='0' x2='0' y2='40' stroke='%23111113' stroke-width='2'/%3E%3Cline x1='8' y1='8' x2='8' y2='30' stroke='%23111113' stroke-width='1'/%3E%3Cline x1='8' y1='8' x2='40' y2='8' stroke='%23111113' stroke-width='1'/%3E%3Ctext x='16' y='24' font-family='monospace,sans-serif' font-size='9' font-weight='bold' fill='%23111113'%3ETITLE: ANTIGRAVITY%3C/text%3E%3C/svg%3E"),
+    /* Top-Right: Scale 100% */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='48' viewBox='0 0 90 48'%3E%3Cline x1='30' y1='0' x2='90' y2='0' stroke='%23111113' stroke-width='2'/%3E%3Cline x1='90' y1='0' x2='90' y2='40' stroke='%23111113' stroke-width='2'/%3E%3Ctext x='15' y='18' font-family='monospace,sans-serif' font-size='9' fill='%23111113'%3ESCALE: 100%25%3C/text%3E%3C/svg%3E"),
+    /* Bottom-Left: Non-repro blue */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Cline x1='0' y1='48' x2='60' y2='48' stroke='%23111113' stroke-width='2'/%3E%3Cline x1='0' y1='8' x2='0' y2='48' stroke='%23111113' stroke-width='2'/%3E%3Ctext x='12' y='40' font-family='monospace,sans-serif' font-size='9' fill='%23111113'%3E[ NON-REPRO BLUE // D-PEN ]%3C/text%3E%3C/svg%3E"),
+    /* Bottom-Right: Page number stamp */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='48' viewBox='0 0 170 48'%3E%3Cline x1='110' y1='48' x2='170' y2='48' stroke='%23111113' stroke-width='2'/%3E%3Cline x1='170' y1='8' x2='170' y2='48' stroke='%23111113' stroke-width='2'/%3E%3Ctext x='20' y='40' font-family='monospace,sans-serif' font-size='9' font-weight='bold' fill='%23FF3366'%3EPAGE: [ #01 ] // DRAFT VOL.1%3C/text%3E%3C/svg%3E") !important;
+}
+
+html:not(.px-sending) body:not(.theme-light)::after {
+  opacity: 0.16 !important;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Cline x1='0' y1='0' x2='60' y2='0' stroke='%23FFFFFF' stroke-width='2'/%3E%3Cline x1='0' y1='0' x2='0' y2='40' stroke='%23FFFFFF' stroke-width='2'/%3E%3Cline x1='8' y1='8' x2='8' y2='30' stroke='%23FFFFFF' stroke-width='1'/%3E%3Cline x1='8' y1='8' x2='40' y2='8' stroke='%23FFFFFF' stroke-width='1'/%3E%3Ctext x='16' y='24' font-family='monospace,sans-serif' font-size='9' font-weight='bold' fill='%23FFFFFF'%3ETITLE: ANTIGRAVITY%3C/text%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='48' viewBox='0 0 90 48'%3E%3Cline x1='30' y1='0' x2='90' y2='0' stroke='%23FFFFFF' stroke-width='2'/%3E%3Cline x1='90' y1='0' x2='90' y2='40' stroke='%23FFFFFF' stroke-width='2'/%3E%3Ctext x='15' y='18' font-family='monospace,sans-serif' font-size='9' fill='%23FFFFFF'%3ESCALE: 100%25%3C/text%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Cline x1='0' y1='48' x2='60' y2='48' stroke='%23FFFFFF' stroke-width='2'/%3E%3Cline x1='0' y1='8' x2='0' y2='48' stroke='%23FFFFFF' stroke-width='2'/%3E%3Ctext x='12' y='40' font-family='monospace,sans-serif' font-size='9' fill='%23FFFFFF'%3E[ NON-REPRO BLUE // D-PEN ]%3C/text%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='48' viewBox='0 0 170 48'%3E%3Cline x1='110' y1='48' x2='170' y2='48' stroke='%23FFFFFF' stroke-width='2'/%3E%3Cline x1='170' y1='8' x2='170' y2='48' stroke='%23FFFFFF' stroke-width='2'/%3E%3Ctext x='20' y='40' font-family='monospace,sans-serif' font-size='9' font-weight='bold' fill='%23FF3366'%3EPAGE: [ #01 ] // DRAFT VOL.1%3C/text%3E%3C/svg%3E") !important;
+}
+
+/* ============================================================
+   23. 全局确认弹窗与提示对话框（Confirm Modal / AlertDialog）纯线稿漫画风美化
+   针对「确认撤销」「删除确认」「外部运行命令」等系统弹窗进行漫画原稿纸与分镜便签重构
+   ============================================================ */
+
+/* 1. 漫画网点浅灰透光背景遮罩（GPU 独立合成层 + 零重绘满帧优化 + 超级层级） */
+div[class*="animate-backdropFadeIn"],
+[data-backdrop] {
+  background-color: rgba(240, 240, 245, 0.82) !important;
+  will-change: opacity !important;
+  transform: translateZ(0) !important;
+  contain: strict !important;
+  z-index: 2147483640 !important;
+}
+
+body:not(.theme-light) div[class*="animate-backdropFadeIn"],
+body:not(.theme-light) [data-backdrop] {
+  background-color: rgba(18, 18, 22, 0.82) !important;
+}
+
+/* /* 2. 全局弹窗层级与遮罩动效平滑修复 (恢复 150ms 遮罩自然淡入) */
+@keyframes modal-backdrop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+div.animate-modalFadeIn,
+div[class*="settings-modal-backdrop"] {
+  animation: modal-backdrop-fade 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+div.animate-modalFadeIn:has([role="dialog"]),
+div.animate-modalFadeIn:has([role="alertdialog"]),
+[role="alertdialog"],
+[role="dialog"]:not(.settings-modal-container) {
+  z-index: 2147483645 !important;
+}
+
+/* 3. 弹窗本体：原稿纸分镜硬盒（仅对确认弹窗生效，严格排除设置容器） */
+html body [role="alertdialog"].animate-modalScaleIn,
+html body [role="dialog"]:not(.settings-modal-container).animate-modalScaleIn,
+html body div.bg-card:not(.settings-modal-container).animate-modalScaleIn {
+  z-index: 2147483645 !important;
+  background-color: #FFFFFF !important;
+  border: 2.5px solid #111113 !important;
+  border-radius: 4px !important;
+  box-shadow: 6px 6px 0 #111113 !important;
+  padding: 22px 24px !important;
+  position: relative !important;
+  will-change: transform, opacity !important;
+  transform: translateZ(0) !important;
+  contain: layout style !important;
+  animation: doodle-modal-pop-in 280ms cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards !important;
+  transform-origin: center center !important;
+}
+
+body:not(.theme-light) [role="alertdialog"].animate-modalScaleIn,
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container).animate-modalScaleIn,
+body:not(.theme-light) div.bg-card:not(.settings-modal-container).animate-modalScaleIn {
+  background-color: #1C1C1E !important;
+  border-color: #3F3F46 !important;
+  box-shadow: 6px 6px 0 #000000 !important;
+}
+
+@keyframes doodle-modal-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translate3d(0, 30px, 0);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.02) translate3d(0, -3px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes doodle-modal-pop-out {
+  0% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translate3d(0, 20px, 0);
+  }
+}
+
+/* 1. 提拉全局弹窗遮罩与对话框本体至最高安全区 */
+div.settings-modal-backdrop,
+div.animate-modalFadeIn,
+[role="dialog"],
+[role="alertdialog"],
+.settings-modal-container {
+  z-index: 2147483640 !important;
+}
+
+/* 2. 规范常规态 Tooltip 层级，低于弹窗但高于普通浮层 */
+[role="tooltip"],
+.react-tooltip {
+  z-index: 2147483620 !important;
+}
+
+/* 3. 弹窗打开时的零开销纯 class 抑制屏障（严格剔除全局 body:has()，彻底避免 4.7x 流式样式重算） */
+html.px-modal-open [role="tooltip"],
+html.px-modal-open .react-tooltip {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* 4. 确认弹窗头部标题栏：原稿标题「 确认撤销 」带漫画粉红括号 */
+[role="alertdialog"] h2,
+[role="dialog"]:not(.settings-modal-container) h2,
+[role="dialog"]:not(.settings-modal-container) [class*="text-md"][class*="font-medium"] {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: #111113 !important;
+  letter-spacing: 0.5px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+body:not(.theme-light) [role="alertdialog"] h2,
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) h2,
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) [class*="text-md"][class*="font-medium"] {
+  color: #FFFFFF !important;
+}
+
+[role="alertdialog"] h2::before,
+[role="dialog"]:not(.settings-modal-container) h2::before,
+[role="dialog"]:not(.settings-modal-container) [class*="text-md"][class*="font-medium"]::before {
+  content: "「 " !important;
+  color: #FF3366 !important;
+  font-weight: 900 !important;
+}
+
+[role="alertdialog"] h2::after,
+[role="dialog"]:not(.settings-modal-container) h2::after,
+[role="dialog"]:not(.settings-modal-container) [class*="text-md"][class*="font-medium"]::after {
+  content: " 」" !important;
+  color: #FF3366 !important;
+  font-weight: 900 !important;
+}
+
+/* 5. 确认弹窗关闭按钮：圆形手绘黑圈悬停跳粉 */
+[role="dialog"]:not(.settings-modal-container) div.mb-4 button,
+[role="dialog"]:not(.settings-modal-container) button[aria-label="关闭"],
+[role="dialog"]:not(.settings-modal-container) button[aria-label="Close"],
+[role="alertdialog"] div.mb-4 button,
+[role="alertdialog"] button[aria-label="关闭"],
+[role="alertdialog"] button[aria-label="Close"] {
+  border: 2px solid #111113 !important;
+  border-style: solid !important;
+  border-width: 2px !important;
+  border-color: #111113 !important;
+  border-radius: 50% !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  background-color: transparent !important;
+  color: #111113 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  transition: all 120ms ease !important;
+}
+
+[role="dialog"]:not(.settings-modal-container) div.mb-4 button:hover,
+[role="dialog"]:not(.settings-modal-container) button[aria-label="关闭"]:hover,
+[role="dialog"]:not(.settings-modal-container) button[aria-label="Close"]:hover,
+[role="alertdialog"] div.mb-4 button:hover,
+[role="alertdialog"] button[aria-label="关闭"]:hover,
+[role="alertdialog"] button[aria-label="Close"]:hover {
+  background-color: #FF3366 !important;
+  border-color: #FF3366 !important;
+  color: #FFFFFF !important;
+  transform: rotate(90deg) !important;
+}
+
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) div.mb-4 button,
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) button[aria-label="关闭"],
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) button[aria-label="Close"],
+body:not(.theme-light) [role="alertdialog"] div.mb-4 button,
+body:not(.theme-light) [role="alertdialog"] button[aria-label="关闭"],
+body:not(.theme-light) [role="alertdialog"] button[aria-label="Close"] {
+  border-color: #71717A !important;
+  color: #D4D4D8 !important;
+}
+
+/* 6. 确认弹窗正文提示文本卡片（分镜虚线便签） */
+[role="dialog"]:not(.settings-modal-container) p.text-muted-foreground,
+[role="alertdialog"] p.text-muted-foreground {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 13.5px !important;
+  line-height: 1.6 !important;
+  color: #27272A !important;
+  background: #FAFAFC !important;
+  border: 1.5px dashed #111113 !important;
+  padding: 12px 14px !important;
+  border-radius: 3px !important;
+  margin: 10px 0 16px 0 !important;
+}
+
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) p.text-muted-foreground,
+body:not(.theme-light) [role="alertdialog"] p.text-muted-foreground {
+  color: #D4D4D8 !important;
+  background: #27272A !important;
+  border-color: #52525B !important;
+}
+
+/* 7. 确认弹窗底部操作按钮条 */
+[role="dialog"]:not(.settings-modal-container) .pt-3,
+[role="alertdialog"] .pt-3 {
+  border-top: 1.5px dashed #E4E4E7 !important;
+  padding-top: 16px !important;
+  margin-top: 8px !important;
+}
+
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) .pt-3,
+body:not(.theme-light) [role="alertdialog"] .pt-3 {
+  border-top-color: #3F3F46 !important;
+}
+
+/* 确认弹窗取消按钮：线稿手绘黑框 */
+[role="dialog"]:not(.settings-modal-container) button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]),
+[role="alertdialog"] button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]) {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  border: 2px solid #111113 !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  color: #111113 !important;
+  padding: 6px 16px !important;
+  box-shadow: 2px 2px 0 #111113 !important;
+  transition: all 120ms ease !important;
+}
+
+[role="dialog"]:not(.settings-modal-container) button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]):hover,
+[role="alertdialog"] button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]):hover {
+  background-color: #F4F4F5 !important;
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0 #111113 !important;
+}
+
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]),
+body:not(.theme-light) [role="alertdialog"] button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]) {
+  border-color: #71717A !important;
+  color: #FFFFFF !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+
+/* 确认弹窗确认按钮：纯黑底色 + 粉印高亮硬投影 */
+[role="dialog"]:not(.settings-modal-container) button[data-autofocus="true"],
+[role="alertdialog"] button[data-autofocus="true"],
+[role="dialog"]:not(.settings-modal-container) button.bg-primary,
+[role="alertdialog"] button.bg-primary {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  background-color: #111113 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #111113 !important;
+  border-radius: 4px !important;
+  padding: 6px 18px !important;
+  box-shadow: 3px 3px 0 #FF3366 !important;
+  transition: all 120ms ease !important;
+}
+
+[role="dialog"]:not(.settings-modal-container) button[data-autofocus="true"]:hover,
+[role="alertdialog"] button[data-autofocus="true"]:hover,
+[role="dialog"]:not(.settings-modal-container) button.bg-primary:hover,
+[role="alertdialog"] button.bg-primary:hover {
+  background-color: #FF3366 !important;
+  border-color: #FF3366 !important;
+  color: #FFFFFF !important;
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 4px 4px 0 #111113 !important;
+}
+
+[role="dialog"]:not(.settings-modal-container) button[data-autofocus="true"]:active,
+[role="alertdialog"] button[data-autofocus="true"]:active,
+[role="dialog"]:not(.settings-modal-container) button.bg-primary:active,
+[role="alertdialog"] button.bg-primary:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0 0 0 #111113 !important;
+}
+
+/* 确认按钮内部符号 */
+[role="dialog"]:not(.settings-modal-container) button[data-autofocus="true"] span,
+[role="alertdialog"] button[data-autofocus="true"] span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 2px !important;
+  padding: 0 4px !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  margin-left: 4px !important;
+}
+
+/* ============================================================
+   8. 设置弹窗核心专有规则体系 (SETTINGS MODAL DEDICATED SUITE)
+   ============================================================ */
+
+/* 8.1 容器隔离：清空误加的 22px 24px padding，漫画弹性 280ms 入场与 160ms 优雅退场 */
+.settings-modal-container {
+  padding: 0 !important;
+  animation: doodle-modal-pop-in 280ms cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards !important;
+  will-change: transform, opacity !important;
+  transform-origin: center center !important;
+}
+
+html.px-modal-closing .settings-modal-container,
+html.px-modal-closing [role="dialog"],
+.settings-modal-container.settings-modal-closing,
+[role="dialog"].settings-modal-closing {
+  animation: doodle-modal-pop-out 160ms cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  pointer-events: none !important;
+}
+
+html.px-modal-closing div.settings-modal-backdrop,
+html.px-modal-closing div.animate-modalFadeIn,
+div.settings-modal-backdrop.settings-modal-closing,
+div.animate-modalFadeIn.settings-modal-closing {
+  opacity: 0 !important;
+  transition: opacity 160ms ease !important;
+  pointer-events: none !important;
+}
+
+/* 8.2 下拉浮层终极层级修复 (根除反向遮挡与露头，确保低于最高指针) */
+#px-cursor {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 2147483647 !important;
+}
+
+[data-radix-popper-content-wrapper],
+div:has(> [role="listbox"]:not(:empty)),
+div[class*="z-[6000]"],
+[role="listbox"]:not(:empty) {
+  z-index: 2147483640 !important;
+  max-height: calc(100vh - 120px) !important;
+}
+
+/* 侧边栏会话项悬停防穿透与实体遮罩（根除图二时间戳重叠） */
+[data-testid="conversation-row-sidebar"] span.truncate {
+  color: var(--foreground) !important;
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+body.theme-light [data-testid="conversation-row-sidebar"] span.truncate {
+  color: #111113 !important;
+}
+
+[data-testid="conversation-row-sidebar"]:hover .group-hover\:invisible,
+[data-testid="conversation-row-sidebar"]:hover [class*="group-hover:invisible"],
+[data-testid="conversation-row-sidebar"]:hover .group-hover\:invisible span,
+[data-testid="conversation-row-sidebar"]:hover [class*="group-hover:invisible"] span {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+[data-testid="conversation-row-sidebar"]:not(:hover) .absolute.top-0.bottom-0.-right-1,
+[data-testid="conversation-list-sidebar"]:not(:hover) .absolute.top-0.bottom-0.-right-1,
+[data-testid="conversation-row-sidebar"] [style*="linear-gradient"],
+[data-testid="conversation-list-sidebar"] [style*="linear-gradient"] {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+[data-testid="conversation-row-sidebar"]:hover .absolute.top-0.bottom-0.-right-1,
+[data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+[data-testid="conversation-list-sidebar"]:hover .absolute.top-0.bottom-0.-right-1 {
+  background-color: var(--doodle-paper-0, #fdfbf7) !important;
+  border-radius: 4px !important;
+  background-image: none !important;
+  padding-left: 6px !important;
+}
+
+body:not(.theme-light) [data-testid="conversation-row-sidebar"]:hover .absolute.top-0.bottom-0.-right-1,
+body:not(.theme-light) [data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+body:not(.theme-light) [data-testid="conversation-list-sidebar"]:hover .absolute.top-0.bottom-0.-right-1 {
+  background-color: var(--doodle-charcoal-2, #202024) !important;
+  border-radius: 4px !important;
+  background-image: none !important;
+  padding-left: 6px !important;
+}
+
+/* 8.3 左侧导航列表 Tab 样式还原与漫画粉高亮底色 */
+.settings-modal-container div.bg-sidebar button,
+.settings-modal-container [class*="bg-sidebar"] button {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+  padding: 6px 12px !important;
+  min-height: 32px !important;
+  width: calc(100% - 16px) !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  background: transparent !important;
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 13px !important;
+  color: #3F3F46 !important;
+  transition: all 120ms ease !important;
+}
+
+.settings-modal-container div.bg-sidebar button:hover,
+.settings-modal-container [class*="bg-sidebar"] button:hover {
+  background-color: rgba(255, 51, 102, 0.08) !important;
+  color: #FF3366 !important;
+}
+
+.settings-modal-container div.bg-sidebar button[class*="bg-sidebar-secondary"],
+.settings-modal-container div.bg-sidebar button[class*="bg-sidebar-accent"],
+.settings-modal-container [class*="bg-sidebar"] button[class*="bg-sidebar-secondary"],
+.settings-modal-container [class*="bg-sidebar"] button[class*="bg-sidebar-accent"],
+.settings-modal-container button[class*="bg-sidebar-secondary"],
+.settings-modal-container button[class*="bg-sidebar-accent"] {
+  background-color: rgba(255, 51, 102, 0.12) !important;
+  color: #FF3366 !important;
+  font-weight: 800 !important;
+  border-left: 3.5px solid #FF3366 !important;
+  border-radius: 0 4px 4px 0 !important;
+}
+
+body:not(.theme-light) .settings-modal-container div.bg-sidebar button,
+body:not(.theme-light) .settings-modal-container [class*="bg-sidebar"] button {
+  color: #A1A1AA !important;
+}
+
+body:not(.theme-light) .settings-modal-container div.bg-sidebar button:hover,
+body:not(.theme-light) .settings-modal-container [class*="bg-sidebar"] button:hover {
+  background-color: rgba(255, 51, 102, 0.18) !important;
+  color: #FFFFFF !important;
+}
+
+body:not(.theme-light) .settings-modal-container div.bg-sidebar button[class*="bg-sidebar-secondary"],
+body:not(.theme-light) .settings-modal-container div.bg-sidebar button[class*="bg-sidebar-accent"],
+body:not(.theme-light) .settings-modal-container [class*="bg-sidebar"] button[class*="bg-sidebar-secondary"],
+body:not(.theme-light) .settings-modal-container [class*="bg-sidebar"] button[class*="bg-sidebar-accent"],
+body:not(.theme-light) .settings-modal-container button[class*="bg-sidebar-secondary"],
+body:not(.theme-light) .settings-modal-container button[class*="bg-sidebar-accent"] {
+  background-color: rgba(255, 51, 102, 0.22) !important;
+  color: #FFFFFF !important;
+  border-left: 3.5px solid #FF3366 !important;
+}
+
+/* 8.4 设置弹窗专有高辨识度下拉选择按钮 (Combobox) */
+.settings-modal-container button[role="combobox"] {
+  background-color: #FFFFFF !important;
+  color: #111113 !important;
+  border: 1.5px solid #111113 !important;
+  border-radius: 4px !important;
+  box-shadow: 2px 2px 0 #111113 !important;
+  min-height: 34px !important;
+  padding: 4px 10px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: all 120ms ease !important;
+}
+
+.settings-modal-container button[role="combobox"]:hover {
+  border-color: #FF3366 !important;
+  box-shadow: 2.5px 2.5px 0 #FF3366 !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="combobox"] {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #52525B !important;
+  border-radius: 4px !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="combobox"]:hover {
+  border-color: #FF3366 !important;
+  box-shadow: 2.5px 2.5px 0 #FF3366 !important;
+}
+
+/* 8.5 设置弹窗专有开关控件 (杜绝隐形空气) */
+.settings-modal-container button[role="switch"] {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 24px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  shrink: 0 !important;
+  cursor: pointer !important;
+  border-radius: 9999px !important;
+  transition: background-color 150ms ease, border-color 150ms ease !important;
+}
+
+.settings-modal-container button[role="switch"][aria-checked="false"] {
+  background-color: #F4F4F5 !important;
+  border: 1.5px solid #A1A1AA !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="switch"][aria-checked="false"] {
+  background-color: #27272A !important;
+  border: 1.5px solid #52525B !important;
+}
+
+.settings-modal-container button[role="switch"][aria-checked="true"] {
+  background-color: #FF3366 !important;
+  border: 1.5px solid #111113 !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="switch"][aria-checked="true"] {
+  background-color: #FF3366 !important;
+  border: 1.5px solid #FF3366 !important;
+}
+
+.settings-modal-container button[role="switch"] span {
+  display: block !important;
+  height: 18px !important;
+  width: 18px !important;
+  border-radius: 9999px !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  transition: transform 150ms ease !important;
+}
+
+/* 8.6 设置弹窗滚动区底部安全留白 (60px) */
+.settings-modal-container .overflow-auto > div:last-child,
+.settings-modal-container .overflow-y-auto > div:last-child {
+  padding-bottom: 60px !important;
+}
+
+/* 8.7 设置弹窗关闭按钮 */
+.settings-modal-container > button[aria-label="关闭"],
+.settings-modal-container > button[aria-label="Close"],
+.settings-modal-container button.top-4.right-4 {
+  border: 2px solid #111113 !important;
+  border-radius: 50% !important;
+  width: 28px !important;
+  height: 28px !important;
+  background-color: transparent !important;
+  color: #111113 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 120ms ease !important;
+}
+
+body:not(.theme-light) .settings-modal-container > button[aria-label="关闭"],
+body:not(.theme-light) .settings-modal-container > button[aria-label="Close"],
+body:not(.theme-light) .settings-modal-container button.top-4.right-4 {
+  border-color: #71717A !important;
+  color: #D4D4D8 !important;
+}
+
+.settings-modal-container > button[aria-label="关闭"]:hover,
+.settings-modal-container > button[aria-label="Close"]:hover,
+.settings-modal-container button.top-4.right-4:hover {
+  background-color: #FF3366 !important;
+  border-color: #FF3366 !important;
+  color: #FFFFFF !important;
+  transform: rotate(90deg) !important;
+}
+
+/* ============================================================================
+   23. 图一/图二/图三/图四 全场景交互精准闭环落地规范 (Interactive Defect Fixes: doodle)
+   ============================================================================ */
+
+/* --- 1. 光标层级绝对置顶与弹窗浮层安全收敛 (彻底解决图一指针被菜单覆盖) --- */
+#px-cursor {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 2147483647 !important;
+}
+
+div.settings-modal-backdrop,
+div.animate-modalFadeIn,
+[role="dialog"],
+[role="alertdialog"],
+.settings-modal-container,
+[data-radix-popper-content-wrapper],
+div[class*="z-[6000]"],
+div[class*="z-[8000]"],
+[role="listbox"]:not(:empty) {
+  z-index: 2147483640 !important;
+}
+
+[role="tooltip"],
+.react-tooltip {
+  z-index: 2147483620 !important;
+}
+
+html.px-modal-open [role="tooltip"],
+html.px-modal-open .react-tooltip {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* --- 2. 模型下拉菜单、子菜单及所有选项项高对比度全覆盖 (解决图一配色奇怪与白字浅底) --- */
+[role="menuitem"],
+[role="menuitemradio"],
+[role="menuitemcheckbox"],
+[role="option"],
+[data-radix-collection-item],
+[class*="select-item"],
+.monaco-menu .action-item {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: var(--foreground) !important;
+  background: transparent !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease, border-color 120ms ease !important;
+}
+
+body.theme-light [role="menuitem"],
+body.theme-light [role="menuitemradio"],
+body.theme-light [role="menuitemcheckbox"],
+body.theme-light [role="option"],
+body.theme-light [data-radix-collection-item],
+body.theme-light [class*="select-item"],
+body.theme-light .monaco-menu .action-item {
+  color: #111113 !important;
+  background-color: transparent !important;
+}
+
+/* 2. 【解决图一与图三】下拉选项未悬停状态：强制纯黑高对比文字，彻底消灭白字浅底 */
+body.theme-light .px-menu-item:not([role="menuitem"]):not([role="menuitemradio"]):not([role="menuitemcheckbox"]):not([data-testid="title-menu-bar-option"]):not(:hover):not([data-highlighted]),
+body.theme-light .px-menu-item:not([role="menuitem"]):not([role="menuitemradio"]):not([role="menuitemcheckbox"]):not([data-testid="title-menu-bar-option"]):not(:hover):not([data-highlighted]) * {
+  color: #111113 !important;
+}
+
+body:not(.theme-light) .px-menu-item:not([role="menuitem"]):not([role="menuitemradio"]):not([role="menuitemcheckbox"]):not([data-testid="title-menu-bar-option"]):not(:hover):not([data-highlighted]),
+body:not(.theme-light) .px-menu-item:not([role="menuitem"]):not([role="menuitemradio"]):not([role="menuitemcheckbox"]):not([data-testid="title-menu-bar-option"]):not(:hover):not([data-highlighted]) * {
+  color: #FFFFFF !important;
+}
+
+/* 下拉选项在已选中态（未悬停时）：漫画粉轻量指示条与微粉底板，保持清晰纯黑字 */
+body.theme-light [role="option"][aria-selected="true"]:not(:hover),
+body.theme-light [role="option"][data-selected]:not(:hover),
+body.theme-light div.data-\[selected\]\:\!bg-secondary[data-selected]:not(:hover) {
+  background-color: rgba(255, 51, 102, 0.08) !important;
+  border-left: 3.5px solid #FF3366 !important;
+  color: #111113 !important;
+}
+body.theme-light [role="option"][aria-selected="true"]:not(:hover) *,
+body.theme-light [role="option"][data-selected]:not(:hover) *,
+body.theme-light div.data-\[selected\]\:\!bg-secondary[data-selected]:not(:hover) * {
+  color: #111113 !important;
+  fill: #111113 !important;
+}
+
+body:not(.theme-light) [role="option"][aria-selected="true"]:not(:hover),
+body:not(.theme-light) [role="option"][data-selected]:not(:hover),
+body:not(.theme-light) div.data-\[selected\]\:\!bg-secondary[data-selected]:not(:hover) {
+  background-color: rgba(255, 51, 102, 0.22) !important;
+  border-left: 3.5px solid #FF3366 !important;
+  color: #FFFFFF !important;
+}
+body:not(.theme-light) [role="option"][aria-selected="true"]:not(:hover) *,
+body:not(.theme-light) [role="option"][data-selected]:not(:hover) *,
+body:not(.theme-light) div.data-\[selected\]\:\!bg-secondary[data-selected]:not(:hover) * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* 3. 【解决图二】单选子菜单项（Low / Medium / High）：已选态未悬停时绝不用实心高亮块，杜绝同时双高亮 */
+body.theme-light [role="menuitemradio"][data-checked]:not(:hover),
+body.theme-light [role="menuitemradio"][aria-checked="true"]:not(:hover) {
+  background-color: rgba(255, 51, 102, 0.1) !important;
+  border-left: 3.5px solid #FF3366 !important;
+  color: #111113 !important;
+  transform: none !important;
+}
+body.theme-light [role="menuitemradio"][data-checked]:not(:hover) *,
+body.theme-light [role="menuitemradio"][aria-checked="true"]:not(:hover) * {
+  color: #111113 !important;
+  fill: #111113 !important;
+}
+
+body:not(.theme-light) [role="menuitemradio"][data-checked]:not(:hover),
+body:not(.theme-light) [role="menuitemradio"][aria-checked="true"]:not(:hover) {
+  background-color: rgba(255, 51, 102, 0.25) !important;
+  border-left: 3.5px solid #FF3366 !important;
+  color: #FFFFFF !important;
+  transform: none !important;
+}
+body:not(.theme-light) [role="menuitemradio"][data-checked]:not(:hover) *,
+body:not(.theme-light) [role="menuitemradio"][aria-checked="true"]:not(:hover) * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* 4. 鼠标悬停、键盘高亮焦点态：赋予标志性漫画粉背景 + 纯白字 + 3px 滑移 */
+[role="menuitem"]:hover,
+[role="menuitem"]:focus,
+[role="menuitem"][data-highlighted],
+[role="menuitem"][data-state="open"],
+[role="menuitemradio"]:hover,
+[role="menuitemradio"]:focus,
+[role="menuitemradio"][data-highlighted]:not([data-checked]),
+[role="menuitemcheckbox"]:hover,
+[role="menuitemcheckbox"]:focus,
+[role="menuitemcheckbox"][data-highlighted],
+[role="option"]:hover,
+[role="option"]:focus,
+[role="option"][data-highlighted]:not([data-selected]):not([aria-selected="true"]),
+[class*="select-item"]:hover,
+[class*="select-item"]:focus,
+body.theme-light [role="menuitem"]:hover,
+body.theme-light [role="menuitem"]:focus,
+body.theme-light [role="menuitem"][data-highlighted],
+body.theme-light [role="menuitem"][data-state="open"],
+body.theme-light [role="menuitemradio"]:hover,
+body.theme-light [role="menuitemradio"]:focus,
+body.theme-light [role="menuitemradio"][data-highlighted]:not([data-checked]),
+body.theme-light [role="menuitemcheckbox"]:hover,
+body.theme-light [role="menuitemcheckbox"]:focus,
+body.theme-light [role="menuitemcheckbox"][data-highlighted],
+body.theme-light [role="option"]:hover,
+body.theme-light [role="option"]:focus,
+body.theme-light [role="option"][data-highlighted]:not([data-selected]):not([aria-selected="true"]),
+body.theme-light div.data-\[selected\]\:\!bg-secondary[data-selected]:hover,
+body.theme-light [class*="select-item"]:hover {
+  background-color: #FF3366 !important;
+  color: #FFFFFF !important;
+  border-left: 3.5px solid #FF3366 !important;
+  transform: translateX(3px) !important;
+  box-shadow: none !important;
+}
+
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted]:not([data-checked]) *,
+.px-menu-item[data-highlighted]:not([data-selected]):not([aria-selected="true"]) *,
+.px-menu-item[data-state="open"] * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* 5. 【解决图二】激活行内的 Fast 徽标与小角标：深色高对比胶囊，杜绝模糊洗白 */
+[role="menuitem"]:hover [class*="rounded-full"],
+[role="menuitem"][data-highlighted] [class*="rounded-full"],
+[role="menuitem"][data-state="open"] [class*="rounded-full"],
+body.theme-light [role="menuitem"]:hover [class*="rounded-full"],
+body.theme-light [role="menuitem"][data-highlighted] [class*="rounded-full"],
+body.theme-light [role="menuitem"][data-state="open"] [class*="rounded-full"] {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  opacity: 1 !important;
+}
+.px-menu-item:hover [class*="rounded-full"] *,
+.px-menu-item[data-highlighted] [class*="rounded-full"] *,
+.px-menu-item[data-state="open"] [class*="rounded-full"] *,
+.px-menu-item:hover [class*="opacity-70"],
+.px-menu-item[data-highlighted] [class*="opacity-70"] {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+  opacity: 1 !important;
+}
+
+/* 菜单内徽章与角标悬停颜色 */
+[role="menuitem"]:hover [class*="rounded-full"],
+[role="menuitem"][data-highlighted] [class*="rounded-full"],
+[role="menuitemradio"]:hover [class*="rounded-full"],
+[role="menuitemradio"][data-highlighted] [class*="rounded-full"] {
+  background-color: rgba(0, 0, 0, 0.35) !important;
+  color: #FFFFFF !important;
+}
+
+/* --- 3. 侧栏会话项悬停防穿透与实体遮罩 (解决图二时间戳与功能图标重叠) --- */
+[data-testid="conversation-row-sidebar"] span.truncate {
+  color: var(--foreground) !important;
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+body.theme-light [data-testid="conversation-row-sidebar"] span.truncate {
+  color: #111113 !important;
+}
+
+/* 悬停时彻底隐藏相对时间戳容器 */
+[data-testid="conversation-row-sidebar"]:hover .group-hover\:invisible,
+[data-testid="conversation-row-sidebar"]:hover [class*="group-hover:invisible"],
+[data-testid="conversation-row-sidebar"]:hover .group-hover\:invisible span,
+[data-testid="conversation-row-sidebar"]:hover [class*="group-hover:invisible"] span {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+/* 悬停时右侧操作栏具备完全不透明实体背景，消除叠印 */
+[data-testid="conversation-row-sidebar"]:hover .absolute.top-0.bottom-0.-right-1,
+[data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+[data-testid="conversation-list-sidebar"]:hover .absolute.top-0.bottom-0.-right-1 {
+  background-color: #FDFBF7 !important;
+  border-radius: 4px !important;
+  background-image: none !important;
+  padding-left: 6px !important;
+}
+body:not(.theme-light) [data-testid="conversation-row-sidebar"]:hover .absolute.top-0.bottom-0.-right-1,
+body:not(.theme-light) [data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+body:not(.theme-light) [data-testid="conversation-list-sidebar"]:hover .absolute.top-0.bottom-0.-right-1 {
+  background-color: #1B1B22 !important;
+  background-image: none !important;
+}
+
+/* --- 4. 顶部系统下拉菜单全量重构（将图三动效与样式完全对齐图四上下文菜单） --- */
+div.border-menu-border,
+[class*="border-menu-border"],
+body.theme-light div.border-menu-border,
+body.theme-light [class*="border-menu-border"],
+body.theme-light [class*="shadow-"].border-menu-border,
+body.theme-light [class*="shadow-"][class*="border-menu-border"],
+body.theme-light [data-testid="title-menu-bar"] div[class*="z-[8000]"],
+body.theme-light [data-testid="title-menu-bar"] div[class*="min-w-"] {
+  border-radius: 0 !important;
+  border: 2px solid #111113 !important;
+  border-left: 5px solid #FF3366 !important;
+  box-shadow: 3px 3px 0 #111113 !important;
+  background-color: #FFFFFF !important;
+  padding: 4px 0 !important;
+  animation: doodle-menu-enter 120ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  transform-origin: top left !important;
+  min-width: 220px !important;
+  overflow: visible !important;
+}
+
+body:not(.theme-light) div.border-menu-border,
+body:not(.theme-light) [class*="border-menu-border"],
+body:not(.theme-light) [class*="shadow-"].border-menu-border,
+body:not(.theme-light) [class*="shadow-"][class*="border-menu-border"],
+body:not(.theme-light) [data-testid="title-menu-bar"] div[class*="z-[8000]"],
+body:not(.theme-light) [data-testid="title-menu-bar"] div[class*="min-w-"] {
+  border-radius: 0 !important;
+  border: 2px solid #FFFFFF !important;
+  border-left: 5px solid #FF3366 !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #1B1B22 !important;
+  padding: 4px 0 !important;
+  animation: doodle-menu-enter 120ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  transform-origin: top left !important;
+  min-width: 220px !important;
+}
+
+/* 顶部系统下拉菜单子项（对齐图四右键菜单：高对比度排版 + 悬停反色与位移动效 + 内部专属指示条） */
+div.border-menu-border button,
+[class*="border-menu-border"] button,
+[data-testid="title-menu-bar-option"],
+div[class*="border-menu-border"] button {
+  font-family: var(--doodle-font-ui, sans-serif) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: #111113 !important;
+  background: transparent !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  text-align: left !important;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease, border-color 120ms ease !important;
+}
+
+body:not(.theme-light) div.border-menu-border button,
+body:not(.theme-light) [class*="border-menu-border"] button,
+body:not(.theme-light) [data-testid="title-menu-bar-option"] {
+  color: #FFFFFF !important;
+}
+
+div.border-menu-border button:hover,
+div.border-menu-border button:focus,
+[class*="border-menu-border"] button:hover,
+[class*="border-menu-border"] button:focus,
+[data-testid="title-menu-bar-option"]:hover,
+[data-testid="title-menu-bar-option"]:focus,
+[data-testid="title-menu-bar-option"][data-highlighted],
+body.theme-light div.border-menu-border button:hover,
+body.theme-light div.border-menu-border button:focus,
+body.theme-light [class*="border-menu-border"] button:hover,
+body.theme-light [class*="border-menu-border"] button:focus,
+body.theme-light [data-testid="title-menu-bar-option"]:hover,
+body.theme-light [data-testid="title-menu-bar-option"]:focus,
+body.theme-light [data-testid="title-menu-bar-option"][data-highlighted] {
+  background-color: #FF3366 !important;
+  color: #FFFFFF !important;
+  border-left: 3px solid #FF3366 !important;
+  transform: translateX(3px) !important;
+  box-shadow: none !important;
+}
+
+div.border-menu-border button:hover *,
+div.border-menu-border button:focus *,
+[class*="border-menu-border"] button:hover *,
+[class*="border-menu-border"] button:focus *,
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted] * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+/* 分割线：图四标准纯实线分割 */
+div.border-menu-border hr,
+div.border-menu-border [class*="border-t"],
+div.border-menu-border [class*="h-px"],
+[class*="border-menu-border"] hr,
+[class*="border-menu-border"] [class*="border-t"],
+[class*="border-menu-border"] [class*="h-px"],
+[data-testid="title-menu-bar"] hr,
+[data-testid="title-menu-bar"] div[class*="border-t"],
+[data-testid="title-menu-bar"] div[class*="h-px"] {
+  border: none !important;
+  border-top: 1px solid #111113 !important;
+  margin: 4px 0 !important;
+  opacity: 0.2 !important;
+}
+body:not(.theme-light) div.border-menu-border hr,
+body:not(.theme-light) div.border-menu-border [class*="border-t"],
+body:not(.theme-light) div.border-menu-border [class*="h-px"],
+body:not(.theme-light) [class*="border-menu-border"] hr,
+body:not(.theme-light) [data-testid="title-menu-bar"] hr {
+  border-top: 1px solid #FFFFFF !important;
+  opacity: 0.2 !important;
+}
+
+/* --- 5. 既定关键补丁加固 (Combobox 展开白字、发送按钮置灰、代码块无倒刺、危险确认红钮) --- */
+button[role="combobox"],
+button[role="combobox"] * {
+  color: var(--foreground) !important;
+  fill: currentColor !important;
+}
+body.theme-light button[role="combobox"],
+body.theme-light button[role="combobox"] * {
+  color: #111113 !important;
+  fill: currentColor !important;
+}
+
+[data-testid="send-button"]:disabled,
+button[data-testid="send-button"]:disabled {
+  background-color: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+}
+[data-testid="send-button"]:disabled svg,
+button[data-testid="send-button"]:disabled svg {
+  color: var(--muted-foreground) !important;
+  fill: var(--muted-foreground) !important;
+}
+
+[role="dialog"] button:has(svg.lucide-trash),
+[role="dialog"] button:has(svg.lucide-trash-2),
+[role="dialog"] button[class*="destructive"],
+[role="alertdialog"] button:has(svg.lucide-trash),
+[role="alertdialog"] button[class*="destructive"] {
+  background-color: #E60012 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #000000 !important;
+  font-weight: bold !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ==========================================================================
+   24. 提示与斜杠命令联想弹窗 (Typeahead / Slash Menu / Command Palette)
+   ========================================================================== */
+/* 输入框外壳确保不裁切向上浮动的联想卡片 */
+div.bg-card-border,
+[class*="bg-card-border"],
+form:has([role="listbox"]) {
+  overflow: visible !important;
+}
+
+/* 联想弹窗卡片本体（线稿手绘黑白 + 漫画硬投影） */
+[role="listbox"]:has([id*="typeahead"]),
+[role="listbox"][data-mention-menu],
+[role="listbox"]:has([role="option"]) {
+  border-radius: 0 !important;
+  border: 2px solid #111113 !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #FFFFFF !important;
+  overflow: hidden !important;
+  z-index: 99999 !important;
+  padding: 4px !important;
+}
+
+body:not(.theme-light) [role="listbox"]:has([id*="typeahead"]),
+body:not(.theme-light) [role="listbox"][data-mention-menu],
+body:not(.theme-light) [role="listbox"]:has([role="option"]) {
+  border: 2px solid #FFFFFF !important;
+  border-left: 5px solid #FF3366 !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #1A1A1E !important;
+}
+
+[role="listbox"] > div {
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+  overflow-x: hidden !important;
+}
+
+/* 屏蔽左右水平滚动条 */
+[role="listbox"],
+[role="listbox"] [role="option"],
+[role="listbox"] [id*="typeahead-item"] {
+  overflow-x: hidden !important;
+}
+
+[role="listbox"]::-webkit-scrollbar:horizontal,
+[role="listbox"] > div::-webkit-scrollbar:horizontal,
+[role="listbox"] *::-webkit-scrollbar:horizontal {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 解耦外层 option padding 与样式污染 */
+[role="listbox"] [role="option"],
+[role="listbox"] [id*="typeahead-item"] {
+  padding: 0 !important;
+  margin: 1px 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* 内部交互行统一结构 */
+[role="listbox"] [role="option"] > div,
+[role="listbox"] [id*="typeahead-item"] > div,
+[role="listbox"] [role="option"] [class*="cursor-pointer"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 12px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border-left: 3.5px solid transparent !important;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease, border-color 120ms ease !important;
+  cursor: pointer !important;
+}
+
+/* 未激活态高清晰度文字与图标 */
+[role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) > div,
+[role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) > div {
+  background: transparent !important;
+}
+
+body.theme-light [role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) span,
+body.theme-light [role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) span {
+  color: #111113 !important;
+}
+
+body:not(.theme-light) [role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) span,
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) span {
+  color: #FFFFFF !important;
+}
+
+[role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) span[class*="opacity-50"],
+[role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) span[class*="opacity-50"],
+[role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) span.truncate {
+  opacity: 0.72 !important;
+}
+
+body.theme-light [role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) svg,
+body.theme-light [role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) svg {
+  color: #111113 !important;
+  fill: currentColor !important;
+  opacity: 0.8 !important;
+}
+
+body:not(.theme-light) [role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) svg,
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) svg {
+  color: #FFFFFF !important;
+  fill: currentColor !important;
+  opacity: 0.85 !important;
+}
+
+/* 激活态：Doodle 漫画荧光粉 + 纯白高对比文字 + 墨水指示条 */
+[role="listbox"] [role="option"][aria-selected="true"] > div,
+[role="listbox"] [role="option"]:hover > div,
+[role="listbox"] [role="option"][data-highlighted] > div,
+[role="listbox"] [id*="typeahead-item"][aria-selected="true"] > div,
+[role="listbox"] [id*="typeahead-item"]:hover > div {
+  background-color: #FF3366 !important;
+  border-left: 3.5px solid #111113 !important;
+  transform: translateX(2px) !important;
+}
+
+body:not(.theme-light) [role="listbox"] [role="option"][aria-selected="true"] > div,
+body:not(.theme-light) [role="listbox"] [role="option"]:hover > div,
+body:not(.theme-light) [role="listbox"] [role="option"][data-highlighted] > div,
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"][aria-selected="true"] > div,
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"]:hover > div {
+  border-left: 3.5px solid #FFFFFF !important;
+}
+
+.px-listbox-item[aria-selected="true"] span,
+.px-listbox-item:hover span,
+.px-listbox-item[data-highlighted] span,
+.px-listbox-item[aria-selected="true"] *,
+.px-listbox-item:hover * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+  opacity: 1 !important;
+}
+
+body.theme-light [role="listbox"] [role="option"][aria-selected="true"] span[class*="opacity-50"],
+body.theme-light [role="listbox"] [role="option"]:hover span[class*="opacity-50"],
+body.theme-light [role="listbox"] [role="option"][data-highlighted] span[class*="opacity-50"],
+body.theme-light [role="listbox"] [id*="typeahead-item"][aria-selected="true"] span[class*="opacity-50"],
+body.theme-light [role="listbox"] [id*="typeahead-item"]:hover span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [role="option"][aria-selected="true"] span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [role="option"]:hover span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [role="option"][data-highlighted] span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"][aria-selected="true"] span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"]:hover span[class*="opacity-50"] {
+  color: rgba(255, 255, 255, 0.92) !important;
+  opacity: 0.92 !important;
+}
+
+/* ============================================================
+   23.5 Markdown / Artifact / 长文档预览极致渲染性能优化
+   1. 纯化滚动容器底色，阻断下层网格/全屏纹理在半透明滚动时的逐帧全屏合成
+   2. 启用 content-visibility: auto，跳过视口外不可见节点的排版树与重绘计算
+   3. 独立公式与代码块硬件合成加速，隔离 KaTeX 字体渲染与抗锯齿
+   ============================================================ */
+.leading-relaxed,
+[class*="prose"] {
+  background-color: var(--background) !important;
+  contain: layout style !important;
+  will-change: scroll-position !important;
+  transform: translateZ(0) !important;
+  isolation: isolate !important;
+}
+
+/* 视口外的排版块跳过样式计算与排版（v2 实测，右栏 8754 节点长文档）：
+   全量样式重算 480~566ms -> 28~32ms；重挂载（样式+排版）513~603ms -> 14~18ms。
+   contain-intrinsic-size 取 auto + 全文档中位块高（实测 ~40px）：首屏滚动条
+   略偏短，滚动后按真实高度收敛，无跳动。
+   两个不要：不要给 table/th/td 单开 content-visibility（Chromium 对表格
+   内容支持不完整，巨幅表格会行高塌陷）；不要 contain: paint（会裁掉主题里
+   超出元素盒子的装饰，如 pre 伪元素的外扩）。 */
+.leading-relaxed > *,
+[class*="prose"] > * {
+  content-visibility: auto !important;
+  contain-intrinsic-size: auto 40px !important;
+}
+
+/* 巨幅表格轻量排版隔离，保护全局滚动与切换流畅 */
+.leading-relaxed table {
+  contain: layout style !important;
+}
+
+.leading-relaxed ol:not(.contains-task-list),
+[class*="prose"] ol:not(.contains-task-list) {
+  padding-left: 28px !important;
+}
+
+.leading-relaxed ul:not(.contains-task-list),
+[class*="prose"] ul:not(.contains-task-list) {
+  padding-left: 24px !important;
+}
+
+/* 消除命令卡片悬停时出现的横向滚动条 */
+.group\/run-command pre,
+[class*="group/run-command"] pre,
+pre.whitespace-pre-wrap {
+  overflow-x: hidden !important;
+}
+
+/* 消除确认弹窗等浮层的隐式横向滚动条与长文件名溢出 */
+html body [role="dialog"] .overflow-y-auto,
+html body [role="alertdialog"] .overflow-y-auto,
+html body .animate-modalScaleIn .overflow-y-auto {
+  overflow-x: hidden !important;
+}
+html body [role="dialog"] [class*="group/file-summary"] span,
+html body .animate-modalScaleIn [class*="group/file-summary"] span {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+}
+
+.katex {
+  -webkit-font-smoothing: antialiased !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* ============================================================================
+   24. 尊重系统的「减少动态效果」(PREFERS-REDUCED-MOTION (1, 1, 2) 终极无障碍防线)
+   必须位于全文件最末尾，以 (1, 1, 2) 绝对特异性降维压制前置所有 !important 动效
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html:root:not(#_px_never_exist_) body *,
+  html:root:not(#_px_never_exist_) body *::before,
+  html:root:not(#_px_never_exist_) body *::after,
+  html:root:not(#_px_never_exist_) *,
+  html:root:not(#_px_never_exist_) *::before,
+  html:root:not(#_px_never_exist_) *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  #px-cursor {
+    display: none !important;
+  }
+  #px-dissolve,
+  html.px-sending body::after,
+  #px-particles {
+    display: none !important;
+  }
+  [data-testid="send-button"]:not(:disabled) {
+    animation: none !important;
+  }
+  [data-testid="user-input-step"] {
+    animation: none !important;
+    clip-path: none !important;
+  }
+  [aria-expanded="true"] + * > *,
+  [data-state="open"] > *:not(:first-child),
+  pre,
+  .px-copied::after,
+  .w-full.group > [class~="bg-sidebar-secondary"] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  html.px-streaming .relative.flex.flex-col.gap-y-3::after {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  html[data-px-cursor] * {
+    cursor: auto !important;
+  }
+  html[data-px-cursor] [class*="cursor-pointer"],
+  html[data-px-cursor] button,
+  html[data-px-cursor] a[href],
+  html[data-px-cursor] [role="button"] {
+    cursor: pointer !important;
+  }
+  html[data-px-cursor] input,
+  html[data-px-cursor] textarea,
+  html[data-px-cursor] [contenteditable="true"] {
+    cursor: text !important;
+  }
+}

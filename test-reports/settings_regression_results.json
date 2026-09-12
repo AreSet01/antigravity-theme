@@ -1,0 +1,314 @@
+[
+  {
+    "theme": "phantom",
+    "diagnosis": {
+      "padding": "0px",
+      "animation": "0.28s cubic-bezier(0.18, 0.9, 0.26, 1.22) forwards p5-modal-pop-in",
+      "tabCount": 14,
+      "activeTab": {
+        "text": "antigravity-美化",
+        "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none bg-sidebar-secondary",
+        "computedBg": "rgba(230, 0, 18, 0.15)",
+        "computedColor": "rgb(230, 0, 18)",
+        "computedBorder": "3.0429px solid rgb(230, 0, 18)",
+        "computedBorderLeft": "3.0429px solid rgb(230, 0, 18)",
+        "computedShadow": "none",
+        "height": 33.89033126831055
+      },
+      "tabsSample": [
+        {
+          "text": "通用",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        },
+        {
+          "text": "应用",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        },
+        {
+          "text": "外观",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        }
+      ],
+      "comboboxCount": 6,
+      "comboboxSample": {
+        "text": "极速模式",
+        "computedBg": "rgb(255, 255, 255)",
+        "computedColor": "rgb(17, 17, 19)",
+        "computedBorder": "1.21716px solid rgb(17, 17, 19)",
+        "computedShadow": "rgba(39, 39, 42, 0.25) 3px 3px 0px 0px"
+      },
+      "switchCount": 10,
+      "switchSample": {
+        "ariaChecked": "false",
+        "computedBg": "rgb(228, 228, 231)",
+        "computedBorder": "1.21716px solid rgb(161, 161, 170)"
+      },
+      "scrollPaddingBottom": "60px"
+    },
+    "popperDiagnosis": {
+      "found": true,
+      "itemCount": 5,
+      "listboxZIndex": "99999",
+      "parentZIndex": "2147483640",
+      "parentPosition": "absolute",
+      "rect": {
+        "top": 18.257417678833008,
+        "left": 771.0715942382812,
+        "width": 399.9991149902344,
+        "height": 414.82373046875
+      }
+    }
+  },
+  {
+    "theme": "pixel",
+    "diagnosis": {
+      "padding": "0px",
+      "animation": "0.24s steps(4) forwards pixel-modal-pop-in",
+      "tabCount": 14,
+      "activeTab": {
+        "text": "antigravity-美化",
+        "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none bg-sidebar-secondary",
+        "computedBg": "rgb(0, 240, 255)",
+        "computedColor": "rgb(0, 0, 0)",
+        "computedBorder": "0px none rgb(0, 0, 0)",
+        "computedBorderLeft": "0px none rgb(0, 0, 0)",
+        "computedShadow": "rgb(0, 0, 0) 2px 2px 0px 0px",
+        "height": 33.89033126831055
+      },
+      "tabsSample": [
+        {
+          "text": "通用",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        },
+        {
+          "text": "应用",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        },
+        {
+          "text": "外观",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        }
+      ],
+      "comboboxCount": 6,
+      "comboboxSample": {
+        "text": "极速模式",
+        "computedBg": "rgb(255, 255, 255)",
+        "computedColor": "rgb(17, 17, 19)",
+        "computedBorder": "1.82574px solid rgb(0, 0, 0)",
+        "computedShadow": "rgb(0, 0, 0) 2px 2px 0px 0px"
+      },
+      "switchCount": 10,
+      "switchSample": {
+        "ariaChecked": "false",
+        "computedBg": "rgb(203, 213, 225)",
+        "computedBorder": "1.82574px solid rgb(0, 0, 0)"
+      },
+      "scrollPaddingBottom": "60px"
+    },
+    "popperDiagnosis": {
+      "found": true,
+      "itemCount": 5,
+      "listboxZIndex": "99999",
+      "parentZIndex": "2147483640",
+      "parentPosition": "absolute",
+      "rect": {
+        "top": 435.1351318359375,
+        "left": 770.4630126953125,
+        "width": 399.9991149902344,
+        "height": 414.82373046875
+      }
+    }
+  },
+  {
+    "theme": "matcha",
+    "diagnosis": {
+      "padding": "0px",
+      "animation": "0.28s cubic-bezier(0.25, 1, 0.5, 1) forwards matcha-modal-pop-in",
+      "tabCount": 14,
+      "activeTab": {
+        "text": "antigravity-美化",
+        "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none bg-sidebar-secondary",
+        "computedBg": "rgb(226, 239, 224)",
+        "computedColor": "rgb(39, 66, 42)",
+        "computedBorder": "3.0429px solid rgb(78, 135, 91)",
+        "computedBorderLeft": "3.0429px solid rgb(78, 135, 91)",
+        "computedShadow": "none",
+        "height": 33.89033126831055
+      },
+      "tabsSample": [
+        {
+          "text": "通用",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(26, 40, 30)",
+          "computedBorder": "0px none rgb(26, 40, 30)",
+          "computedBorderLeft": "0px none rgb(26, 40, 30)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        },
+        {
+          "text": "应用",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(26, 40, 30)",
+          "computedBorder": "0px none rgb(26, 40, 30)",
+          "computedBorderLeft": "0px none rgb(26, 40, 30)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        },
+        {
+          "text": "外观",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(26, 40, 30)",
+          "computedBorder": "0px none rgb(26, 40, 30)",
+          "computedBorderLeft": "0px none rgb(26, 40, 30)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        }
+      ],
+      "comboboxCount": 6,
+      "comboboxSample": {
+        "text": "极速模式",
+        "computedBg": "rgb(255, 255, 255)",
+        "computedColor": "rgb(26, 40, 30)",
+        "computedBorder": "1.21716px solid rgb(78, 135, 91)",
+        "computedShadow": "rgba(39, 39, 42, 0.25) 3px 3px 0px 0px"
+      },
+      "switchCount": 10,
+      "switchSample": {
+        "ariaChecked": "false",
+        "computedBg": "rgb(238, 244, 236)",
+        "computedBorder": "1.21716px solid rgb(168, 194, 168)"
+      },
+      "scrollPaddingBottom": "60px"
+    },
+    "popperDiagnosis": {
+      "found": true,
+      "itemCount": 5,
+      "listboxZIndex": "99999",
+      "parentZIndex": "2147483647",
+      "parentPosition": "absolute",
+      "rect": {
+        "top": 18.257417678833008,
+        "left": 771.0715942382812,
+        "width": 399.9991149902344,
+        "height": 414.82373046875
+      }
+    }
+  },
+  {
+    "theme": "doodle",
+    "diagnosis": {
+      "padding": "0px",
+      "animation": "0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards doodle-modal-pop-in",
+      "tabCount": 14,
+      "activeTab": {
+        "text": "antigravity-美化",
+        "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none bg-sidebar-secondary",
+        "computedBg": "rgba(255, 51, 102, 0.12)",
+        "computedColor": "rgb(255, 51, 102)",
+        "computedBorder": "3.0429px solid rgb(255, 51, 102)",
+        "computedBorderLeft": "3.0429px solid rgb(255, 51, 102)",
+        "computedShadow": "none",
+        "height": 33.89033126831055
+      },
+      "tabsSample": [
+        {
+          "text": "通用",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        },
+        {
+          "text": "应用",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        },
+        {
+          "text": "外观",
+          "className": "flex items-center gap-1.5 group mx-2 px-2 py-1 rounded-lg cursor-pointer border-none text-left transition-all outline-none hover:bg-sidebar-muted",
+          "computedBg": "rgba(0, 0, 0, 0)",
+          "computedColor": "rgb(17, 17, 19)",
+          "computedBorder": "0px none rgb(17, 17, 19)",
+          "computedBorderLeft": "0px none rgb(17, 17, 19)",
+          "computedShadow": "none",
+          "height": 33.89033126831055
+        }
+      ],
+      "comboboxCount": 6,
+      "comboboxSample": {
+        "text": "极速模式",
+        "computedBg": "rgb(255, 255, 255)",
+        "computedColor": "rgb(17, 17, 19)",
+        "computedBorder": "1.21716px solid rgb(17, 17, 19)",
+        "computedShadow": "rgba(39, 39, 42, 0.25) 3px 3px 0px 0px"
+      },
+      "switchCount": 10,
+      "switchSample": {
+        "ariaChecked": "false",
+        "computedBg": "rgb(244, 244, 245)",
+        "computedBorder": "1.21716px solid rgb(161, 161, 170)"
+      },
+      "scrollPaddingBottom": "60px"
+    },
+    "popperDiagnosis": {
+      "found": true,
+      "itemCount": 5,
+      "listboxZIndex": "99999",
+      "parentZIndex": "2147483640",
+      "parentPosition": "absolute",
+      "rect": {
+        "top": 18.257417678833008,
+        "left": 771.0715942382812,
+        "width": 399.9991149902344,
+        "height": 414.82373046875
+      }
+    }
+  }
+]

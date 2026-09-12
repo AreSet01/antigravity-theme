@@ -171,7 +171,7 @@ body.theme-light {
   --secondary-foreground: var(--px-navy) !important;
   --muted:                var(--px-paper-2) !important;
   --muted-foreground:     #4d5a72 !important;
-  --placeholder:          var(--px-gray) !important;
+  --placeholder:          #4a5d73 !important;
   --sidebar:              var(--px-paper-2) !important;
   --sidebar-secondary:    var(--px-paper-3) !important;
   --sidebar-muted:        #e3e7ee !important;
@@ -259,7 +259,6 @@ code,
 kbd,
 samp,
 .monaco-editor,
-.monaco-editor *,
 [class*="font-mono"] {
   font-family: var(--px-font-mono) !important;
 }
@@ -269,19 +268,15 @@ samp,
    这一行在 Win 上等于空操作，保留是为了 mac 版 Antigravity 的一致性。
    text-rendering 同样只对文本 shaping 有影响、和光栅化无关，
    这里不写了 —— geometricPrecision 是个空摆设，留它徒增困惑。 */
-html,
-body,
-body * {
+:root {
   -webkit-font-smoothing: none !important;
   -moz-osx-font-smoothing: unset !important;
+  font-synthesis: none !important;
 }
 
 /* 像素字体没有真正的粗体，用字重会触发合成加粗（糊成一团）。
    统一压到 400，靠颜色和背景来区分层级。 */
-body,
-body * {
-  font-synthesis: none !important;
-}
+
 b,
 strong,
 h1, h2, h3, h4, h5, h6,
@@ -567,9 +562,11 @@ body {
    scrollbar-color，而这个属性会被子元素继承，等于把全局的
    webkit 滚动条样式废掉了 —— 所以这里必须先把它撤回 auto。
    ============================================================ */
-html,
-body,
-body * {
+/* v2：scrollbar-* 不可继承，改为只命中真正的滚动容器（Tailwind 的
+   overflow-* 类 + 应用自己的 .md-table-scroll），等价于原 body * 写法，
+   但不再给全树每个元素背这条规则。 */
+[class*="overflow"],
+.md-table-scroll {
   scrollbar-color: auto !important;
   scrollbar-width: auto !important;
 }
@@ -621,11 +618,9 @@ body.theme-light ::-webkit-scrollbar-thumb:hover {
    （比如 Lexical 输入框的 <div role="listbox"> 联想菜单占位），
    平时是 0×0 的。给它们加 2px 边框会撑成 4×4 顶在文档底部，
    把整个页面撑出滚动条。只给有内容的浮层加边框就没这问题。 */
-[role="menu"]:not(:empty),
-[role="listbox"]:not(:empty),
+.px-menu-content,
 [role="dialog"]:not(:empty),
-[role="alertdialog"]:not(:empty),
-[data-radix-popper-content-wrapper] > * {
+[role="alertdialog"]:not(:empty) {
   border: 2px solid var(--px-gray) !important;
   box-shadow: var(--px-shadow-lg) !important;
 }
@@ -642,8 +637,164 @@ body.theme-light ::-webkit-scrollbar-thumb:hover {
    靠 1px padding 露出底色来充当边框。上面把真 border 全加粗到 2px 了，
    这个漏网的还是 1px，并排看粗细不一致。padding 提到 2px 对齐。
    （4 处命中：主输入框和几个内联编辑框） */
-[class~="p-px"][class~="bg-card-border"] {
-  padding: 2px !important;
+/* 3.1 8-Bit 复古街机 RPG 对话框：经典双层步进像素框 + 纯直角 0px */
+[class*="group/user-input-step"] [class~="bg-card-border"] {
+  position: relative !important;
+  border: 2px solid #5A6988 !important;
+  box-shadow: 0 0 0 2px #111113, 4px 4px 0 #111113 !important;
+  border-radius: 0 !important;
+  background-color: #FFFFFF !important;
+  padding: 3px !important;
+  margin-top: 14px !important;
+}
+
+body:not(.theme-light) [class*="group/user-input-step"] [class~="bg-card-border"] {
+  border-color: #5A6988 !important;
+  box-shadow: 0 0 0 2px #000000, 4px 4px 0 #000000 !important;
+  background-color: #1A1C2C !important;
+}
+
+/* 8-Bit RPG 任务角标：▶ 任务日志 */
+[class*="user-input-step"] [class~="bg-card-border"]::before {
+  content: "▶ 任务日志" !important;
+  position: absolute !important;
+  top: -12px !important;
+  left: 12px !important;
+  background-color: #E60012 !important;
+  color: #FFFFFF !important;
+  font-family: var(--px-font-mono, monospace) !important;
+  font-weight: bold !important;
+  font-size: 10px !important;
+  letter-spacing: 1px !important;
+  padding: 1px 8px !important;
+  border: 1px solid #111113 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+/* 3.2 8-Bit 街机投币控制台 (Arcade Pad) */
+.shrink-0 > [class~="bg-card-border"],
+[class*="shrink-0"] > [class~="bg-card-border"],
+form [class~="bg-card-border"] {
+  position: relative !important;
+  border: 2px solid #5A6988 !important;
+  box-shadow: 0 0 0 2px #111113, 4px 4px 0 #111113 !important;
+  border-radius: 0 !important;
+  background-color: #FFFFFF !important;
+  padding: 3px !important;
+}
+
+body:not(.theme-light) .shrink-0 > [class~="bg-card-border"],
+body:not(.theme-light) [class*="shrink-0"] > [class~="bg-card-border"],
+body:not(.theme-light) form [class~="bg-card-border"] {
+  border-color: #5A6988 !important;
+  box-shadow: 0 0 0 2px #000000, 4px 4px 0 #000000 !important;
+  background-color: #1A1C2C !important;
+}
+
+/* 3.3 8-Bit 思考折叠面板：街机任务简报盒 (Arcade Quest Briefing Box) */
+button[class*="tabular-nums"],
+button.tabular-nums,
+[data-testid="thinking-collapsible-trigger"],
+[class*="group/thinking"],
+details summary {
+  border: 2px solid #5A6988 !important;
+  border-left: 6px solid #00F0FF !important;
+  box-shadow: 0 0 0 1px #111113, 3px 3px 0 #111113 !important;
+  background-color: var(--card) !important;
+  border-radius: 0 !important;
+  font-family: var(--px-font-mono, monospace) !important;
+  padding: 6px 12px !important;
+  margin: 6px 0 !important;
+  transition: transform 150ms ease, box-shadow 150ms ease !important;
+}
+
+button[class*="tabular-nums"]:hover,
+button.tabular-nums:hover,
+[data-testid="thinking-collapsible-trigger"]:hover,
+[class*="group/thinking"]:hover,
+details summary:hover {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0 0 0 1px #111113, 1px 1px 0 #111113 !important;
+}
+
+body.theme-light button[class*="tabular-nums"],
+body.theme-light button.tabular-nums,
+body.theme-light [data-testid="thinking-collapsible-trigger"],
+body.theme-light [class*="group/thinking"],
+body.theme-light details summary {
+  background-color: #E3E6EE !important;
+  border-color: #5A6988 !important;
+  border-left: 6px solid #3B82F6 !important;
+  color: #111113 !important;
+}
+
+/* 3.4 Artifact 任务卡片（.artifact-card）：像素任务简报卡 */
+.artifact-card {
+  border: 2px solid #5A6988 !important;
+  box-shadow: 0 0 0 1px #111113, 3px 3px 0 #111113 !important;
+  border-radius: 0 !important;
+  transition: transform 150ms ease, box-shadow 150ms ease !important;
+}
+
+.artifact-card:hover {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0 0 0 1px #111113, 1px 1px 0 #111113 !important;
+}
+
+body.theme-light .artifact-card {
+  border-color: #5A6988 !important;
+  background-color: #FFFFFF !important;
+}
+
+/* 发送按钮：经典街机 Action 实体按键 + 纯白像素箭头 */
+button[data-tooltip-id*="input-send-button"]:not([data-tooltip-id*="record"]):not([data-tooltip-id*="cancel"]),
+[data-testid="send-button"],
+button[data-testid="send-button"],
+button.bg-primary {
+  background-color: var(--primary, #00F0FF) !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.4), inset -1px -1px 0 rgba(0, 0, 0, 0.4), 2px 2px 0 #000000 !important;
+  border-radius: 0 !important;
+}
+
+body.theme-light button[data-tooltip-id*="input-send-button"]:not([data-tooltip-id*="record"]):not([data-tooltip-id*="cancel"]),
+body.theme-light [data-testid="send-button"],
+body.theme-light button[data-testid="send-button"],
+body.theme-light button.bg-primary {
+  background-color: #E60012 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #000000 !important;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.4), inset -1px -1px 0 rgba(0, 0, 0, 0.4), 2px 2px 0 #000000 !important;
+}
+
+button[data-tooltip-id*="input-send-button"]:not([data-tooltip-id*="record"]):not([data-tooltip-id*="cancel"]) svg,
+[data-testid="send-button"] svg,
+button[data-testid="send-button"] svg,
+button.bg-primary svg {
+  color: inherit !important;
+  fill: currentColor !important;
+}
+
+/* 录音与取消按钮高对比度守卫 */
+button[data-tooltip-id*="record"] svg {
+  color: var(--foreground) !important;
+  fill: currentColor !important;
+}
+
+button[data-tooltip-id*="cancel"] {
+  border: 2px solid #000000 !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+  background-color: var(--card) !important;
+}
+
+button[data-tooltip-id*="cancel"] div,
+button[data-tooltip-id*="cancel"] [class*="bg-red"] {
+  background-color: #E60012 !important;
+  border-radius: 0 !important;
 }
 
 /* ============================================================
@@ -1520,25 +1671,22 @@ html.px-sending [data-testid="send-button"] {
    html 的两个伪元素都被 CRT 占了（13 / 14.7 节），抢过来会把扫描线弄没。
    ------------------------------------------------------------ */
 html.px-sending body::after {
-  content: "";
-  position: fixed;
-  /* 从输入框上沿附近起飞。用 vh 而不是去测输入框位置：
-     CSS 读不到它的坐标，而输入框始终贴着窗口底部，固定值足够。 */
-  bottom: 14vh;
-  left: 50%;
-  /* 第一版 8×2 设备像素 = 2K 下约 5.8×1.5 CSS px 的一粒点，300ms 就没了，
-     用户反馈「不明显」—— 理所当然。现在是 8×14 的亮条 + box-shadow 画的
-     三节拖尾（往下渐淡），整体约 44 设备像素长的一道光柱在窜。 */
-  width: calc(8 * var(--px-dev));
-  height: calc(14 * var(--px-dev));
-  background: var(--primary);
+  content: "" !important;
+  position: fixed !important;
+  bottom: 14vh !important;
+  left: 50% !important;
+  inset: auto auto 14vh 50% !important;
+  width: calc(8 * var(--px-dev)) !important;
+  height: calc(14 * var(--px-dev)) !important;
+  background-color: var(--primary) !important;
+  background-image: none !important;
   box-shadow:
     0 calc(10 * var(--px-dev)) 0 0 color-mix(in srgb, var(--primary) 60%, transparent),
     0 calc(20 * var(--px-dev)) 0 0 color-mix(in srgb, var(--primary) 35%, transparent),
-    0 calc(30 * var(--px-dev)) 0 0 color-mix(in srgb, var(--primary) 16%, transparent);
-  pointer-events: none;
-  z-index: 2147483644;   /* 压在扫描线(…647)、窗口按钮(…646)、CRT亮带(…645)之下 */
-  animation: px-packet var(--px-t-send) var(--px-ease-io) 1 both;
+    0 calc(30 * var(--px-dev)) 0 0 color-mix(in srgb, var(--primary) 16%, transparent) !important;
+  pointer-events: none !important;
+  z-index: 2147483644 !important;   /* 压在扫描线(…647)、窗口按钮(…646)、CRT亮带(…645)之下 */
+  animation: px-packet var(--px-t-send) var(--px-ease-io) 1 both !important;
 }
 /* 平滑上窜，最后 20% 淡出。只动 bottom 和 opacity ——
    不用 scale()（重采样），这层也没有文字。
@@ -1776,9 +1924,8 @@ input,
 textarea,
 [contenteditable],
 [tabindex] {
-  transition-property: outline-width, outline-offset, box-shadow,
-                       background-color, color, border-color, fill, stroke,
-                       opacity, transform !important;
+  transition-property: background-color, color, border-color, box-shadow, transform,
+                       outline-offset, fill, stroke, opacity !important;
   transition-duration: var(--px-t-fast) !important;
   transition-timing-function: var(--px-ease) !important;
 }
@@ -2164,66 +2311,1845 @@ html[data-px-cursor]:has(body.theme-light) {
 
 /* ============================================================
    16. 尊重系统的「减少动态效果」
-
-   ----------------------------------------------------------------
-   ⚠ 这一节必须是全文件的最后一节。
-   它靠 animation: none 把动画关掉，而 CSS 同权重是后定义者胜 ——
-   排在第 15 节前面的话，15 节新增的动效会反过来盖住它。
-   （原来它是 14.8，加了第 15 节之后就必须往后挪。）
-
-   往后再加新动效，也要加在这一节**上面**。
+   （已移至全文件最末尾 Section 24，确保特异性与声明顺序绝对生效）
    ============================================================ */
+
+/* ============================================================================
+   TOP SYSTEM MENU BAR & DROPDOWN MENUS (顶部系统菜单栏与下拉菜单 - 8-Bit 像素风)
+   ============================================================================ */
+
+/* 1. 顶部菜单项按钮：Antigravity / 文件 / 视图 / 窗口 */
+[data-testid="title-menu-bar"] button:not([data-testid="title-menu-bar-option"]) {
+  font-family: var(--px-font-mono, monospace) !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+  border-radius: 0 !important;
+  padding: 3px 8px !important;
+  height: 24px !important;
+  color: var(--foreground) !important;
+  transition: transform 60ms steps(2), background-color 60ms steps(2), color 60ms steps(2) !important;
+}
+
+[data-testid="title-menu-bar"] button:not([data-testid="title-menu-bar-option"]):hover,
+[data-testid="title-menu-bar"] button:not([data-testid="title-menu-bar-option"]):focus-visible {
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  box-shadow: 0 0 0 1px #000000, 2px 2px 0 #000000 !important;
+  transform: translate(1px, 1px) !important;
+}
+
+/* 2. 顶部下拉菜单容器（街机像素菜单盒） */
+[data-testid="title-menu-bar"] div[class*="min-w-"],
+div.border-menu-border,
+[data-testid="title-menu-bar"] div[class*="z-[8000]"] {
+  border-radius: 0 !important;
+  border: 2px solid #5A6988 !important;
+  box-shadow: 0 0 0 2px #000000, 4px 4px 0 #000000 !important;
+  background-color: #1A1C2C !important;
+  padding: 4px 0 !important;
+}
+
+body.theme-light [data-testid="title-menu-bar"] div[class*="min-w-"],
+body.theme-light div.border-menu-border,
+body.theme-light [data-testid="title-menu-bar"] div[class*="z-[8000]"] {
+  border-color: #111113 !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 0 0 2px #000000, 4px 4px 0 #000000 !important;
+}
+
+/* 3. 下拉菜单子项 */
+[data-testid="title-menu-bar-option"] {
+  font-family: var(--px-font-mono, monospace) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: var(--foreground) !important;
+  transition: transform 60ms steps(2), background-color 60ms steps(2), color 60ms steps(2) !important;
+}
+
+body.theme-light [data-testid="title-menu-bar-option"] {
+  color: #111113 !important;
+}
+
+[data-testid="title-menu-bar-option"]:hover,
+[data-testid="title-menu-bar-option"]:focus,
+[data-testid="title-menu-bar-option"][data-highlighted] {
+  background-color: #E60012 !important;
+  color: #FFFFFF !important;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.4) !important;
+  transform: translate(1px, 1px) !important;
+}
+
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted] * {
+  color: #FFFFFF !important;
+}
+
+/* 分割线 */
+[data-testid="title-menu-bar"] hr,
+[data-testid="title-menu-bar"] div[class*="border-t"],
+[data-testid="title-menu-bar"] div[class*="h-px"] {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  margin: 4px 0 !important;
+}
+
+/* ============================================================
+   17. 设置面板分段控件选中态与复古像素强化 (Segmented Controls & Active State)
+   ============================================================ */
+
+div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"],
+div[class*="rounded-xl"][class*="border-border"],
+[role="radiogroup"],
+[role="group"]:has(button[aria-pressed]),
+[role="group"]:has(button[data-pressed]) {
+  border: 2px solid #5A6988 !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+  padding: 2px !important;
+}
+
+body.theme-light div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"],
+body.theme-light div[class*="rounded-xl"][class*="border-border"] {
+  background-color: #E2E4E9 !important;
+  border-color: #000000 !important;
+}
+
+body:not(.theme-light) div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"],
+body:not(.theme-light) div[class*="rounded-xl"][class*="border-border"] {
+  background-color: #1A1C23 !important;
+  border-color: #5A6988 !important;
+}
+
+div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"] button:not([data-pressed]):not([aria-pressed="true"]),
+button[aria-pressed="false"],
+button[aria-selected="false"] {
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  transition: all 60ms steps(2) !important;
+}
+
+/* 选中态：8-Bit 像素霓虹青实体高亮 */
+button[data-pressed],
+button[aria-pressed="true"],
+button[data-state="on"],
+button[aria-selected="true"],
+div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"] button[data-pressed],
+div[class*="inline-flex"][class*="rounded-lg"][class*="border-border"] button[aria-pressed="true"] {
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  border: 1.5px solid #000000 !important;
+  border-radius: 0 !important;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.8), 2px 2px 0 #000000 !important;
+  font-weight: 700 !important;
+  transform: translate(1px, 1px) !important;
+}
+
+button[data-pressed] *,
+button[aria-pressed="true"] *,
+button[data-state="on"] *,
+button[aria-selected="true"] * {
+  color: #000000 !important;
+  fill: #000000 !important;
+}
+
+/* ============================================================
+   18. 全局操作按钮与交互卡片禁用态高对比度修复 (Submit / Skip / Action Buttons)
+   ============================================================ */
+
+button[type="submit"]:not(:disabled),
+button[class*="bg-primary"]:not(:disabled),
+button[class*="bg-primary"]:not([disabled]):not([aria-disabled="true"]) {
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0 !important;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.8), 3px 3px 0 #000000 !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+}
+
+button[type="submit"]:not(:disabled) *,
+button[class*="bg-primary"]:not(:disabled) * {
+  color: #000000 !important;
+  fill: #000000 !important;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+button[disabled],
+button[class*="disabled:opacity-50"]:disabled {
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+body.theme-light button:disabled,
+body.theme-light [role="button"][aria-disabled="true"],
+body.theme-light button[disabled],
+body.theme-light button[class*="disabled:opacity-50"]:disabled {
+  background-color: #E2E4E9 !important;
+  color: #71717A !important;
+  border: 1.5px solid #C5C9D3 !important;
+}
+
+body.theme-light button:disabled *,
+body.theme-light [role="button"][aria-disabled="true"] *,
+body.theme-light button[disabled] * {
+  color: #71717A !important;
+  fill: #71717A !important;
+}
+
+body:not(.theme-light) button:disabled,
+body:not(.theme-light) [role="button"][aria-disabled="true"],
+body:not(.theme-light) button[disabled],
+body:not(.theme-light) button[class*="disabled:opacity-50"]:disabled {
+  background-color: #20232A !important;
+  color: #8B9BB4 !important;
+  border: 1.5px solid #3A4456 !important;
+}
+
+body:not(.theme-light) button:disabled *,
+body:not(.theme-light) [role="button"][aria-disabled="true"] *,
+body:not(.theme-light) button[disabled] * {
+  color: #8B9BB4 !important;
+  fill: #8B9BB4 !important;
+}
+
+body.theme-light button:not([class*="bg-primary"]):not(:disabled) {
+  color: #111113 !important;
+}
+
+/* ============================================================
+   19. 选择框、下拉菜单与弹窗进出场动效 (Popups & Dialogs Stepped Pop / Swift Exit)
+   ============================================================ */
+
+@keyframes px-step-pop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(-6 * var(--px-dev)));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   19. 全站菜单与选择框样式及动效统一（全量严格对齐图四规范）
+   ============================================================ */
+
+/* 像素卡盒：全站下拉菜单、右键菜单、模型选择框全量统一 */
+/* v2 选择器提速：菜单项 / listbox 项 / 弹层面板由注入器在挂载瞬间打上
+   .px-menu-item / .px-listbox-item / .px-menu-content 类（ARIA 角色挂载后
+   不变，类桶匹配 O(1)），替代原来每次样式重算都要全树逐元素扫描的
+   后代通配选择器。机制见 patch/pixelTheme.js 的 STREAM_WATCH_JS。 */
+.px-menu-content {
+  border: 2px solid #000000 !important;
+  border-left: 5px solid #00F0FF !important;
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #FFFFFF !important;
+  padding: 4px 0 !important;
+}
+
+body.theme-light .px-menu-content {
+  border: 2px solid #000000 !important;
+  border-left: 5px solid #00F0FF !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #FFFFFF !important;
+}
+
+body:not(.theme-light) .px-menu-content {
+  border: 2px solid #5A6988 !important;
+  border-left: 5px solid #00F0FF !important;
+  background-color: #1A1C23 !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+}
+
+/* 全站菜单项统一悬停：复古像素高亮 */
+[role="menuitem"],
+[role="option"],
+.monaco-menu .action-item,
+[data-radix-collection-item] {
+  font-family: var(--px-font-mono, monospace) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: var(--foreground) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  text-align: left !important;
+  transition: transform 60ms steps(2), background-color 60ms steps(2), color 60ms steps(2) !important;
+}
+
+/* 菜单项内部次级图标/子菜单箭头/快捷键标签自动靠右对齐 */
+[role="menuitem"] > svg:last-child:not(:first-child),
+[role="menuitem"] > span.flex.shrink-0,
+[role="menuitem"] > span.ml-auto,
+[role="menuitem"] > [class*="opacity-50"]:last-child,
+div.border-menu-border button > svg:last-child:not(:first-child),
+[class*="border-menu-border"] button > svg:last-child:not(:first-child),
+[data-testid="title-menu-bar-option"] > svg:last-child:not(:first-child) {
+  margin-left: auto !important;
+}
+
+body.theme-light [role="menuitem"],
+body.theme-light [role="option"],
+body.theme-light .monaco-menu .action-item {
+  color: #111113 !important;
+}
+
+[role="menuitem"]:hover,
+[role="menuitem"]:focus,
+[role="menuitem"][data-highlighted],
+[role="option"]:hover,
+[role="option"]:focus,
+[role="option"][data-highlighted] {
+  background-color: #E60012 !important;
+  color: #FFFFFF !important;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.4) !important;
+  transform: translate(2px, 0) !important;
+}
+
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted] * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+@keyframes px-menu-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes px-menu-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* 图二模型选择框、图三右键上下文菜单、图四顶栏系统菜单全量统一动效 (解耦弹窗选择器) */
+.px-menu-content {
+  animation: px-menu-enter 120ms steps(3) forwards !important;
+  transform-origin: top left !important;
+}
+
+/* 退出动效 (收敛限定至菜单容器，解除对手风琴、标签页与弹窗的误伤) */
+[role="menu"][data-state="closed"],
+[role="listbox"][data-state="closed"],
+[data-radix-menu-content][data-state="closed"],
+[role="menu"][data-state="exiting"],
+[role="listbox"][data-state="exiting"] {
+  animation: px-menu-exit 80ms steps(2) forwards !important;
+}
+
+/* 顶部下拉菜单子项（对齐图四上下文菜单：像素单宽字体 + 悬停像素青高亮 + 2px动感位移） */
+div.border-menu-border button,
+[class*="border-menu-border"] button,
+[data-testid="title-menu-bar-option"] {
+  font-family: var(--px-font-mono, monospace) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: #111113 !important;
+  background: transparent !important;
+  border: none !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  text-align: left !important;
+  transition: transform 60ms steps(2), background-color 60ms steps(2), color 60ms steps(2) !important;
+}
+
+body:not(.theme-light) div.border-menu-border button,
+body:not(.theme-light) [class*="border-menu-border"] button {
+  color: #FFFFFF !important;
+}
+
+div.border-menu-border button:hover,
+div.border-menu-border button:focus,
+[class*="border-menu-border"] button:hover,
+[class*="border-menu-border"] button:focus,
+[data-testid="title-menu-bar-option"]:hover,
+[data-testid="title-menu-bar-option"]:focus {
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  transform: translate(2px, 0) !important;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+div.border-menu-border button:hover *,
+div.border-menu-border button:focus *,
+[class*="border-menu-border"] button:hover *,
+[class*="border-menu-border"] button:focus *,
+[data-testid="title-menu-bar-option"]:hover *,
+[data-testid="title-menu-bar-option"]:focus * {
+  color: #000000 !important;
+  fill: #000000 !important;
+}
+
+/* 分割线：图四标准实线分割 */
+div.border-menu-border hr,
+div.border-menu-border [class*="h-px"],
+[class*="border-menu-border"] hr,
+[class*="border-menu-border"] [class*="h-px"] {
+  border: none !important;
+  border-top: 1px solid #000000 !important;
+  margin: 4px 0 !important;
+  opacity: 0.2 !important;
+}
+
+body:not(.theme-light) div.border-menu-border hr,
+body:not(.theme-light) div.border-menu-border [class*="h-px"],
+body:not(.theme-light) [class*="border-menu-border"] hr,
+body:not(.theme-light) [class*="border-menu-border"] [class*="h-px"] {
+  border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* ============================================================
+   20. 底部输入栏模型选择器按钮高对比度加固 (Fix Model Trigger Readability)
+   ============================================================ */
+[data-testid="model-selector-trigger"] {
+  font-family: var(--px-font-mono, monospace) !important;
+  font-size: 12px !important;
+  border: 1px solid transparent !important;
+  transition: background-color 60ms steps(2), color 60ms steps(2), border-color 60ms steps(2) !important;
+}
+
+body.theme-light [data-testid="model-selector-trigger"],
+body.theme-light [data-testid="model-selector-trigger"] *,
+body.theme-light [data-testid="model-selector-trigger"] span,
+body.theme-light [data-testid="model-selector-trigger"] .text-secondary-foreground {
+  color: #111113 !important;
+  fill: #111113 !important;
+}
+
+body.theme-light [data-testid="model-selector-trigger"]:hover,
+body.theme-light [data-testid="model-selector-trigger"]:focus-visible,
+body.theme-light [data-testid="model-selector-trigger"][aria-expanded="true"] {
+  background-color: #E2E4E9 !important;
+  border-color: #000000 !important;
+}
+
+body:not(.theme-light) [data-testid="model-selector-trigger"],
+body:not(.theme-light) [data-testid="model-selector-trigger"] *,
+body:not(.theme-light) [data-testid="model-selector-trigger"] span,
+body:not(.theme-light) [data-testid="model-selector-trigger"] .text-secondary-foreground {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+body:not(.theme-light) [data-testid="model-selector-trigger"]:hover,
+body:not(.theme-light) [data-testid="model-selector-trigger"]:focus-visible,
+body:not(.theme-light) [data-testid="model-selector-trigger"][aria-expanded="true"] {
+  background-color: #20232A !important;
+  border-color: #5A6988 !important;
+}
+
+/* 侧边栏会话项悬停防穿透与实体遮罩（根除图二时间戳重叠） */
+[data-testid="conversation-row-sidebar"] span.truncate {
+  color: var(--foreground) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+body.theme-light [data-testid="conversation-row-sidebar"] span.truncate {
+  color: #111113 !important;
+}
+
+[data-testid="conversation-row-sidebar"]:hover .group-hover\:invisible,
+[data-testid="conversation-row-sidebar"]:hover [class*="group-hover:invisible"],
+[data-testid="conversation-row-sidebar"]:hover .group-hover\:invisible span,
+[data-testid="conversation-row-sidebar"]:hover [class*="group-hover:invisible"] span {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+[data-testid="conversation-row-sidebar"]:not(:hover) .absolute.top-0.bottom-0.-right-1,
+[data-testid="conversation-list-sidebar"]:not(:hover) .absolute.top-0.bottom-0.-right-1,
+[data-testid="conversation-row-sidebar"] [style*="linear-gradient"],
+[data-testid="conversation-list-sidebar"] [style*="linear-gradient"] {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+[data-testid="conversation-row-sidebar"]:hover .absolute.top-0.bottom-0.-right-1,
+[data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+[data-testid="conversation-list-sidebar"]:hover .absolute.top-0.bottom-0.-right-1 {
+  background-color: #E2E4E9 !important;
+  border-radius: 0 !important;
+  background-image: none !important;
+  padding-left: 6px !important;
+}
+
+body:not(.theme-light) [data-testid="conversation-row-sidebar"]:hover .absolute.top-0.bottom-0.-right-1,
+body:not(.theme-light) [data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+body:not(.theme-light) [data-testid="conversation-list-sidebar"]:hover .absolute.top-0.bottom-0.-right-1 {
+  background-color: #1A1C23 !important;
+  border-radius: 0 !important;
+  background-image: none !important;
+  padding-left: 6px !important;
+}
+
+/* 发送按钮状态与禁用置灰 */
+[data-testid="send-button"]:not(:disabled),
+button[data-testid="send-button"]:not(:disabled) {
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+
+[data-testid="send-button"]:not(:disabled) svg,
+button[data-testid="send-button"]:not(:disabled) svg {
+  color: #000000 !important;
+  fill: #000000 !important;
+}
+
+[data-testid="send-button"]:disabled,
+button[data-testid="send-button"]:disabled {
+  background-color: #71717A !important;
+  border: 1px solid transparent !important;
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* ============================================================
+   21. 144Hz 极清高刷硬件加速与布局边界隔离 (High-Performance Hardware Compositing)
+   ============================================================ */
+
+/* 1. 左右侧边栏与辅助栏容器绝对隔离：防止外层宽度 500ms 折叠/展开时对其子项反复触发重排 */
+div.flex > div.h-full.w-full[style*="position: absolute"],
+[data-testid="conversation-list-sidebar"],
+div.flex[style*="transition: width 500ms"],
+div[style*="--aux-pane-width"],
+[data-testid*="sidebar"],
+[data-testid*="aux"] {
+  transform: translateZ(0) !important;
+  contain: layout style !important;
+}
+
+/* 2. 移除列表节点挂载时的全量并发动画风暴，平抑会话切换 35ms 顿挫 */
+[data-testid="conversation-list-sidebar"] .w-full.group {
+  animation: none !important;
+}
+
+[data-testid="conversation-row-sidebar"] {
+  content-visibility: auto !important;
+  contain-intrinsic-size: 0 38px !important;
+}
+
+/* 3. 背景点阵显存纹理固化（滚动时零重绘） */
+body {
+  background-attachment: fixed !important;
+}
+
+/* 4. 会话流式加载器与旋转指示器 100% GPU Compositor 独立通道 */
+svg[class*="animate-spin"],
+[class*="animate-spin"],
+svg[style*="animation: spin"],
+svg[style*="animation:spin"] {
+  will-change: transform !important;
+  transform: translateZ(0) !important;
+  contain: layout paint !important;
+}
+
+/* 5. 消息气泡与代码块布局边界固化 */
+[class*="group/user-input-step"],
+pre,
+code {
+  contain: layout style !important;
+}
+
+/* ============================================================
+   22. 四大主题专属全景背景特征点（专属暗纹 + 画布四角 8-Bit 街机 HUD 系统）
+   ============================================================ */
+
+/* 1. CRT 街机微透视赛博网格与电路走线暗纹 (4%~6% 极客矩阵) */
+body::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.05 !important;
+  background-position: center bottom !important;
+  background-repeat: no-repeat !important;
+  background-size: 800px 320px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 320' fill='none'%3E%3C!-- Vanishing Point Perspective Grid --%3E%3Cline x1='400' y1='20' x2='0' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='100' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='200' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='300' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='400' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='500' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='600' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='700' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='800' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3C!-- Horizontal Grid Lines --%3E%3Cline x1='360' y1='60' x2='440' y2='60' stroke='%2300F0FF' stroke-width='1'/%3E%3Cline x1='320' y1='100' x2='480' y2='100' stroke='%2300F0FF' stroke-width='1'/%3E%3Cline x1='260' y1='150' x2='540' y2='150' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='180' y1='210' x2='620' y2='210' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='80' y1='270' x2='720' y2='270' stroke='%2300F0FF' stroke-width='2'/%3E%3Cline x1='0' y1='320' x2='800' y2='320' stroke='%2300F0FF' stroke-width='2.5'/%3E%3C/svg%3E") !important;
+}
+
+body:not(.theme-light)::before {
+  opacity: 0.08 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 320' fill='none'%3E%3Cline x1='400' y1='20' x2='0' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='100' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='200' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='300' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='400' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='500' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='600' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='700' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='400' y1='20' x2='800' y2='320' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='360' y1='60' x2='440' y2='60' stroke='%2300F0FF' stroke-width='1'/%3E%3Cline x1='320' y1='100' x2='480' y2='100' stroke='%2300F0FF' stroke-width='1'/%3E%3Cline x1='260' y1='150' x2='540' y2='150' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='180' y1='210' x2='620' y2='210' stroke='%2300F0FF' stroke-width='1.5'/%3E%3Cline x1='80' y1='270' x2='720' y2='270' stroke='%2300F0FF' stroke-width='2'/%3E%3Cline x1='0' y1='320' x2='800' y2='320' stroke='%2300F0FF' stroke-width='2.5'/%3E%3C/svg%3E") !important;
+}
+
+/* 2. 街机监视器 HUD 战术瞄准角框 (8-Bit Arcade HUD Corner Brackets) */
+html:not(.px-sending) body::after {
+  content: "" !important;
+  position: fixed !important;
+  inset: 12px !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.13 !important;
+  background-position: top left, top right, bottom left, bottom right !important;
+  background-repeat: no-repeat !important;
+  background-size: 150px 48px, 160px 48px, 170px 48px, 160px 48px !important;
+  background-image:
+    /* Top-Left: [+ 1P READY +] */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='48' viewBox='0 0 150 48'%3E%3Crect x='0' y='0' width='6' height='24' fill='%2300F0FF'/%3E%3Crect x='0' y='0' width='24' height='6' fill='%2300F0FF'/%3E%3Ctext x='16' y='20' font-family='monospace' font-size='10' font-weight='bold' fill='%23111113'%3E[+ 1P READY +]%3C/text%3E%3C/svg%3E"),
+    /* Top-Right: [ HI-SCORE: 999900 ] */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Crect x='154' y='0' width='6' height='24' fill='%2300F0FF'/%3E%3Crect x='136' y='0' width='24' height='6' fill='%2300F0FF'/%3E%3Ctext x='10' y='18' font-family='monospace' font-size='10' font-weight='bold' fill='%23111113'%3E[ HI-SCORE: 999900 ]%3C/text%3E%3C/svg%3E"),
+    /* Bottom-Left: [SYS.OK // RAM: 64KB] */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='48' viewBox='0 0 170 48'%3E%3Crect x='0' y='24' width='6' height='24' fill='%2300F0FF'/%3E%3Crect x='0' y='42' width='24' height='6' fill='%2300F0FF'/%3E%3Ctext x='14' y='40' font-family='monospace' font-size='9' font-weight='bold' fill='%23111113'%3E[SYS.OK // RAM: 64KB]%3C/text%3E%3C/svg%3E"),
+    /* Bottom-Right: [HP: ■■■■□ 80%] */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Crect x='154' y='24' width='6' height='24' fill='%2300F0FF'/%3E%3Crect x='136' y='42' width='24' height='6' fill='%2300F0FF'/%3E%3Ctext x='16' y='40' font-family='monospace' font-size='9' font-weight='bold' fill='%23E60012'%3E[HP: %E2%96%A0%E2%96%A0%E2%96%A0%E2%96%A0%E2%96%A1 80%25]%3C/text%3E%3C/svg%3E") !important;
+}
+
+html:not(.px-sending) body:not(.theme-light)::after {
+  opacity: 0.17 !important;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='48' viewBox='0 0 150 48'%3E%3Crect x='0' y='0' width='6' height='24' fill='%2300F0FF'/%3E%3Crect x='0' y='0' width='24' height='6' fill='%2300F0FF'/%3E%3Ctext x='16' y='20' font-family='monospace' font-size='10' font-weight='bold' fill='%2300F0FF'%3E[+ 1P READY +]%3C/text%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Crect x='154' y='0' width='6' height='24' fill='%2300F0FF'/%3E%3Crect x='136' y='0' width='24' height='6' fill='%2300F0FF'/%3E%3Ctext x='10' y='18' font-family='monospace' font-size='10' font-weight='bold' fill='%2300F0FF'%3E[ HI-SCORE: 999900 ]%3C/text%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='48' viewBox='0 0 170 48'%3E%3Crect x='0' y='24' width='6' height='24' fill='%2300F0FF'/%3E%3Crect x='0' y='42' width='24' height='6' fill='%2300F0FF'/%3E%3Ctext x='14' y='40' font-family='monospace' font-size='9' font-weight='bold' fill='%2300F0FF'%3E[SYS.OK // RAM: 64KB]%3C/text%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48' viewBox='0 0 160 48'%3E%3Crect x='154' y='24' width='6' height='24' fill='%2300F0FF'/%3E%3Crect x='136' y='42' width='24' height='6' fill='%2300F0FF'/%3E%3Ctext x='16' y='40' font-family='monospace' font-size='9' font-weight='bold' fill='%23E60012'%3E[HP: %E2%96%A0%E2%96%A0%E2%96%A0%E2%96%A0%E2%96%A1 80%25]%3C/text%3E%3C/svg%3E") !important;
+}
+
+/* ============================================================
+   23. 全局确认弹窗与提示对话框（Confirm Modal / AlertDialog）8-Bit 像素风美化
+   针对「确认撤销」「删除确认」「外部运行命令」等系统弹窗进行街机 HUD 对话框重构
+   ============================================================ */
+
+/* 1. 街机黑客暗夜扫描线遮罩（GPU 独立合成层 + 零重绘满帧优化 + 超级层级） */
+div[class*="animate-backdropFadeIn"],
+[data-backdrop] {
+  background-color: rgba(5, 10, 15, 0.82) !important;
+  will-change: opacity !important;
+  transform: translateZ(0) !important;
+  contain: strict !important;
+  z-index: 2147483640 !important;
+}
+
+/* 2. 全局弹窗层级与遮罩动效平滑修复 (恢复 150ms 遮罩自然淡入) */
+@keyframes modal-backdrop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+div.animate-modalFadeIn,
+div[class*="settings-modal-backdrop"] {
+  animation: modal-backdrop-fade 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+div.animate-modalFadeIn:has([role="dialog"]),
+div.animate-modalFadeIn:has([role="alertdialog"]),
+[role="alertdialog"],
+[role="dialog"]:not(.settings-modal-container) {
+  z-index: 2147483645 !important;
+}
+
+/* 3. 弹窗本体：8-Bit 像素指令视窗（阶梯纯黑硬边 + 青色外发光双层框 + 140ms steps(3) 点阵分帧显现） */
+html body [role="alertdialog"].animate-modalScaleIn,
+html body [role="dialog"]:not(.settings-modal-container).animate-modalScaleIn,
+html body div.bg-card:not(.settings-modal-container).animate-modalScaleIn {
+  z-index: 2147483645 !important;
+  background-color: #FFFFFF !important;
+  border: 3px solid #000000 !important;
+  border-radius: 0 !important;
+  box-shadow: 6px 6px 0 #000000, 0 0 0 2px #00F0FF !important;
+  padding: 22px 24px !important;
+  position: relative !important;
+  will-change: transform, opacity !important;
+  transform: translateZ(0) !important;
+  contain: layout style !important;
+  animation: pixel-modal-pop-in 240ms steps(3) forwards !important;
+  transform-origin: center center !important;
+}
+
+body:not(.theme-light) [role="alertdialog"].animate-modalScaleIn,
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container).animate-modalScaleIn,
+body:not(.theme-light) div.bg-card:not(.settings-modal-container).animate-modalScaleIn {
+  background-color: #0C1017 !important;
+  border-color: #00F0FF !important;
+  box-shadow: 6px 6px 0 #000000, 0 0 0 2px #000000 !important;
+}
+
+@keyframes pixel-modal-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translate3d(0, 30px, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02) translate3d(0, -3px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pixel-modal-pop-out {
+  0% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translate3d(0, 20px, 0);
+  }
+}
+
+/* 1. 提拉全局弹窗遮罩与对话框本体至最高安全区 */
+div.settings-modal-backdrop,
+div.animate-modalFadeIn,
+[role="dialog"],
+[role="alertdialog"],
+.settings-modal-container {
+  z-index: 2147483640 !important;
+}
+
+/* 2. 规范常规态 Tooltip 层级，低于弹窗但高于普通浮层 */
+[role="tooltip"],
+.react-tooltip {
+  z-index: 2147483620 !important;
+}
+
+/* 3. 弹窗打开时的零开销纯 class 抑制屏障（严格剔除全局 body:has()，彻底避免 4.7x 流式样式重算） */
+html.px-modal-open [role="tooltip"],
+html.px-modal-open .react-tooltip {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* 4. 确认弹窗头部标题栏：像素等宽字体 + [ SYSTEM // 确认撤销 ] */
+[role="alertdialog"] h2,
+[role="dialog"]:not(.settings-modal-container) h2,
+[role="dialog"]:not(.settings-modal-container) [class*="text-md"][class*="font-medium"] {
+  font-family: monospace, monospace !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  color: #000000 !important;
+  letter-spacing: 1px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+body:not(.theme-light) [role="alertdialog"] h2,
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) h2,
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) [class*="text-md"][class*="font-medium"] {
+  color: #00F0FF !important;
+}
+
+[role="alertdialog"] h2::before,
+[role="dialog"]:not(.settings-modal-container) h2::before,
+[role="dialog"]:not(.settings-modal-container) [class*="text-md"][class*="font-medium"]::before {
+  content: "[ " !important;
+  color: #00F0FF !important;
+  font-weight: 900 !important;
+}
+
+[role="alertdialog"] h2::after,
+[role="dialog"]:not(.settings-modal-container) h2::after,
+[role="dialog"]:not(.settings-modal-container) [class*="text-md"][class*="font-medium"]::after {
+  content: " ]" !important;
+  color: #00F0FF !important;
+  font-weight: 900 !important;
+}
+
+/* 5. 确认弹窗关闭按钮：8-Bit 像素方块 [X] */
+[role="dialog"]:not(.settings-modal-container) div.mb-4 button,
+[role="dialog"]:not(.settings-modal-container) button[aria-label="关闭"],
+[role="dialog"]:not(.settings-modal-container) button[aria-label="Close"],
+[role="alertdialog"] div.mb-4 button,
+[role="alertdialog"] button[aria-label="关闭"],
+[role="alertdialog"] button[aria-label="Close"] {
+  border: 2px solid #000000 !important;
+  border-style: solid !important;
+  border-width: 2px !important;
+  border-color: #000000 !important;
+  border-radius: 0 !important;
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px !important;
+  min-height: 26px !important;
+  background-color: transparent !important;
+  color: #000000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  transition: all 100ms steps(2) !important;
+}
+
+[role="dialog"]:not(.settings-modal-container) div.mb-4 button:hover,
+[role="dialog"]:not(.settings-modal-container) button[aria-label="关闭"]:hover,
+[role="dialog"]:not(.settings-modal-container) button[aria-label="Close"]:hover,
+[role="alertdialog"] div.mb-4 button:hover,
+[role="alertdialog"] button[aria-label="关闭"]:hover,
+[role="alertdialog"] button[aria-label="Close"]:hover {
+  background-color: #E60012 !important;
+  border-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) div.mb-4 button,
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) button[aria-label="关闭"],
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) button[aria-label="Close"] {
+  border-color: #00F0FF !important;
+  color: #00F0FF !important;
+}
+
+/* 6. 确认弹窗正文提示文本卡片（终端命令行微视窗） */
+[role="dialog"]:not(.settings-modal-container) p.text-muted-foreground,
+[role="alertdialog"] p.text-muted-foreground {
+  font-family: monospace, monospace !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  color: #111113 !important;
+  background: #F0F4F8 !important;
+  border: 2px solid #000000 !important;
+  border-left: 5px solid #00F0FF !important;
+  padding: 12px 14px !important;
+  border-radius: 0 !important;
+  margin: 10px 0 16px 0 !important;
+}
+
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) p.text-muted-foreground,
+body:not(.theme-light) [role="alertdialog"] p.text-muted-foreground {
+  color: #A0C0D0 !important;
+  background: #080D14 !important;
+  border-color: #1B2B3A !important;
+  border-left-color: #00F0FF !important;
+}
+
+/* 7. 确认弹窗底部操作按钮条 */
+[role="dialog"]:not(.settings-modal-container) .pt-3,
+[role="alertdialog"] .pt-3 {
+  border-top: 2px dashed #000000 !important;
+  padding-top: 16px !important;
+  margin-top: 8px !important;
+}
+
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) .pt-3,
+body:not(.theme-light) [role="alertdialog"] .pt-3 {
+  border-top-color: #1B2B3A !important;
+}
+
+/* 确认弹窗取消按钮：8-Bit 像素纯黑线框 */
+[role="dialog"]:not(.settings-modal-container) button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]),
+[role="alertdialog"] button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]) {
+  font-family: monospace, monospace !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #000000 !important;
+  padding: 6px 16px !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+  transition: all 80ms steps(2) !important;
+}
+
+[role="dialog"]:not(.settings-modal-container) button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]):hover,
+[role="alertdialog"] button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]):hover {
+  background-color: #E2E8F0 !important;
+  transform: translate(-1px, -1px) !important;
+}
+
+body:not(.theme-light) [role="dialog"]:not(.settings-modal-container) button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]),
+body:not(.theme-light) [role="alertdialog"] button:not([data-autofocus="true"]):not([aria-label="关闭"]):not([aria-label="Close"]) {
+  border-color: #00F0FF !important;
+  color: #00F0FF !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+
+/* 确认弹窗确认按钮：赛博霓虹青 + 3D 硬投影 + 像素回车 */
+[role="dialog"]:not(.settings-modal-container) button[data-autofocus="true"],
+[role="alertdialog"] button[data-autofocus="true"],
+[role="dialog"]:not(.settings-modal-container) button.bg-primary,
+[role="alertdialog"] button.bg-primary {
+  font-family: monospace, monospace !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0 !important;
+  padding: 6px 18px !important;
+  box-shadow: 3px 3px 0 #000000 !important;
+  transition: all 80ms steps(2) !important;
+}
+
+[role="dialog"]:not(.settings-modal-container) button[data-autofocus="true"]:hover,
+[role="alertdialog"] button[data-autofocus="true"]:hover,
+[role="dialog"]:not(.settings-modal-container) button.bg-primary:hover,
+[role="alertdialog"] button.bg-primary:hover {
+  background-color: #38F8FF !important;
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+}
+
+[role="dialog"]:not(.settings-modal-container) button[data-autofocus="true"]:active,
+[role="alertdialog"] button[data-autofocus="true"]:active,
+[role="dialog"]:not(.settings-modal-container) button.bg-primary:active,
+[role="alertdialog"] button.bg-primary:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0 0 0 #000000 !important;
+}
+
+/* 像素回车键帽符号 */
+[role="dialog"]:not(.settings-modal-container) button[data-autofocus="true"] span,
+[role="alertdialog"] button[data-autofocus="true"] span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  border-radius: 0 !important;
+  padding: 0 4px !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  margin-left: 4px !important;
+}
+
+/* ============================================================
+   8. 设置弹窗核心专有规则体系 (SETTINGS MODAL DEDICATED SUITE)
+   ============================================================ */
+
+/* 8.1 容器隔离：清空误加的 22px 24px padding，点阵分帧 240ms 入场与 160ms 优雅退场 */
+.settings-modal-container {
+  padding: 0 !important;
+  animation: pixel-modal-pop-in 240ms steps(4) forwards !important;
+  will-change: transform, opacity !important;
+  transform-origin: center center !important;
+}
+
+html.px-modal-closing .settings-modal-container,
+html.px-modal-closing [role="dialog"],
+.settings-modal-container.settings-modal-closing,
+[role="dialog"].settings-modal-closing {
+  animation: pixel-modal-pop-out 160ms steps(3) forwards !important;
+  pointer-events: none !important;
+}
+
+html.px-modal-closing div.settings-modal-backdrop,
+html.px-modal-closing div.animate-modalFadeIn,
+div.settings-modal-backdrop.settings-modal-closing,
+div.animate-modalFadeIn.settings-modal-closing {
+  opacity: 0 !important;
+  transition: opacity 160ms steps(3) !important;
+  pointer-events: none !important;
+}
+
+/* 8.2 下拉浮层终极层级修复 (根除反向遮挡与露头，确保低于最高指针) */
+#px-cursor {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 2147483647 !important;
+}
+
+[data-radix-popper-content-wrapper],
+div:has(> [role="listbox"]:not(:empty)),
+div[class*="z-[6000]"],
+[role="listbox"]:not(:empty) {
+  z-index: 2147483640 !important;
+  max-height: calc(100vh - 120px) !important;
+}
+
+/* 8.3 左侧导航列表 Tab 样式还原与像素青高亮底色 */
+.settings-modal-container div.bg-sidebar button,
+.settings-modal-container [class*="bg-sidebar"] button {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+  padding: 6px 12px !important;
+  min-height: 32px !important;
+  width: calc(100% - 16px) !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  background: transparent !important;
+  font-family: monospace, monospace !important;
+  font-size: 13px !important;
+  color: #334155 !important;
+  transition: all 80ms steps(2) !important;
+}
+
+.settings-modal-container div.bg-sidebar button:hover,
+.settings-modal-container [class*="bg-sidebar"] button:hover {
+  background-color: #E2E8F0 !important;
+  color: #000000 !important;
+}
+
+.settings-modal-container div.bg-sidebar button[class*="bg-sidebar-secondary"],
+.settings-modal-container div.bg-sidebar button[class*="bg-sidebar-accent"],
+.settings-modal-container [class*="bg-sidebar"] button[class*="bg-sidebar-secondary"],
+.settings-modal-container [class*="bg-sidebar"] button[class*="bg-sidebar-accent"],
+.settings-modal-container button[class*="bg-sidebar-secondary"],
+.settings-modal-container button[class*="bg-sidebar-accent"] {
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  font-weight: 900 !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+
+body:not(.theme-light) .settings-modal-container div.bg-sidebar button,
+body:not(.theme-light) .settings-modal-container [class*="bg-sidebar"] button {
+  color: #94A3B8 !important;
+}
+
+body:not(.theme-light) .settings-modal-container div.bg-sidebar button:hover,
+body:not(.theme-light) .settings-modal-container [class*="bg-sidebar"] button:hover {
+  background-color: #162432 !important;
+  color: #00F0FF !important;
+}
+
+body:not(.theme-light) .settings-modal-container div.bg-sidebar button[class*="bg-sidebar-secondary"],
+body:not(.theme-light) .settings-modal-container div.bg-sidebar button[class*="bg-sidebar-accent"],
+body:not(.theme-light) .settings-modal-container [class*="bg-sidebar"] button[class*="bg-sidebar-secondary"],
+body:not(.theme-light) .settings-modal-container [class*="bg-sidebar"] button[class*="bg-sidebar-accent"],
+body:not(.theme-light) .settings-modal-container button[class*="bg-sidebar-secondary"],
+body:not(.theme-light) .settings-modal-container button[class*="bg-sidebar-accent"] {
+  background-color: #00F0FF !important;
+  color: #0C1017 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+
+/* 8.4 设置弹窗专有高辨识度下拉选择按钮 (Combobox) */
+.settings-modal-container button[role="combobox"] {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+  font-family: monospace, monospace !important;
+  min-height: 34px !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: all 80ms steps(2) !important;
+}
+
+.settings-modal-container button[role="combobox"]:hover {
+  background-color: #E2E8F0 !important;
+  border-color: #000000 !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="combobox"] {
+  background-color: #101820 !important;
+  color: #00F0FF !important;
+  border: 1.5px solid #00F0FF !important;
+  border-radius: 0 !important;
+  box-shadow: 2px 2px 0 #000000 !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="combobox"]:hover {
+  background-color: #162432 !important;
+  box-shadow: 3px 3px 0 #000000 !important;
+}
+
+/* 8.5 设置弹窗专有开关控件 (杜绝隐形空气) */
+.settings-modal-container button[role="switch"] {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 24px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  shrink: 0 !important;
+  cursor: pointer !important;
+  border-radius: 0 !important;
+  transition: all 80ms steps(2) !important;
+}
+
+.settings-modal-container button[role="switch"][aria-checked="false"] {
+  background-color: #CBD5E1 !important;
+  border: 2px solid #000000 !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="switch"][aria-checked="false"] {
+  background-color: #1E293B !important;
+  border: 1.5px solid #475569 !important;
+}
+
+.settings-modal-container button[role="switch"][aria-checked="true"] {
+  background-color: #00F0FF !important;
+  border: 2px solid #000000 !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="switch"][aria-checked="true"] {
+  background-color: #00F0FF !important;
+  border: 1.5px solid #00F0FF !important;
+}
+
+.settings-modal-container button[role="switch"] span {
+  display: block !important;
+  height: 16px !important;
+  width: 16px !important;
+  border-radius: 0 !important;
+  background-color: #000000 !important;
+  transition: transform 80ms steps(2) !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="switch"] span {
+  background-color: #FFFFFF !important;
+}
+
+body:not(.theme-light) .settings-modal-container button[role="switch"][aria-checked="true"] span {
+  background-color: #0C1017 !important;
+}
+
+/* 8.6 设置弹窗滚动区底部安全留白 (60px) */
+.settings-modal-container .overflow-auto > div:last-child,
+.settings-modal-container .overflow-y-auto > div:last-child {
+  padding-bottom: 60px !important;
+}
+
+/* 8.7 设置弹窗关闭按钮 */
+.settings-modal-container > button[aria-label="关闭"],
+.settings-modal-container > button[aria-label="Close"],
+.settings-modal-container button.top-4.right-4 {
+  border: 2px solid #000000 !important;
+  border-radius: 0 !important;
+  width: 26px !important;
+  height: 26px !important;
+  background-color: transparent !important;
+  color: #000000 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 80ms steps(2) !important;
+}
+
+body:not(.theme-light) .settings-modal-container > button[aria-label="关闭"],
+body:not(.theme-light) .settings-modal-container > button[aria-label="Close"],
+body:not(.theme-light) .settings-modal-container button.top-4.right-4 {
+  border-color: #00F0FF !important;
+  color: #00F0FF !important;
+}
+
+.settings-modal-container > button[aria-label="关闭"]:hover,
+.settings-modal-container > button[aria-label="Close"]:hover,
+.settings-modal-container button.top-4.right-4:hover {
+  background-color: #E60012 !important;
+  border-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+/* ============================================================================
+   23. 图一/图二/图三/图四 全场景交互精准闭环落地规范 (Interactive Defect Fixes: pixel)
+   ============================================================================ */
+
+/* --- 1. 光标层级绝对置顶与弹窗浮层安全收敛 (彻底解决图一指针被菜单覆盖) --- */
+#px-cursor {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 2147483647 !important;
+}
+
+/* 1. 提拉全局弹窗遮罩与对话框本体至最高安全区 */
+div.settings-modal-backdrop,
+div.animate-modalFadeIn,
+[role="dialog"],
+[role="alertdialog"],
+.settings-modal-container,
+[data-radix-popper-content-wrapper],
+div[class*="z-[6000]"],
+div[class*="z-[8000]"],
+[role="listbox"]:not(:empty) {
+  z-index: 2147483640 !important;
+}
+
+/* 2. 规范常规态 Tooltip 层级，低于弹窗但高于普通浮层 */
+[role="tooltip"],
+.react-tooltip {
+  z-index: 2147483620 !important;
+}
+
+/* 3. 弹窗打开时的零开销纯 class 抑制屏障（严格剔除全局 body:has()，彻底避免 4.7x 流式样式重算） */
+html.px-modal-open [role="tooltip"],
+html.px-modal-open .react-tooltip {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* --- 2. 模型下拉菜单、子菜单及所有选项项高对比度全覆盖 (解决图一配色奇怪与白字浅底) --- */
+[role="menuitem"],
+[role="menuitemradio"],
+[role="menuitemcheckbox"],
+[role="option"],
+[data-radix-collection-item],
+[class*="select-item"],
+.monaco-menu .action-item {
+  font-family: var(--px-font-mono, 'Press Start 2P', monospace) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: var(--foreground) !important;
+  background: transparent !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease, border-color 120ms ease !important;
+}
+
+body.theme-light [role="menuitem"],
+body.theme-light [role="menuitemradio"],
+body.theme-light [role="menuitemcheckbox"],
+body.theme-light [role="option"],
+body.theme-light [data-radix-collection-item],
+body.theme-light [class*="select-item"],
+body.theme-light .monaco-menu .action-item {
+  color: #111113 !important;
+  background-color: transparent !important;
+}
+
+/* 2. 【解决图一与图三】下拉选项未悬停状态：强制纯黑高对比文字，彻底消灭白字浅底 */
+body.theme-light .px-menu-item:not([role="menuitem"]):not([role="menuitemradio"]):not([role="menuitemcheckbox"]):not([data-testid="title-menu-bar-option"]):not(:hover):not([data-highlighted]),
+body.theme-light .px-menu-item:not([role="menuitem"]):not([role="menuitemradio"]):not([role="menuitemcheckbox"]):not([data-testid="title-menu-bar-option"]):not(:hover):not([data-highlighted]) * {
+  color: #111113 !important;
+}
+
+body:not(.theme-light) .px-menu-item:not([role="menuitem"]):not([role="menuitemradio"]):not([role="menuitemcheckbox"]):not([data-testid="title-menu-bar-option"]):not(:hover):not([data-highlighted]),
+body:not(.theme-light) .px-menu-item:not([role="menuitem"]):not([role="menuitemradio"]):not([role="menuitemcheckbox"]):not([data-testid="title-menu-bar-option"]):not(:hover):not([data-highlighted]) * {
+  color: #00F0FF !important;
+}
+
+/* 下拉选项在已选中态（未悬停时）：像素青轻量指示条与微青底板，保持清晰纯黑字 */
+body.theme-light [role="option"][aria-selected="true"]:not(:hover),
+body.theme-light [role="option"][data-selected]:not(:hover),
+body.theme-light div.data-\[selected\]\:\!bg-secondary[data-selected]:not(:hover) {
+  background-color: rgba(0, 240, 255, 0.12) !important;
+  border-left: 3.5px solid #00F0FF !important;
+  color: #111113 !important;
+}
+body.theme-light [role="option"][aria-selected="true"]:not(:hover) *,
+body.theme-light [role="option"][data-selected]:not(:hover) *,
+body.theme-light div.data-\[selected\]\:\!bg-secondary[data-selected]:not(:hover) * {
+  color: #111113 !important;
+  fill: #111113 !important;
+}
+
+body:not(.theme-light) [role="option"][aria-selected="true"]:not(:hover),
+body:not(.theme-light) [role="option"][data-selected]:not(:hover),
+body:not(.theme-light) div.data-\[selected\]\:\!bg-secondary[data-selected]:not(:hover) {
+  background-color: rgba(0, 240, 255, 0.22) !important;
+  border-left: 3.5px solid #00F0FF !important;
+  color: #00F0FF !important;
+}
+body:not(.theme-light) [role="option"][aria-selected="true"]:not(:hover) *,
+body:not(.theme-light) [role="option"][data-selected]:not(:hover) *,
+body:not(.theme-light) div.data-\[selected\]\:\!bg-secondary[data-selected]:not(:hover) * {
+  color: #00F0FF !important;
+  fill: #00F0FF !important;
+}
+
+/* 3. 【解决图二】单选子菜单项（Low / Medium / High）：已选态未悬停时绝不用实心高亮块，杜绝同时双高亮 */
+body.theme-light [role="menuitemradio"][data-checked]:not(:hover),
+body.theme-light [role="menuitemradio"][aria-checked="true"]:not(:hover) {
+  background-color: rgba(0, 240, 255, 0.12) !important;
+  border-left: 3.5px solid #00F0FF !important;
+  color: #111113 !important;
+  transform: none !important;
+}
+body.theme-light [role="menuitemradio"][data-checked]:not(:hover) *,
+body.theme-light [role="menuitemradio"][aria-checked="true"]:not(:hover) * {
+  color: #111113 !important;
+  fill: #111113 !important;
+}
+
+body:not(.theme-light) [role="menuitemradio"][data-checked]:not(:hover),
+body:not(.theme-light) [role="menuitemradio"][aria-checked="true"]:not(:hover) {
+  background-color: rgba(0, 240, 255, 0.25) !important;
+  border-left: 3.5px solid #00F0FF !important;
+  color: #00F0FF !important;
+  transform: none !important;
+}
+body:not(.theme-light) [role="menuitemradio"][data-checked]:not(:hover) *,
+body:not(.theme-light) [role="menuitemradio"][aria-checked="true"]:not(:hover) * {
+  color: #00F0FF !important;
+  fill: #00F0FF !important;
+}
+
+/* 4. 鼠标悬停、键盘高亮焦点态：赋予标志性像素青背景 + 纯黑字 + 3px 滑移 */
+[role="menuitem"]:hover,
+[role="menuitem"]:focus,
+[role="menuitem"][data-highlighted],
+[role="menuitem"][data-state="open"],
+[role="menuitemradio"]:hover,
+[role="menuitemradio"]:focus,
+[role="menuitemradio"][data-highlighted]:not([data-checked]),
+[role="menuitemcheckbox"]:hover,
+[role="menuitemcheckbox"]:focus,
+[role="menuitemcheckbox"][data-highlighted],
+[role="option"]:hover,
+[role="option"]:focus,
+[role="option"][data-highlighted]:not([data-selected]):not([aria-selected="true"]),
+[class*="select-item"]:hover,
+[class*="select-item"]:focus,
+body.theme-light [role="menuitem"]:hover,
+body.theme-light [role="menuitem"]:focus,
+body.theme-light [role="menuitem"][data-highlighted],
+body.theme-light [role="menuitem"][data-state="open"],
+body.theme-light [role="menuitemradio"]:hover,
+body.theme-light [role="menuitemradio"]:focus,
+body.theme-light [role="menuitemradio"][data-highlighted]:not([data-checked]),
+body.theme-light [role="menuitemcheckbox"]:hover,
+body.theme-light [role="menuitemcheckbox"]:focus,
+body.theme-light [role="menuitemcheckbox"][data-highlighted],
+body.theme-light [role="option"]:hover,
+body.theme-light [role="option"]:focus,
+body.theme-light [role="option"][data-highlighted]:not([data-selected]):not([aria-selected="true"]),
+body.theme-light div.data-\[selected\]\:\!bg-secondary[data-selected]:hover,
+body.theme-light [class*="select-item"]:hover {
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  border-left: 3.5px solid #00F0FF !important;
+  transform: translateX(3px) !important;
+  box-shadow: none !important;
+}
+
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted]:not([data-checked]) *,
+.px-menu-item[data-highlighted]:not([data-selected]):not([aria-selected="true"]) *,
+.px-menu-item[data-state="open"] * {
+  color: #000000 !important;
+  fill: #000000 !important;
+}
+
+/* 5. 【解决图二】激活行内的 Fast 徽标与小角标：深色高对比胶囊，杜绝模糊洗白 */
+[role="menuitem"]:hover [class*="rounded-full"],
+[role="menuitem"][data-highlighted] [class*="rounded-full"],
+[role="menuitem"][data-state="open"] [class*="rounded-full"],
+body.theme-light [role="menuitem"]:hover [class*="rounded-full"],
+body.theme-light [role="menuitem"][data-highlighted] [class*="rounded-full"],
+body.theme-light [role="menuitem"][data-state="open"] [class*="rounded-full"] {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid #00F0FF !important;
+  opacity: 1 !important;
+}
+.px-menu-item:hover [class*="rounded-full"] *,
+.px-menu-item[data-highlighted] [class*="rounded-full"] *,
+.px-menu-item[data-state="open"] [class*="rounded-full"] *,
+.px-menu-item:hover [class*="opacity-70"],
+.px-menu-item[data-highlighted] [class*="opacity-70"] {
+  color: #00F0FF !important;
+  fill: #00F0FF !important;
+  opacity: 1 !important;
+}
+
+/* --- 3. 侧栏会话项悬停防穿透与实体遮罩 (解决图二时间戳与功能图标重叠) --- */
+[data-testid="conversation-row-sidebar"] span.truncate {
+  color: var(--foreground) !important;
+  font-family: var(--px-font-mono, 'Press Start 2P', monospace) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+body.theme-light [data-testid="conversation-row-sidebar"] span.truncate {
+  color: #111113 !important;
+}
+
+/* 悬停时彻底隐藏相对时间戳容器 */
+[data-testid="conversation-row-sidebar"]:hover .group-hover\:invisible,
+[data-testid="conversation-row-sidebar"]:hover [class*="group-hover:invisible"],
+[data-testid="conversation-row-sidebar"]:hover .group-hover\:invisible span,
+[data-testid="conversation-row-sidebar"]:hover [class*="group-hover:invisible"] span {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+/* 悬停时右侧操作栏具备完全不透明实体背景，消除叠印（纯粹直角与零模糊硬投影，捍卫像素艺术风格） */
+html[data-theme="pixel"] [data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+body.theme-pixel [data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+[data-testid="conversation-row-sidebar"]:hover .absolute.top-0.bottom-0.-right-1,
+[data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+[data-testid="conversation-list-sidebar"]:hover .absolute.top-0.bottom-0.-right-1 {
+  background-color: #E5E7EB !important;
+  border-radius: 0 !important;
+  background-image: none !important;
+  padding-left: 6px !important;
+  box-shadow: -4px 0 0 #E5E7EB !important;
+}
+body:not(.theme-light) [data-testid="conversation-row-sidebar"]:hover .absolute.top-0.bottom-0.-right-1,
+body:not(.theme-light) [data-testid="conversation-row-sidebar"]:hover [class*="absolute"][class*="right"],
+body:not(.theme-light) [data-testid="conversation-list-sidebar"]:hover .absolute.top-0.bottom-0.-right-1 {
+  background-color: #1E1E2E !important;
+  border-radius: 0 !important;
+  background-image: none !important;
+  padding-left: 6px !important;
+  box-shadow: -4px 0 0 #1E1E2E !important;
+}
+
+/* --- 4. 顶部系统下拉菜单全量重构（将图三动效与样式完全对齐图四上下文菜单） --- */
+div.border-menu-border,
+[class*="border-menu-border"],
+body.theme-light div.border-menu-border,
+body.theme-light [class*="border-menu-border"],
+body.theme-light [class*="shadow-"].border-menu-border,
+body.theme-light [class*="shadow-"][class*="border-menu-border"],
+body.theme-light [data-testid="title-menu-bar"] div[class*="z-[8000]"],
+body.theme-light [data-testid="title-menu-bar"] div[class*="min-w-"] {
+  border-radius: 0 !important;
+  border: 2px solid #000000 !important;
+  border-left: 5px solid #00F0FF !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #FFFFFF !important;
+  padding: 4px 0 !important;
+  animation: px-menu-enter 120ms steps(3) forwards !important;
+  transform-origin: top left !important;
+  min-width: 220px !important;
+  overflow: visible !important;
+}
+
+body:not(.theme-light) div.border-menu-border,
+body:not(.theme-light) [class*="border-menu-border"],
+body:not(.theme-light) [class*="shadow-"].border-menu-border,
+body:not(.theme-light) [class*="shadow-"][class*="border-menu-border"],
+body:not(.theme-light) [data-testid="title-menu-bar"] div[class*="z-[8000]"],
+body:not(.theme-light) [data-testid="title-menu-bar"] div[class*="min-w-"] {
+  border-radius: 0 !important;
+  border: 2px solid #5A6988 !important;
+  border-left: 5px solid #00F0FF !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #1A1C23 !important;
+  padding: 4px 0 !important;
+  animation: px-menu-enter 120ms steps(3) forwards !important;
+  transform-origin: top left !important;
+  min-width: 220px !important;
+}
+
+/* 顶部系统下拉菜单子项（对齐图四右键菜单：高对比度排版 + 悬停反色与位移动效 + 内部专属指示条） */
+div.border-menu-border button,
+[class*="border-menu-border"] button,
+[data-testid="title-menu-bar-option"],
+div[class*="border-menu-border"] button {
+  font-family: var(--px-font-mono, 'Press Start 2P', monospace) !important;
+  font-size: 12px !important;
+  border-radius: 0 !important;
+  padding: 6px 14px !important;
+  cursor: pointer !important;
+  color: #111113 !important;
+  background: transparent !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  text-align: left !important;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease, border-color 120ms ease !important;
+}
+
+body:not(.theme-light) div.border-menu-border button,
+body:not(.theme-light) [class*="border-menu-border"] button,
+body:not(.theme-light) [data-testid="title-menu-bar-option"] {
+  color: #FFFFFF !important;
+}
+
+div.border-menu-border button:hover,
+div.border-menu-border button:focus,
+[class*="border-menu-border"] button:hover,
+[class*="border-menu-border"] button:focus,
+[data-testid="title-menu-bar-option"]:hover,
+[data-testid="title-menu-bar-option"]:focus,
+[data-testid="title-menu-bar-option"][data-highlighted],
+body.theme-light div.border-menu-border button:hover,
+body.theme-light div.border-menu-border button:focus,
+body.theme-light [class*="border-menu-border"] button:hover,
+body.theme-light [class*="border-menu-border"] button:focus,
+body.theme-light [data-testid="title-menu-bar-option"]:hover,
+body.theme-light [data-testid="title-menu-bar-option"]:focus,
+body.theme-light [data-testid="title-menu-bar-option"][data-highlighted] {
+  background-color: #00F0FF !important;
+  color: #000000 !important;
+  border-left: 3px solid #00F0FF !important;
+  transform: translateX(3px) !important;
+  box-shadow: none !important;
+}
+
+div.border-menu-border button:hover *,
+div.border-menu-border button:focus *,
+[class*="border-menu-border"] button:hover *,
+[class*="border-menu-border"] button:focus *,
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted] * {
+  color: #000000 !important;
+  fill: #000000 !important;
+}
+
+/* 分割线：图四标准纯实线分割 */
+div.border-menu-border hr,
+div.border-menu-border [class*="border-t"],
+div.border-menu-border [class*="h-px"],
+[class*="border-menu-border"] hr,
+[class*="border-menu-border"] [class*="border-t"],
+[class*="border-menu-border"] [class*="h-px"],
+[data-testid="title-menu-bar"] hr,
+[data-testid="title-menu-bar"] div[class*="border-t"],
+[data-testid="title-menu-bar"] div[class*="h-px"] {
+  border: none !important;
+  border-top: 1px solid #000000 !important;
+  margin: 4px 0 !important;
+  opacity: 0.2 !important;
+}
+body:not(.theme-light) div.border-menu-border hr,
+body:not(.theme-light) div.border-menu-border [class*="border-t"],
+body:not(.theme-light) div.border-menu-border [class*="h-px"],
+body:not(.theme-light) [class*="border-menu-border"] hr,
+body:not(.theme-light) [data-testid="title-menu-bar"] hr {
+  border-top: 1px solid #FFFFFF !important;
+  opacity: 0.2 !important;
+}
+
+/* --- 5. 既定关键补丁加固 (Combobox 展开白字、发送按钮置灰、代码块无倒刺、危险确认红钮) --- */
+button[role="combobox"],
+button[role="combobox"] * {
+  color: var(--foreground) !important;
+  fill: currentColor !important;
+}
+body.theme-light button[role="combobox"],
+body.theme-light button[role="combobox"] * {
+  color: #111113 !important;
+  fill: currentColor !important;
+}
+
+[data-testid="send-button"]:disabled,
+button[data-testid="send-button"]:disabled {
+  background-color: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+}
+[data-testid="send-button"]:disabled svg,
+button[data-testid="send-button"]:disabled svg {
+  color: var(--muted-foreground) !important;
+  fill: var(--muted-foreground) !important;
+}
+
+[role="dialog"] button:has(svg.lucide-trash),
+[role="dialog"] button:has(svg.lucide-trash-2),
+[role="dialog"] button[class*="destructive"],
+[role="alertdialog"] button:has(svg.lucide-trash),
+[role="alertdialog"] button[class*="destructive"] {
+  background-color: #E60012 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #000000 !important;
+  font-weight: bold !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ==========================================================================
+   24. 提示与斜杠命令联想弹窗 (Typeahead / Slash Menu / Command Palette)
+   ========================================================================== */
+/* 输入框外壳确保不裁切向上浮动的联想卡片 */
+div.bg-card-border,
+[class*="bg-card-border"],
+form:has([role="listbox"]) {
+  overflow: visible !important;
+}
+
+/* 联想弹窗卡片本体（8-Bit 像素风格 + 硬边框） */
+[role="listbox"]:has([id*="typeahead"]),
+[role="listbox"][data-mention-menu],
+[role="listbox"]:has([role="option"]) {
+  border-radius: 0 !important;
+  border: 2px solid #111113 !important;
+  box-shadow: 4px 4px 0 #000000 !important;
+  background-color: #FFFFFF !important;
+  overflow: hidden !important;
+  z-index: 99999 !important;
+  padding: 4px !important;
+}
+
+body:not(.theme-light) [role="listbox"]:has([id*="typeahead"]),
+body:not(.theme-light) [role="listbox"][data-mention-menu],
+body:not(.theme-light) [role="listbox"]:has([role="option"]) {
+  border: 2px solid #5A6988 !important;
+  border-left: 5px solid #00F0FF !important;
+  box-shadow: 0 0 0 2px #111113, 4px 4px 0 #000000 !important;
+  background-color: #1A1C23 !important;
+}
+
+[role="listbox"] > div {
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+  overflow-x: hidden !important;
+}
+
+/* 屏蔽左右水平滚动条 */
+[role="listbox"],
+[role="listbox"] [role="option"],
+[role="listbox"] [id*="typeahead-item"] {
+  overflow-x: hidden !important;
+}
+
+[role="listbox"]::-webkit-scrollbar:horizontal,
+[role="listbox"] > div::-webkit-scrollbar:horizontal,
+[role="listbox"] *::-webkit-scrollbar:horizontal {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 解耦外层 option padding 与样式污染 */
+[role="listbox"] [role="option"],
+[role="listbox"] [id*="typeahead-item"] {
+  padding: 0 !important;
+  margin: 1px 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* 内部交互行统一结构 */
+[role="listbox"] [role="option"] > div,
+[role="listbox"] [id*="typeahead-item"] > div,
+[role="listbox"] [role="option"] [class*="cursor-pointer"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 12px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border-left: 3px solid transparent !important;
+  transition: transform 60ms steps(2), background-color 60ms steps(2), color 60ms steps(2) !important;
+  cursor: pointer !important;
+}
+
+/* 未激活态高清晰度文字与图标 */
+[role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) > div,
+[role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) > div {
+  background: transparent !important;
+}
+
+body.theme-light [role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) span,
+body.theme-light [role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) span {
+  color: #111113 !important;
+}
+
+body:not(.theme-light) [role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) span,
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) span {
+  color: #FFFFFF !important;
+}
+
+[role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) span[class*="opacity-50"],
+[role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) span[class*="opacity-50"],
+[role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) span.truncate {
+  opacity: 0.72 !important;
+}
+
+body.theme-light [role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) svg,
+body.theme-light [role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) svg {
+  color: #111113 !important;
+  fill: currentColor !important;
+  opacity: 0.8 !important;
+}
+
+body:not(.theme-light) [role="listbox"] [role="option"]:not([aria-selected="true"]):not(:hover) svg,
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"]:not([aria-selected="true"]):not(:hover) svg {
+  color: #FFFFFF !important;
+  fill: currentColor !important;
+  opacity: 0.85 !important;
+}
+
+/* 激活态：Pixel 像素青 + 纯黑高反差文字 */
+[role="listbox"] [role="option"][aria-selected="true"] > div,
+[role="listbox"] [role="option"]:hover > div,
+[role="listbox"] [role="option"][data-highlighted] > div,
+[role="listbox"] [id*="typeahead-item"][aria-selected="true"] > div,
+[role="listbox"] [id*="typeahead-item"]:hover > div {
+  background-color: #00F0FF !important;
+  border-left: 3.5px solid #111113 !important;
+  transform: translate(2px, 0) !important;
+}
+
+.px-listbox-item[aria-selected="true"] span,
+.px-listbox-item:hover span,
+.px-listbox-item[data-highlighted] span,
+.px-listbox-item[aria-selected="true"] *,
+.px-listbox-item:hover * {
+  color: #000000 !important;
+  fill: #000000 !important;
+  opacity: 1 !important;
+}
+
+body.theme-light [role="listbox"] [role="option"][aria-selected="true"] span[class*="opacity-50"],
+body.theme-light [role="listbox"] [role="option"]:hover span[class*="opacity-50"],
+body.theme-light [role="listbox"] [role="option"][data-highlighted] span[class*="opacity-50"],
+body.theme-light [role="listbox"] [id*="typeahead-item"][aria-selected="true"] span[class*="opacity-50"],
+body.theme-light [role="listbox"] [id*="typeahead-item"]:hover span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [role="option"][aria-selected="true"] span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [role="option"]:hover span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [role="option"][data-highlighted] span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"][aria-selected="true"] span[class*="opacity-50"],
+body:not(.theme-light) [role="listbox"] [id*="typeahead-item"]:hover span[class*="opacity-50"] {
+  color: rgba(0, 0, 0, 0.85) !important;
+  opacity: 0.85 !important;
+}
+
+/* ============================================================
+   23.5 Markdown / Artifact / 长文档预览极致渲染性能优化
+   1. 纯化滚动容器底色，阻断下层网格/全屏纹理在半透明滚动时的逐帧全屏合成
+   2. 启用 content-visibility: auto，跳过视口外不可见节点的排版树与重绘计算
+   3. 独立公式与代码块硬件合成加速，隔离 KaTeX 字体渲染与抗锯齿
+   ============================================================ */
+.leading-relaxed,
+[class*="prose"] {
+  background-color: var(--background) !important;
+  contain: layout style !important;
+  will-change: scroll-position !important;
+  transform: translateZ(0) !important;
+  isolation: isolate !important;
+}
+
+/* 视口外的排版块跳过样式计算与排版（v2 实测，右栏 8754 节点长文档）：
+   全量样式重算 480~566ms -> 28~32ms；重挂载（样式+排版）513~603ms -> 14~18ms。
+   contain-intrinsic-size 取 auto + 全文档中位块高（实测 ~40px）：首屏滚动条
+   略偏短，滚动后按真实高度收敛，无跳动。
+   两个不要：不要给 table/th/td 单开 content-visibility（Chromium 对表格
+   内容支持不完整，巨幅表格会行高塌陷）；不要 contain: paint（会裁掉主题里
+   超出元素盒子的装饰，如 pre 伪元素的外扩）。 */
+.leading-relaxed > *,
+[class*="prose"] > * {
+  content-visibility: auto !important;
+  contain-intrinsic-size: auto 40px !important;
+}
+
+/* 巨幅表格轻量排版隔离，保护全局滚动与切换流畅 */
+.leading-relaxed table {
+  contain: layout style !important;
+}
+
+.leading-relaxed ol:not(.contains-task-list),
+[class*="prose"] ol:not(.contains-task-list) {
+  padding-left: 28px !important;
+}
+
+.leading-relaxed ul:not(.contains-task-list),
+[class*="prose"] ul:not(.contains-task-list) {
+  padding-left: 24px !important;
+}
+
+/* 消除命令卡片悬停时出现的横向滚动条 */
+.group\/run-command pre,
+[class*="group/run-command"] pre,
+pre.whitespace-pre-wrap {
+  overflow-x: hidden !important;
+}
+
+/* 消除确认弹窗等浮层的隐式横向滚动条与长文件名溢出 */
+html body [role="dialog"] .overflow-y-auto,
+html body [role="alertdialog"] .overflow-y-auto,
+html body .animate-modalScaleIn .overflow-y-auto {
+  overflow-x: hidden !important;
+}
+html body [role="dialog"] [class*="group/file-summary"] span,
+html body .animate-modalScaleIn [class*="group/file-summary"] span {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+}
+
+.katex {
+  -webkit-font-smoothing: antialiased !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* ============================================================================
+   24. 尊重系统的「减少动态效果」(PREFERS-REDUCED-MOTION (1, 1, 2) 终极无障碍防线)
+   必须位于全文件最末尾，以 (1, 1, 2) 绝对特异性降维压制前置所有 !important 动效
+   ============================================================================ */
 @media (prefers-reduced-motion: reduce) {
+  html:root:not(#_px_never_exist_) body *,
+  html:root:not(#_px_never_exist_) body *::before,
+  html:root:not(#_px_never_exist_) body *::after,
+  html:root:not(#_px_never_exist_) *,
+  html:root:not(#_px_never_exist_) *::before,
+  html:root:not(#_px_never_exist_) *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
   html::before {
-    display: none;
+    display: none !important;
   }
   html::after {
     animation: none !important;
   }
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
-  }
 
-  /* 上面那条 1ms + iteration-count: 1 对**无限循环**的动画不够用：
-     它不是关掉，是让动画停在第一帧。对 px-ready-breathe 来说
-     第一帧正好是「边框亮起来」，于是发送键会一直亮着不动。
-     这类必须显式关。 */
+  #px-cursor {
+    display: none !important;
+  }
+  #px-dissolve,
+  html.px-sending body::after,
+  #px-particles {
+    display: none !important;
+  }
   [data-testid="send-button"]:not(:disabled) {
     animation: none !important;
   }
-
-  /* 一次性的全屏/大面积动效，减动模式下直接不要，不是加速。
-     #px-dissolve 那边由 JS 单独判断 prefers-reduced-motion 后压根不建元素
-     （没有动画就没有 animationend，元素会泄漏），这里是双保险。 */
-  #px-dissolve,
-  html.px-sending body::after {
-    display: none !important;
-  }
-
-  /* 位移类的微动效保留但取消位移：留着颜色反馈就够，
-     不然界面会显得没反应。 */
-  html.px-sending [class~="p-px"][class~="bg-card-border"],
-  [class~="p-px"][class~="bg-card-border"]:focus-within::after {
-    animation: none !important;
-  }
-
-  /* C 组的揭示必须显式关掉：上面那条 1ms 会让它停在第一帧，
-     而第一帧是 clip-path: inset(0 0 100% 0) —— 整条消息被切没了。
-     这是「减少动态效果」里最不能出的错。
-
-     同理，任何以「内容不可见」为起始帧的动画都不能靠 1ms 收尾，
-     必须点名关掉。本节以外新增这类动画时记得同步加进来。 */
   [data-testid="user-input-step"] {
     animation: none !important;
     clip-path: none !important;
   }
-
-  /* 17/18 节新增的、以 opacity:0 或不可见状态起步的动画，同理点名关掉，
-     否则内容会停在第一帧＝看不见。 */
   [aria-expanded="true"] + * > *,
   [data-state="open"] > *:not(:first-child),
   pre,
@@ -2233,32 +4159,13 @@ html[data-px-cursor]:has(body.theme-light) {
     opacity: 1 !important;
     transform: none !important;
   }
-
-  /* 粒子束整个不要 —— 减动模式下十几粒方块横飞是最该关掉的东西。
-     注入器那边也会直接跳过创建（没有动画就没有 animationend，
-     元素会泄漏），这里是双保险。 */
-  #px-particles {
-    display: none !important;
-  }
-
-  /* 流式光标保留但不闪：光标本身是有用的状态指示，闪烁才是动效。 */
   html.px-streaming .relative.flex.flex-col.gap-y-3::after {
     animation: none !important;
     opacity: 1 !important;
   }
-
-  /* 第 19 节：减动模式下把系统指针还回去，整套像素指针停掉。
-     不是「保留指针但去掉拖尾」—— 指针头本身就是每帧重绘的动画，
-     真要尊重这个开关就得整套停。引擎那边也会自己判断并且压根不启动
-     （见 CURSOR_JS 开头），这里是双保险，也保证系统指针一定回来。 */
   html[data-px-cursor] * {
     cursor: auto !important;
   }
-  html[data-px-cursor] #px-cursor {
-    display: none !important;
-  }
-  /* 应用自己声明过 pointer 的那 573 个元素要恢复成手型，
-     否则上面那条 auto 会让所有按钮都变成普通箭头。 */
   html[data-px-cursor] [class*="cursor-pointer"],
   html[data-px-cursor] button,
   html[data-px-cursor] a[href],
