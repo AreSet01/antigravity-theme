@@ -1,0 +1,23 @@
+{
+  "name": "antigravity-theme",
+  "version": "1.0.0",
+  "description": "Google Antigravity 2.x theme and enhancement suite",
+  "scripts": {
+    "install-theme": "./install.sh",
+    "switch": "./switch.sh",
+    "uninstall-theme": "./uninstall.sh"
+  },
+  "keywords": [
+    "antigravity",
+    "electron",
+    "theme",
+    "pixel-art",
+    "persona5",
+    "hot-reload"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@electron/asar": "^4.3.0"
+  }
+}

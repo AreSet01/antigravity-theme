@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?logo=windows" alt="Platform" />
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-0078D6" alt="Platform" />
   <img src="https://img.shields.io/badge/Compatibility-Antigravity%202.x-6C5CE7" alt="Compatibility" />
   <img src="https://img.shields.io/badge/Themes-4%20Presets-FF7675" alt="Themes" />
   <img src="https://img.shields.io/badge/Switching-Zero--Restart%20(0.1s)-55EFC4" alt="Switching" />
@@ -62,40 +62,58 @@
 ### 📦 快速开始与安装
 
 #### 运行环境要求
-- **操作系统**：Windows 10 / 11 (x64)
+- **操作系统**：macOS (Apple Silicon / Intel) 或 Windows 10 / 11 (x64)
 - **目标应用**：Google Antigravity 2.x
-- **依赖工具**：[Node.js](https://nodejs.org/)（安装脚本使用 `npx @electron/asar` 解装包，需确保 `npx` 可在终端调用）
+- **依赖工具**：[Node.js](https://nodejs.org/)（Node 18+，需确保 `node` 与 `npx` 可在终端调用）
 
 #### 1. 一键安装
-1. **完全退出 Antigravity**（请检查 Windows 托盘区，确保进程已退出）；
-2. 在本项目根目录下，**双击运行 `install.bat`**，或在终端执行：
-   ```powershell
-   # 默认安装 phantom 主题（若程序在运行，加 -KillRunning 自动退出）
-   powershell -ExecutionPolicy Bypass -File .\install.ps1 -KillRunning
-   
+1. **完全退出 Antigravity**（macOS 可在菜单栏选择退出，或直接使用脚本的 `-k` 参数自动强退）；
+2. 在本项目根目录下执行：
+   ```bash
+   # === macOS ===
+   # 默认安装 phantom 主题（加 -k 自动退出运行中的应用）
+   ./install.sh -k
+
    # 或指定初始安装主题：phantom | matcha | doodle | pixel
+   ./install.sh -t matcha -k
+   ```
+   ```powershell
+   # === Windows ===
+   # 默认安装 phantom 主题（加 -KillRunning 自动退出）
+   powershell -ExecutionPolicy Bypass -File .\install.ps1 -KillRunning
+
+   # 或双击运行 install.bat
    powershell -ExecutionPolicy Bypass -File .\install.ps1 -Theme matcha -KillRunning
    ```
 3. 安装完成后启动 Antigravity，即可看到全新视觉效果！
 
 #### 2. 一键极速切换主题
-美化包支持免重启热切，随时在终端或 CMD 执行：
-```cmd
-:: 方式一：打开交互式数字选择菜单（按 1~4 快速选择）
-switch
-
-:: 方式二：直接传参切换指定风格
-switch phantom   :: 切换至 Persona 5 怪盗波普风
-switch matcha    :: 切换至 治愈系抹茶日记风
-switch doodle    :: 切换至 纯线稿漫画手绘风
-switch pixel     :: 切换至 8-Bit 复古像素风
+美化包支持免重启热切，随时在终端执行：
+```bash
+# === macOS ===
+./switch.sh         # 打开交互式数字选择菜单（按 1~4 快速选择）
+./switch.sh phantom # 直接切换至 Persona 5 怪盗波普风
+./switch.sh matcha  # 直接切换至 治愈系抹茶日记风
+./switch.sh doodle  # 直接切换至 纯线稿漫画手绘风
+./switch.sh pixel   # 直接切换至 8-Bit 复古像素风
 ```
-> **提示**：你也可以在文件资源管理器中直接双击 `switch.bat` 运行！
+```cmd
+:: === Windows ===
+switch          :: 打开交互式数字选择菜单（或双击 switch.bat）
+switch phantom  :: 切换至 Persona 5 怪盗波普风
+switch matcha   :: 切换至 治愈系抹茶日记风
+switch doodle   :: 切换至 纯线稿漫画手绘风
+switch pixel    :: 切换至 8-Bit 复古像素风
+```
 
 #### 3. 彻底卸载与还原
 如需恢复原版官方界面：
-```cmd
-:: 双击运行 uninstall.bat，或执行：
+```bash
+# === macOS ===
+./uninstall.sh -k
+
+# === Windows ===
+# 双击运行 uninstall.bat，或执行：
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -KillRunning
 ```
 卸载程序会自动从备份无损还原 `app.asar`，并彻底清理所有外置主题资产文件。
@@ -104,11 +122,11 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -KillRunning
 
 ### 🛠️ 进阶定制与实时调色
 
-所有主题样式文件均安装在外部用户目录：
-```
-%LOCALAPPDATA%\Programs\Antigravity\resources\<theme-name>\<theme-name>.css
-```
-- **实时调色**：用任意编辑器打开对应 `.css` 文件，修改顶部 `:root` 变量区（例如背景色、强调色、字体大小），保存后在 Antigravity 窗口按下 **`Ctrl + R`** 即可在 1 秒内看到修改结果，无需重新安装！
+所有主题样式文件均安装在外部目录：
+- **macOS**：`/Applications/Antigravity.app/Contents/Resources/<theme-name>/<theme-name>.css`
+- **Windows**：`%LOCALAPPDATA%\Programs\Antigravity\resources\<theme-name>\<theme-name>.css`
+
+- **实时调色**：用任意编辑器打开对应 `.css` 文件，修改顶部 `:root` 变量区（例如背景色、强调色、字体大小），保存后在 Antigravity 窗口按下 **`Cmd + R`** (macOS) 或 **`Ctrl + R`** (Windows) 即可在 1 秒内看到修改结果，无需重新安装！
 - **新增自定义主题 / 复用至其他 Electron 客户端**：请详阅 [复用指南.md](复用指南.md)。
 
 ---
@@ -156,38 +174,55 @@ It replaces the default monochromatic interface with four high-aesthetic, produc
 ### 📦 Quick Start & Usage
 
 #### Prerequisites
-- **OS**: Windows 10 / 11 (x64)
+- **OS**: macOS (Apple Silicon / Intel) or Windows 10 / 11 (x64)
 - **App**: Google Antigravity 2.x
-- **Dependency**: [Node.js](https://nodejs.org/) (`npx` must be available in PATH for asar packing/unpacking)
+- **Dependency**: [Node.js](https://nodejs.org/) (Node 18+, `node` and `npx` available in PATH)
 
 #### 1. Installation
-1. **Completely exit Antigravity** (ensure no background instances remain in the system tray).
-2. Double click `install.bat` or run in terminal:
+1. **Completely exit Antigravity** (or pass `-k` to kill running instances automatically).
+2. Run the installer in terminal:
+   ```bash
+   # === macOS ===
+   ./install.sh -k
+
+   # Or specify theme: phantom | matcha | doodle | pixel
+   ./install.sh -t matcha -k
+   ```
    ```powershell
+   # === Windows ===
    powershell -ExecutionPolicy Bypass -File .\install.ps1 -KillRunning
+   # Or double click install.bat
    ```
 3. Launch Antigravity to enjoy your chosen theme.
 
 #### 2. Switching Themes
-Switch anytime from terminal or command prompt:
+Switch anytime from terminal:
+```bash
+# === macOS ===
+./switch.sh         # Interactive number-based menu (1-4)
+./switch.sh phantom # Persona 5 Pop-Art
+./switch.sh matcha  # Japanese Matcha Diary
+./switch.sh doodle  # Comic Manga Line Art
+./switch.sh pixel   # 8-Bit Retro Pixel Art
+```
 ```cmd
-:: Interactive number-based menu (1-4):
-switch
-
-:: Or specify the theme directly:
+:: === Windows ===
+switch          :: Interactive menu (or double click switch.bat)
 switch phantom
 switch matcha
 switch doodle
 switch pixel
 ```
-*(You can also simply double-click `switch.bat` in Windows Explorer).*
 
 #### 3. Uninstallation
 To restore official stock files:
-```cmd
-uninstall.bat
-:: Or in PowerShell:
+```bash
+# === macOS ===
+./uninstall.sh -k
+
+# === Windows ===
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -KillRunning
+# Or double click uninstall.bat
 ```
 
 ---
@@ -202,9 +237,10 @@ antigravity-theme/
 ├── pixel-theme/             # 8-Bit retro pixel theme CSS & fonts
 ├── patch/
 │   └── pixelTheme.js        # Core runtime theme injector & CDP hot-reload engine
-├── install.bat / .ps1       # Automated patcher & asset deployer
-├── switch.bat / switch-theme.ps1 # Instant zero-restart theme hot-switcher
-├── uninstall.bat / .ps1     # 100% clean restore & cleanup script
+├── install.sh / .bat / .ps1 # macOS & Windows automated patcher & asset deployer
+├── switch.sh / .bat / .ps1  # macOS & Windows zero-restart theme hot-switcher
+├── uninstall.sh / .bat / .ps1 # macOS & Windows 100% clean restore & cleanup script
+├── package.json             # NPM metadata and dependencies
 ├── 复用指南.md              # In-depth technical architecture & reuse guide
 └── README.md                # Bilingual documentation
 ```

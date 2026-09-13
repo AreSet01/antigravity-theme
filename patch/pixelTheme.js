@@ -1454,7 +1454,7 @@ function attachPixelTheme(win) {
         const wc = win.webContents;
         // Read by the patched window:set-title-bar-overlay IPC handler: with no
         // native caption there is no overlay to set, and calling it throws.
-        win.__pixelNoNativeCaption = !wantsNativeCaption();
+        win.__pixelNoNativeCaption = !wantsNativeCaption() && process.platform !== "darwin";
         // insertCSS 的注入是跨导航持久的（官方为此才有 removeInsertedCSS）。
         // 在每个 dom-ready 上无条件再插一份，会让每次 Ctrl+R、每次 switch
         // 热切换（Page.reload -> dom-ready）都往同一个 webContents 叠一整份
@@ -1544,8 +1544,8 @@ function attachPixelTheme(win) {
                     }
                 })
                 .catch((e) => console.error("[pixel-theme] cursor failed:", e));
-            // Draw our own caption buttons whenever the native ones are off.
-            if (!wantsNativeCaption()) {
+            // Draw our own caption buttons whenever the native ones are off (Windows/Linux only; macOS has native traffic lights).
+            if (!wantsNativeCaption() && process.platform !== "darwin") {
                 wc.executeJavaScript(WINDOW_CONTROLS_JS, true)
                     .then((r) => {
                         if (r !== "installed" && r !== "already-present") {
