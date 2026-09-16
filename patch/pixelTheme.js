@@ -775,6 +775,12 @@ const THEME_DISSOLVE_JS = `(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'reduced-motion';
   } catch (e) { /* matchMedia unavailable: fall through and animate */ }
 
+  try {
+    if (window.__pxCursor && typeof window.__pxCursor.refreshColors === 'function') {
+      window.__pxCursor.refreshColors();
+    }
+  } catch (e) {}
+
   const old = document.getElementById(ID);
   if (old) old.remove();
 
@@ -881,7 +887,8 @@ const CURSOR_JS = `(() => {
   let lastFrameAt = 0;
 
   const palette = () => {
-    const cs = getComputedStyle(de);
+    const target = document.body || de;
+    const cs = getComputedStyle(target);
     return {
       trail: cs.getPropertyValue('--px-cursor-trail').trim() || '#73eff7',
       head:  cs.getPropertyValue('--px-cursor-head').trim()  || '#73eff7',
@@ -1166,10 +1173,16 @@ const CURSOR_JS = `(() => {
     return 'default';
   };
 
+  let lastBodyClass = '';
   let classifyDue = 0;
   let lastTarget = null;
   const onMove = (e) => {
     const t = performance.now();
+    const curBodyClass = document.body ? document.body.className : '';
+    if (curBodyClass !== lastBodyClass) {
+      lastBodyClass = curBodyClass;
+      colors = palette();
+    }
     hist.push({ t, x: e.clientX, y: e.clientY });
     while (hist.length > 2 && t - hist[0].t > CFG.histMaxAgeMs) hist.shift();
     while (hist.length > CFG.histMaxSamples) hist.shift();
@@ -1224,22 +1237,34 @@ const CURSOR_JS = `(() => {
   };
   const dprTimer = setInterval(dprGuard, 400);
 
+  // 监听主题与亮暗模式类名变动，实现 0ms 瞬间变色
+  const themeObserver = new MutationObserver(() => {
+    colors = palette();
+    wake();
+  });
+  if (document.body) {
+    themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+  }
+  themeObserver.observe(de, { attributes: true, attributeFilter: ['class', 'data-theme', 'data-px-cursor'] });
+
   build();
   de.setAttribute('data-px-cursor', 'on');
   window.__pxCursor = {
     rebuild: () => { build(); wake(); },
+    refreshColors: () => { colors = palette(); wake(); },
     stop: () => {
       try {
         window.removeEventListener(evName, onMove, { capture: true });
         if (raf) cancelAnimationFrame(raf);
         clearInterval(dprTimer);
+        themeObserver.disconnect();
         if (canvas) canvas.remove();
         canvas = null; ctx = null; running = false;
         de.setAttribute('data-px-cursor', 'off');
       } catch (e) {}
     },
     stats: () => ({ particles: parts.length, kind: cursorKind,
-                    running, histLen: hist.length, dpr }),
+                    running, histLen: hist.length, dpr, colors }),
   };
 
   return 'installed';
