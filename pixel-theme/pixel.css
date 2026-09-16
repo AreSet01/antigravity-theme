@@ -1,4 +1,27 @@
 /* ============================================================================
+   级联层序登记（必须保持在本文件最前面，改动前先读完这段）
+   ----------------------------------------------------------------------------
+   主题表是 webContents.insertCSS 注入的，Blink 把注入的 author 表排在文档自己的
+   <link> 之前，所以本文件比 compiled_tailwind.css 先解析。而级联层的先后由层名
+   「第一次出现」的位置决定：本文件里只要直接写 @layer utilities，utilities 就被
+   登记成第一层，Tailwind 随后那条「theme, base, components, utilities」层声明只能
+   把剩下三层排到它后面 —— base 的 preflight
+   （*{margin:0;padding:0;border:0 solid}、ol,ul,menu{list-style:none}）于是反压
+   整个 utilities 层，全 UI 的 p-* / m-* / border-* / list-* 一次性失效
+   （2026-09-16 实测：p-4 → 0px、border-2 → 0px、pl-8 list-decimal → 0px/none，
+   侧栏会话行贴死左边缘、卡片边框消失、正文间距全塌）。
+
+   所以先按 Tailwind 的原序把层名登记好，再把主题自己的 px-theme 摆到最前：
+     · 普通声明 —— 层序正向，utilities 依旧最高 → 官方布局完好无损；
+     · !important —— 层序反向，px-theme 反而最高 → 主题压得住 utilities 里
+       [&>ol:not(.contains-task-list)]:!pl-4 这类「带层 !important」。
+   本文件其余规则一律不进任何层（无层 !important 已足够），只有确实要压「带层
+   !important」的规则才放进 px-theme。
+   ============================================================================ */
+@layer px-theme, properties, theme, base, components, utilities;
+
+
+/* ============================================================================
    PIXEL GRAVITY — Antigravity 2.x 像素风主题
    ----------------------------------------------------------------------------
    位置：<Antigravity安装目录>\resources\pixel-theme\pixel.css
@@ -4085,11 +4108,42 @@ body:not(.theme-light) [role="listbox"] [id*="typeahead-item"]:hover span[class*
   padding-left: 24px !important;
 }
 
-/* 消除命令卡片悬停时出现的横向滚动条 */
+/* 命令卡片里的 pre 横向裁切。
+   ⚠ 2026-09-16 复核：这条当年是冲着「悬停卡片冒出横向滚动条」去的，但目标打错了 ——
+   真正撑出滚动条的是卡片自身的位移动效（见下面那条规则），pre 只是被连累的旁观者。
+   留着无害（pre-wrap 本就很少横向溢出），但别再指望它解决悬停滚动条。 */
 .group\/run-command pre,
 [class*="group/run-command"] pre,
 pre.whitespace-pre-wrap {
   overflow-x: hidden !important;
+}
+
+/* ── 位移动效不再顶出滚动条（2026-09-16 实测修复）─────────────────────────
+   主题给卡片 / 行 / 弹窗按钮加了 translate 位移动效（悬停右移 2px、按下右下移 2px）做
+   「按进硬阴影」的手感。transform 会计入祖先滚动容器的 scrollable overflow，而这些元素
+   多是 w-full，右移 2px 就顶出 2px。CDP 夹具实测后果：
+     · 步骤列表容器（flex flex-col max-h-32 overflow-y-auto，右内边距 0）悬停时
+       scrollWidth 588→590：立刻冒出一条横向滚动条，还吃掉 12px 可用高度（128→116）；
+     · 侧栏会话行、右侧任务列表同形，同为「无右内边距的竖直滚动容器」，一样会冒条；
+     · 确认弹窗按钮条排在 .overflow-y-auto.flex-1.min-h-0 末尾，按下时按钮下沉 2px
+       顶破容器底边（超出量 146→148），本来不滚的弹窗突然冒出竖向滚动条。
+   解法：把位移需要的 2px 用内边距让出来，并用等量负 margin 抵消 padding 带来的尺寸
+   变化 —— 静止时布局逐像素不变，位移发生时那 2px 只是落进余量里。再兜底一条横向裁切
+   （应用自己也用这招，见 [role="listbox"]）。
+   余量写进 @layer components：这一层排在 Tailwind 的 base 之后（压得住 preflight 的
+   * { padding: 0 }）、utilities 之前（应用自己写的 px-* / p-* 一律优先）。别放进
+   @layer theme —— base 排在 theme 之后，preflight 的 padding: 0 会把余量整条吃掉
+   （2026-09-16 踩过：规则在、computed padding-right 仍是 0）。 */
+[class*="overflow-y-auto"]:not([class*="overflow-x-auto"]):not([class*="overflow-x-scroll"]),
+[class*="overflow-y-scroll"]:not([class*="overflow-x-auto"]):not([class*="overflow-x-scroll"]) {
+  overflow-x: hidden !important;
+}
+@layer components {
+  [class*="overflow-y-auto"]:not([class*="overflow-x-auto"]):not([class*="overflow-x-scroll"]),
+  [class*="overflow-y-scroll"]:not([class*="overflow-x-auto"]):not([class*="overflow-x-scroll"]) {
+    padding-right: 2px;
+    margin-right: -2px;
+  }
 }
 
 /* 消除确认弹窗等浮层的隐式横向滚动条与长文件名溢出 */
@@ -4097,6 +4151,19 @@ html body [role="dialog"] .overflow-y-auto,
 html body [role="alertdialog"] .overflow-y-auto,
 html body .animate-modalScaleIn .overflow-y-auto {
   overflow-x: hidden !important;
+}
+/* 底/右各让 2px 给按钮的 :active 位移（下沉 2px 顶破容器底边就是竖向滚动条的来源）。
+   等量负 margin 抵消尺寸变化，静止时高度不变。同样放在 @layer theme 里，
+   应用自己若给弹窗滚区写了内边距，以应用为准。 */
+@layer components {
+  html body [role="dialog"] .overflow-y-auto,
+  html body [role="alertdialog"] .overflow-y-auto,
+  html body .animate-modalScaleIn .overflow-y-auto {
+    padding-bottom: 2px;
+    margin-bottom: -2px;
+    padding-right: 2px;
+    margin-right: -2px;
+  }
 }
 html body [role="dialog"] [class*="group/file-summary"] span,
 html body .animate-modalScaleIn [class*="group/file-summary"] span {
@@ -4176,5 +4243,111 @@ html body .animate-modalScaleIn [class*="group/file-summary"] span {
   html[data-px-cursor] textarea,
   html[data-px-cursor] [contenteditable="true"] {
     cursor: text !important;
+  }
+}
+
+/* 指针与拖尾配色 Token（支持 html、:root 与 body 级即时响应） */
+:root,
+html[data-px-cursor],
+body:not(.theme-light) {
+  --px-cursor-head:   #73EFF7; /* 8-Bit 像素赛博青 */
+  --px-cursor-trail:  #73EFF7; /* 霓虹青落点 */
+  --px-cursor-edge:   #1A1C2C; /* 像素深暗轮廓 */
+  --px-cursor-alpha:  0.70;
+  --px-cursor-radius: 0;
+}
+
+html[data-px-cursor]:has(body.theme-light),
+body.theme-light {
+  --px-cursor-head:   #2E3859; /* 复古墨蓝 */
+  --px-cursor-trail:  #566C86; /* 8-Bit 灰蓝 */
+  --px-cursor-edge:   #FFFFFF; /* 纯白像素边框 */
+  --px-cursor-alpha:  0.60;
+  --px-cursor-radius: 0;
+}
+
+/* ============================================================
+   有序列表序号完整展示（仅针对 ol:not(.contains-task-list)，绝不触碰容器属性与任务列表）
+   ============================================================ */
+/* 要压住的是 Tailwind 的 .[&>ol:not(.contains-task-list)]:!pl-4
+   （padding-left: 1rem !important，位于 @layer utilities）。author origin 里
+   「无层 !important」排在「带层 !important」之下，单靠 !important 压不动，必须借
+   文件顶部登记的 px-theme 最前层。切勿改回 @layer utilities —— 那会把 Tailwind
+   的层序整体顶乱，全 UI 的 padding/margin/border 会一起失效（见文件顶部说明）。*/
+@layer px-theme {
+  html body .leading-relaxed > ol:not(.contains-task-list),
+  html body .leading-relaxed ol:not(.contains-task-list),
+  html body [class*="prose"] > ol:not(.contains-task-list),
+  html body [class*="prose"] ol:not(.contains-task-list),
+  html body .markdown > ol:not(.contains-task-list),
+  html body .markdown-body ol:not(.contains-task-list) {
+    padding-left: 2rem !important; /* 32px 充裕间距，确保 1. ~ 99. 完美展示 */
+    list-style-position: outside !important;
+  }
+}
+
+
+/* ============================================================================
+   2026-09-17 实机修复（CDP 复现 → 改后复测）
+   ----------------------------------------------------------------------------
+   ① 空菜单壳顶出根滚动条：整个 UI 上移 11px、顶部菜单栏被裁（「超框」）
+   ② 下拉浮层与指针画布打平后按 DOM 顺序压住指针（「下拉上不显示指针」）
+   ③ 勾选态开关带 bg-primary 类，被主按钮的方角 + 硬阴影规则误伤（「样式不一致」）
+   ============================================================================ */
+@layer px-theme {
+  /* ── ① 空壳归零 ──────────────────────────────────────────────────────────
+     应用的 typeahead / 菜单面板即使没打开也常驻一个空的 [role="listbox"]
+     （aria-label="Typeahead menu"；inline 只有 display / position，没有 top / left），
+     absolute 无偏移时按 static position 停在 #root 底边，也就是视口高度 y=730 处。
+     本主题给 .px-menu-content 的 2px 边框 + 4px 上下内边距把空壳从 0 撑到 11px 高
+     → documentElement 的 scrollHeight 741 > clientHeight 730，根滚动条出现；随后
+     任意一次 focus / scrollIntoView 就能把根滚掉 11px：整个 UI 上移、顶部 35px 的
+     菜单栏被裁掉一截，而 position:fixed 的窗口按钮不动 —— 看起来就是「标题栏超框/
+     错位」。空壳没有任何视觉，直接归零；填上内容后 :empty 不再匹配，样式自动恢复。*/
+  html body [role="menu"]:empty,
+  html body [role="listbox"]:empty,
+  html body .px-menu-content:empty {
+    border: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    animation: none !important;
+    min-height: 0 !important;
+    height: 0 !important;
+  }
+  /* 兜底：根元素用 clip 而不是 hidden。hidden 仍建立滚动容器、仍能被 focus /
+     scrollIntoView 滚走（这正是「有时候」的来源）；clip 不建立滚动容器，程序化
+     写 scrollTop 也无效，任何漏网的溢出都不会再让整个界面位移。 */
+  html {
+    overflow: clip !important;
+  }
+  /* ── ② 浮层层级收敛到指针画布之下 ────────────────────────────────────────
+     指针画布是 body 的子节点、z-index 2147483647。下拉浮层被提到同一个 2147483647
+     时二者打平，打平按 DOM 顺序决胜 → 后挂载的浮层盖住画布；而原生指针又被
+     cursor:none 隐藏，于是悬停在下拉菜单上「完全看不到指针」。这里把弹层统一压到
+     2147483640（其余主题已是这个值），最高层留给指针画布。 */
+  html body div:has(> [role="listbox"]:not(:empty)),
+  html body [role="listbox"]:not(:empty),
+  html body [role="menu"]:not(:empty),
+  html body div[class*="z-[6000]"],
+  html body div[class*="z-[8000]"] {
+    z-index: 2147483640 !important;
+  }
+  /* ── ③ 开关控件两态统一 ──────────────────────────────────────────────────
+     应用的开关就是 button[role="switch"]，勾选态类名带 bg-primary，于是被「主按钮 =
+     方角 + 硬阴影」的规则命中：同一个开关勾选后变方角硬阴影、未勾选还是圆角胶囊，
+     看起来像两个不同控件。这里把两态统一回本主题的像素方角造型（radius 0，与第 8.5
+     节开关块一致），并让旋钮回到应用自带的 h-4 w-4（16px）：应用用 translateX(4px /
+     24px) 定位旋钮，只有 16px 旋钮左右内边距才是 4px / 4px 对称（18px 时勾选态右侧
+     只剩 2px）。 */
+  html body button[role="switch"],
+  html body button[role="switch"]:hover,
+  html body button[role="switch"]:focus-visible,
+  html body button[role="switch"]:active {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  html body button[role="switch"] > span {
+    width: 16px !important;
+    height: 16px !important;
   }
 }
