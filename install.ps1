@@ -1,4 +1,4 @@
-﻿# ============================================================================
+# ============================================================================
 # PIXEL GRAVITY installer for Antigravity 2.x (Windows)
 # - Backs up app.asar, patches dist/utils.js to load the pixel theme injector,
 #   repacks the asar, and deploys pixel-theme assets next to it.
@@ -10,12 +10,13 @@
 # ============================================================================
 param(
     [switch]$KillRunning,
-    [ValidateSet("doodle", "pixel", "matcha", "phantom", "doodle-theme", "pixel-theme", "matcha-theme", "phantom-theme")]
+    [ValidateSet("doodle", "pixel", "matcha", "phantom", "glass", "doodle-theme", "pixel-theme", "matcha-theme", "phantom-theme", "glass-theme")]
     [string]$Theme = "phantom"
 )
 $ErrorActionPreference = 'Stop'
 
 switch -Regex ($Theme) {
+    'glass'   { $ThemeName = 'glass-theme';   $ThemeTitle = 'LIQUID GRAVITY (液体玻璃拟态风 [Demo版])'; $ThemeColor = 'Cyan' }
     'pixel'   { $ThemeName = 'pixel-theme';   $ThemeTitle = 'PIXEL GRAVITY (8-Bit 复古像素极客风)'; $ThemeColor = 'Yellow' }
     'matcha'  { $ThemeName = 'matcha-theme';  $ThemeTitle = 'MATCHA GRAVITY (治愈系抹茶日记手帐风)'; $ThemeColor = 'Green' }
     'phantom' { $ThemeName = 'phantom-theme'; $ThemeTitle = 'PHANTOM GRAVITY (Persona 5 潮酷怪盗波普风)'; $ThemeColor = 'Red' }
@@ -148,7 +149,7 @@ if ($NeedsRepack) {
 }
 
 # --- 5. Deploy all theme assets (outside the asar, freely editable) ---
-$AllThemes = @('pixel-theme', 'doodle-theme', 'matcha-theme', 'phantom-theme')
+$AllThemes = @('pixel-theme', 'doodle-theme', 'matcha-theme', 'phantom-theme', 'glass-theme')
 foreach ($t in $AllThemes) {
     $src = Join-Path $PSScriptRoot $t
     if (Test-Path $src) {
@@ -178,5 +179,6 @@ Write-Host "  |    .\switch-theme.ps1 phantom  (Persona 5 潮酷怪盗风)      
 Write-Host "  |    .\switch-theme.ps1 matcha   (治愈系抹茶日记手帐风)       |" -ForegroundColor Green
 Write-Host "  |    .\switch-theme.ps1 doodle   (纯线稿漫画粉印手绘风)       |" -ForegroundColor Magenta
 Write-Host "  |    .\switch-theme.ps1 pixel    (8-Bit 复古像素极客风)       |" -ForegroundColor Yellow
+Write-Host "  |    .\switch-theme.ps1 glass    (液体玻璃拟态风 [Demo版])    |" -ForegroundColor Cyan
 Write-Host "  +-------------------------------------------------------------+" -ForegroundColor Yellow
 Write-Host ""

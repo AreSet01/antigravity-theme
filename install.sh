@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: ./install.sh [options]"
       echo ""
       echo "Options:"
-      echo "  -t, --theme <theme>   Theme to install: phantom (default), matcha, doodle, pixel"
+      echo "  -t, --theme <theme>   Theme to install: phantom (default), matcha, doodle, pixel, glass"
       echo "  -k, --kill            Automatically terminate running Antigravity processes"
       echo "  --app <path>          Custom path to Antigravity.app"
       echo "  -h, --help            Show this help message"
@@ -63,6 +63,11 @@ done
 # Normalize theme
 THEME_LOWER="$(echo "$THEME" | tr '[:upper:]' '[:lower:]')"
 case "$THEME_LOWER" in
+  glass|glass-theme)
+    THEME_NAME="glass-theme"
+    THEME_TITLE="LIQUID GRAVITY (液体玻璃拟态风 [Demo版])"
+    THEME_COLOR="${CYAN}"
+    ;;
   pixel|pixel-theme)
     THEME_NAME="pixel-theme"
     THEME_TITLE="PIXEL GRAVITY (8-Bit 复古像素极客风)"
@@ -236,7 +241,7 @@ if [[ "$NEEDS_REPACK" -eq 1 ]]; then
 fi
 
 # 5. Deploy theme assets outside asar
-ALL_THEMES=('pixel-theme' 'doodle-theme' 'matcha-theme' 'phantom-theme')
+ALL_THEMES=('pixel-theme' 'doodle-theme' 'matcha-theme' 'phantom-theme' 'glass-theme')
 for t in "${ALL_THEMES[@]}"; do
   src="$SCRIPT_DIR/$t"
   if [[ -d "$src" ]]; then
@@ -270,5 +275,6 @@ echo -e "${YELLOW}  |${NC}    ${RED}./switch.sh phantom${NC}  (Persona 5 潮酷�
 echo -e "${YELLOW}  |${NC}    ${GREEN}./switch.sh matcha${NC}   (治愈系抹茶日记手帐风)               ${YELLOW}|${NC}"
 echo -e "${YELLOW}  |${NC}    ${MAGENTA}./switch.sh doodle${NC}   (纯线稿漫画粉印手绘风)               ${YELLOW}|${NC}"
 echo -e "${YELLOW}  |${NC}    ${YELLOW}./switch.sh pixel${NC}    (8-Bit 复古像素极客风)               ${YELLOW}|${NC}"
+echo -e "${YELLOW}  |${NC}    ${CYAN}./switch.sh glass${NC}    (液体玻璃拟态风 [Demo版])           ${YELLOW}|${NC}"
 echo -e "${YELLOW}  +-------------------------------------------------------------+${NC}"
 echo ""

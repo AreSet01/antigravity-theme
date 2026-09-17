@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
-# ANTIGRAVITY THEME switcher for macOS (4 套主题秒级生效)
-# 支持主题：phantom (P5怪盗) | matcha (日式抹茶) | doodle (漫画粉印) | pixel (复古像素)
+# ANTIGRAVITY THEME switcher for macOS (5 套主题秒级生效)
+# 支持主题：phantom (P5怪盗) | matcha (日式抹茶) | doodle (漫画粉印) | pixel (复古像素) | glass (液态玻璃)
 # 特性：无需重启 Antigravity，无需重新打包 asar，自动同步本地最新 CSS，CDP 自动刷新！
 # ============================================================================
 
@@ -30,14 +30,16 @@ if [[ -z "$THEME" ]]; then
   echo -e "   ${GREEN}[2] matcha   - 治愈系抹茶日记手帐风 (抹茶绿/和纸白/便签书签)${NC}"
   echo -e "   ${MAGENTA}[3] doodle   - 纯线稿漫画粉印手绘风 (粉白红印/分镜直角/微动效)${NC}"
   echo -e "   ${YELLOW}[4] pixel    - 8-Bit 复古像素极客风 (Sweetie-16/CRT扫描线/方块滑块)${NC}"
+  echo -e "${CYAN}   [5] glass    - 液体玻璃拟态风 [Demo版] (极光壁纸/毛玻璃折射/胶囊控件)${NC}"
   echo -e "${CYAN}  =======================================================${NC}"
-  read -r -p " 请输入编号或主题名称 [1-4 / phantom / matcha / doodle / pixel] (默认 1): " choice
+  read -r -p " 请输入编号或主题名称 [1-5 / phantom / matcha / doodle / pixel / glass] (默认 1): " choice
   choice="${choice:-1}"
   case "$choice" in
     1) THEME="phantom" ;;
     2) THEME="matcha" ;;
     3) THEME="doodle" ;;
     4) THEME="pixel" ;;
+    5) THEME="glass" ;;
     *) THEME="$choice" ;;
   esac
 fi
@@ -62,13 +64,18 @@ case "$THEME_KEY" in
     THEME_TITLE="PHANTOM GRAVITY (Persona 5 潮酷怪盗波普风)"
     THEME_COLOR="${RED}"
     ;;
+  glass)
+    THEME_NAME="glass-theme"
+    THEME_TITLE="LIQUID GRAVITY (液体玻璃拟态风 [Demo版])"
+    THEME_COLOR="${CYAN}"
+    ;;
   doodle)
     THEME_NAME="doodle-theme"
     THEME_TITLE="DOODLE GRAVITY (纯线稿漫画粉印手绘风)"
     THEME_COLOR="${MAGENTA}"
     ;;
   *)
-    echo -e "${RED}[theme] 未知主题: '$THEME'，有效主题为: phantom, matcha, doodle, pixel${NC}" >&2
+    echo -e "${RED}[theme] 未知主题: '$THEME'，有效主题为: phantom, matcha, doodle, pixel, glass${NC}" >&2
     exit 1
     ;;
 esac

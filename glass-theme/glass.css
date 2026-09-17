@@ -1,0 +1,1214 @@
+/* ============================================================================
+   级联层序登记（必须保持在本文件最前面，改动前先读完这段）
+   ----------------------------------------------------------------------------
+   主题表是 webContents.insertCSS 注入的，Blink 把注入的 author 表排在文档自己的
+   <link> 之前，所以本文件比 compiled_tailwind.css 先解析。而级联层的先后由层名
+   「第一次出现」的位置决定：本文件里只要直接写 @layer utilities，utilities 就被
+   登记成第一层，Tailwind 随后那条「theme, base, components, utilities」层声明只能
+   把剩下三层排到它后面 —— base 的 preflight（*{margin:0;padding:0;border:0 solid}、
+   ol,ul,menu{list-style:none}）于是反压整个 utilities 层，全 UI 的 p-* / m-* /
+   border-* / list-* 一次性失效（2026-09-16 实测：p-4 → 0px、border-2 → 0px、
+   pl-8 list-decimal → 0px/none，侧栏会话行贴死左边缘、卡片边框消失、正文间距全塌）。
+
+   所以先按 Tailwind 的原序把层名登记好，再把主题自己的 px-theme 摆到最前：
+     · 普通声明 —— 层序正向，utilities 依旧最高 → 官方布局完好无损；
+     · !important —— 层序反向，px-theme 反而最高 → 主题压得住 utilities 里
+       [&>ol:not(.contains-task-list)]:!pl-4 这类「带层 !important」。
+   本文件其余规则一律不进任何层（无层 !important 已足够），只有确实要压「带层
+   !important」的规则才放进 px-theme。
+   ============================================================================ */
+@layer px-theme, properties, theme, base, components, utilities;
+
+/* ============================================================================
+   LIQUID GRAVITY — Antigravity 2.x 液态玻璃主题（iOS 26 Liquid Glass 观感）
+   ----------------------------------------------------------------------------
+   位置：<Antigravity 安装目录>\resources\glass-theme\glass.css
+          本地源码：<仓库>\glass-theme\glass.css
+
+   ── 三层结构 ────────────────────────────────────────────────────────────────
+   ① 壁纸层   body::before —— 高饱和极光（纯 CSS，只动 transform 的合成动画）。
+                实测结论：壁纸的鲜艳度是玻璃观感的决定性变量。第一版用近白的
+                低饱和渐变，玻璃面板和背景同色 → 整屏发灰、玻璃完全读不出来。
+   ② 折射层   backdrop-filter 的第一段 var(--glass-lens*)，分三档应用：chrome 用
+                sm、浮层用 xs、正文卡片直接关闭（透镜压在密集正文上会拉出重影）。
+                这是一枚 data: URI 外链 SVG 滤镜（见 --glass-lens-* 五档），两趟
+                feDisplacementMap 做「边缘透镜」：靠近边框的一圈被压缩、正中间零
+                失真，与 shuding/liquid-glass 同一路数（feImage + feDisplacementMap），
+                但不需要往文档里插 SVG，纯 CSS 即可交付。
+                2026-09-17 实测：data: URI 外链滤镜在本机 Chromium 146 上确实作用于
+                backdrop（同一块玻璃 scale=0 与 scale=80 截图哈希不同，玻璃内外的
+                文字可见错位）。
+   ③ 玻璃面   半透明染色 + 模糊/提饱和 + 四边不等亮的内描边 + 斜向高光 + 柔和投影。
+                四边不等亮是关键：上亮、左次之、右下最暗，玻璃才有厚度。
+
+   参数区在第 0 节，全部可手改（改完 Ctrl+R 即生效）。
+   注意 --glass-lens-* 是预生成的五个强度档：feDisplacementMap 的 scale 不能由 CSS
+   变量驱动，要别的强度请用 test-reports/md-probe/gen_glass_lens.js 重新生成。
+
+   ── 设计约束（血泪教训，勿删）────────────────────────────────────────────────
+     · 绝不写 `* { backdrop-filter: none }`（其它四套主题都有这条，本主题绝不能有）；
+     · 不写 @layer Tailwind 层名（见文件顶部说明）；
+     · Tailwind v4 的工具类读 --color-*，只改 --card 之类是不够的（见第 2 节末）；
+     · 表面底色必须显式压一遍，否则「模糊了但被一层不透明底盖住」，等于白做；
+     · 悬停/按下一律用 scale 或颜色，不用 translate 位移（2026-09-13 滚动条事故）；
+     · 浮层 z-index 最高 2147483640（2026-09-17 层级事故）；
+     · 空浮层壳必须显式归零 + html 用 overflow: clip（2026-09-17 超框事故）。
+   ============================================================================ */
+
+/* ============================================================
+   0. 参数区（想调效果改这里就够了）
+   ============================================================ */
+:root {
+  /* ---- 折射 ---- */
+  /* 取值：var(--glass-lens-xs|sm|md|lg|xl)，或 brightness(1) 关掉折射只留毛玻璃。
+     ⚠ 透镜别用在「底下压着密集正文」的表面：位移会把背后的文字拉出重影，
+     看着像渲染 bug 而不是玻璃（2026-09-17 在消息气泡上实拍踩到）。
+     分工：chrome（标题栏/侧栏/输入栏）走 sm；浮层/弹窗走 xs（轻微边缘畸变）；
+     正文卡片/气泡/代码块一律关掉透镜，只留毛玻璃。 */
+  --glass-lens:        var(--glass-lens-sm);   /* chrome */
+  --glass-lens-strong: var(--glass-lens-xs);   /* 浮层/弹窗 */
+  --glass-lens-card:   brightness(1);          /* 正文卡片/气泡：不折射 */
+  --glass-lens-none:   brightness(1);          /* 显式关闭 */
+
+  /* ---- 材质 ---- */
+  --glass-blur:      14px;    /* 背景模糊半径。折射档建议 8~16px：太小则背后文字仍可读、发花 */
+  --glass-blur-thin:  8px;    /* 薄玻璃（列表行、输入框等小面积） */
+  --glass-sat:       185%;    /* 背景饱和度提升 —— iOS 玻璃「透出的颜色更艳」就靠它 */
+  --glass-bright:    1.06;
+  --glass-contrast:  1.03;
+
+  /* ---- 染色（玻璃本体的白/黑覆盖层）---- */
+  --glass-tint:      255 255 255;
+  --glass-alpha:      0.11;   /* chrome：标题栏/侧栏 */
+  --glass-alpha-hi:   0.17;   /* 浮层/弹窗（要更实一点才压得住下面的正文） */
+  --glass-alpha-card: 0.20;   /* 正文卡片/气泡：底下压着密集文字，太透会「鬼影」 */
+  --glass-alpha-lo:   0.07;   /* 薄玻璃 */
+
+  /* ---- 边缘与高光 ---- */
+  --glass-rim-top:   0.72;    /* 上边缘亮度（0~1）—— 玻璃厚度感主要来自这里 */
+  --glass-rim-side:  0.30;
+  --glass-rim-bot:   0.14;
+  --glass-inner:     0.10;    /* 内壁散射辉光 */
+  --glass-sheen:     0.26;    /* 斜向高光强度 */
+
+  /* ---- 投影 ---- */
+  --glass-shadow-panel: 0 2px 10px rgba(3, 6, 20, 0.22);
+  --glass-shadow-float: 0 22px 48px rgba(3, 6, 20, 0.46), 0 3px 10px rgba(3, 6, 20, 0.26);
+  --glass-shadow-modal: 0 40px 96px rgba(3, 6, 20, 0.62), 0 4px 14px rgba(3, 6, 20, 0.34);
+
+  /* ---- 形状 ---- */
+  --glass-radius:      18px;
+  --glass-radius-lg:   26px;
+  --glass-radius-sm:   12px;
+  --glass-radius-pill: 9999px;
+
+  /* ---- 壁纸 ---- */
+  --glass-wall-speed: 48s;    /* 0s = 完全静止 */
+  --glass-wall-vivid: 0.88;   /* 极光饱和度（0~1）。调低整体变素净 */
+  --glass-wall-image: none;   /* 可填 url("data:image/...") 换成自定义壁纸 */
+  --glass-grain:      0.030;
+
+  /* ---- 字体 ---- */
+  --glass-font-ui:   system-ui, -apple-system, 'Segoe UI Variable Display', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', sans-serif;
+  --glass-font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', 'JetBrains Mono', Consolas, 'Microsoft YaHei UI', monospace;
+
+  /* ---- 系统窗口按钮与注入器配置 ---- */
+  --px-native-caption: off;
+  --px-chrome-light-bg: #E7ECF7;
+  --px-chrome-light-fg: #1C1C1E;
+  --px-chrome-dark-bg:  #0D1024;
+  --px-chrome-dark-fg:  #EAF2FF;
+  --px-glass:  on;
+  --px-cursor: off;   /* 玻璃主题用系统指针，省掉自绘指针引擎的常驻开销 */
+  --glass-lens-follow: on;   /* 鼠标跟随透镜开关 */
+  --glass-lens-mouse:  var(--glass-lens-lg); /* 鼠标跟随透镜默认滤镜（开启色散时自动升级为 chroma-lg） */
+  --glass-quality: balanced; /* ultra | balanced | perf */
+  --glass-mx: -999;          /* 指针相对位置（注入器动态写入） */
+  --glass-my: -999;
+}
+
+/* ============================================================
+   0.1 边缘透镜滤镜（预生成，勿手改；重新生成见 gen_glass_lens.js）
+   ------------------------------------------------------------
+   每一档 = 两趟 feDisplacementMap：
+     第 1 趟用贴图 R 通道推 X（B 通道恒 128，Y 不动）
+     第 2 趟用贴图 G 通道推 Y（R 通道恒 128，X 不动）
+   贴图是四段式线性渐变：两端 255/0（最大位移）→ bevel 处收敛到 128（零位移），
+   所以只有靠近边框的一圈被折射，面板正中完全不失真。
+   档位 = [位移强度 / 透镜带宽]：xs 18/.14  sm 32/.18  md 52/.22  lg 78/.26  xl 110/.32
+   ============================================================ */
+:root {
+  --glass-lens-xs: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.14%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.860%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22mx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22mx%22%20scale%3D%2218%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22a%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.14%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.860%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22my%22%2F%3E%3CfeDisplacementMap%20in%3D%22a%22%20in2%3D%22my%22%20scale%3D%2218%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-chroma-xs: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.14%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.860%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Rmx%22%20scale%3D%2219.3%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ra%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.14%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.860%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ra%22%20in2%3D%22Rmy%22%20scale%3D%2219.3%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22R%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.14%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.860%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Gmx%22%20scale%3D%2218.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ga%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.14%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.860%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ga%22%20in2%3D%22Gmy%22%20scale%3D%2218.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22G%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.14%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.860%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Bmx%22%20scale%3D%2216.7%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ba%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.14%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.860%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ba%22%20in2%3D%22Bmy%22%20scale%3D%2216.7%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22B%22%2F%3E%3CfeColorMatrix%20in%3D%22R%22%20type%3D%22matrix%22%20values%3D%221%200%200%200%200%20%200%200%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Ronly%22%2F%3E%3CfeColorMatrix%20in%3D%22G%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%201%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Gonly%22%2F%3E%3CfeColorMatrix%20in%3D%22B%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%200%200%200%200%20%200%200%201%200%200%20%200%200%200%201%200%22%20result%3D%22Bonly%22%2F%3E%3CfeComposite%20in%3D%22Ronly%22%20in2%3D%22Gonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%20result%3D%22RG%22%2F%3E%3CfeComposite%20in%3D%22RG%22%20in2%3D%22Bonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-sm: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.18%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.820%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22mx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22mx%22%20scale%3D%2232%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22a%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.18%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.820%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22my%22%2F%3E%3CfeDisplacementMap%20in%3D%22a%22%20in2%3D%22my%22%20scale%3D%2232%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-chroma-sm: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.18%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.820%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Rmx%22%20scale%3D%2234.3%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ra%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.18%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.820%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ra%22%20in2%3D%22Rmy%22%20scale%3D%2234.3%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22R%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.18%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.820%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Gmx%22%20scale%3D%2232.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ga%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.18%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.820%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ga%22%20in2%3D%22Gmy%22%20scale%3D%2232.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22G%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.18%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.820%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Bmx%22%20scale%3D%2229.7%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ba%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.18%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.820%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ba%22%20in2%3D%22Bmy%22%20scale%3D%2229.7%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22B%22%2F%3E%3CfeColorMatrix%20in%3D%22R%22%20type%3D%22matrix%22%20values%3D%221%200%200%200%200%20%200%200%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Ronly%22%2F%3E%3CfeColorMatrix%20in%3D%22G%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%201%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Gonly%22%2F%3E%3CfeColorMatrix%20in%3D%22B%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%200%200%200%200%20%200%200%201%200%200%20%200%200%200%201%200%22%20result%3D%22Bonly%22%2F%3E%3CfeComposite%20in%3D%22Ronly%22%20in2%3D%22Gonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%20result%3D%22RG%22%2F%3E%3CfeComposite%20in%3D%22RG%22%20in2%3D%22Bonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-md: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.22%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.780%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22mx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22mx%22%20scale%3D%2252%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22a%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.22%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.780%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22my%22%2F%3E%3CfeDisplacementMap%20in%3D%22a%22%20in2%3D%22my%22%20scale%3D%2252%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-chroma-md: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.22%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.780%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Rmx%22%20scale%3D%2255.7%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ra%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.22%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.780%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ra%22%20in2%3D%22Rmy%22%20scale%3D%2255.7%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22R%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.22%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.780%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Gmx%22%20scale%3D%2252.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ga%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.22%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.780%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ga%22%20in2%3D%22Gmy%22%20scale%3D%2252.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22G%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.22%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.780%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Bmx%22%20scale%3D%2248.3%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ba%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.22%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.780%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ba%22%20in2%3D%22Bmy%22%20scale%3D%2248.3%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22B%22%2F%3E%3CfeColorMatrix%20in%3D%22R%22%20type%3D%22matrix%22%20values%3D%221%200%200%200%200%20%200%200%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Ronly%22%2F%3E%3CfeColorMatrix%20in%3D%22G%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%201%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Gonly%22%2F%3E%3CfeColorMatrix%20in%3D%22B%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%200%200%200%200%20%200%200%201%200%200%20%200%200%200%201%200%22%20result%3D%22Bonly%22%2F%3E%3CfeComposite%20in%3D%22Ronly%22%20in2%3D%22Gonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%20result%3D%22RG%22%2F%3E%3CfeComposite%20in%3D%22RG%22%20in2%3D%22Bonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-lg: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.26%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.740%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22mx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22mx%22%20scale%3D%2278%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22a%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.26%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.740%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22my%22%2F%3E%3CfeDisplacementMap%20in%3D%22a%22%20in2%3D%22my%22%20scale%3D%2278%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-chroma-lg: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.26%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.740%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Rmx%22%20scale%3D%2283.6%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ra%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.26%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.740%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ra%22%20in2%3D%22Rmy%22%20scale%3D%2283.6%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22R%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.26%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.740%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Gmx%22%20scale%3D%2278.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ga%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.26%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.740%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ga%22%20in2%3D%22Gmy%22%20scale%3D%2278.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22G%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.26%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.740%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Bmx%22%20scale%3D%2272.4%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ba%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.26%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.740%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ba%22%20in2%3D%22Bmy%22%20scale%3D%2272.4%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22B%22%2F%3E%3CfeColorMatrix%20in%3D%22R%22%20type%3D%22matrix%22%20values%3D%221%200%200%200%200%20%200%200%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Ronly%22%2F%3E%3CfeColorMatrix%20in%3D%22G%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%201%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Gonly%22%2F%3E%3CfeColorMatrix%20in%3D%22B%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%200%200%200%200%20%200%200%201%200%200%20%200%200%200%201%200%22%20result%3D%22Bonly%22%2F%3E%3CfeComposite%20in%3D%22Ronly%22%20in2%3D%22Gonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%20result%3D%22RG%22%2F%3E%3CfeComposite%20in%3D%22RG%22%20in2%3D%22Bonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-xl: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.32%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.680%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22mx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22mx%22%20scale%3D%22110%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22a%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.32%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.680%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22my%22%2F%3E%3CfeDisplacementMap%20in%3D%22a%22%20in2%3D%22my%22%20scale%3D%22110%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+  --glass-lens-chroma-xl: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cfilter%20id%3D%22f%22%20x%3D%22-15%25%22%20y%3D%22-15%25%22%20width%3D%22130%25%22%20height%3D%22130%25%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.32%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.680%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Rmx%22%20scale%3D%22117.9%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ra%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.32%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.680%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Rmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ra%22%20in2%3D%22Rmy%22%20scale%3D%22117.9%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22R%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.32%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.680%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Gmx%22%20scale%3D%22110.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ga%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.32%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.680%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Gmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ga%22%20in2%3D%22Gmy%22%20scale%3D%22110.0%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22G%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25221%2522%2520y2%253D%25220%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(255%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.32%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.680%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(0%252C128%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmx%22%2F%3E%3CfeDisplacementMap%20in%3D%22SourceGraphic%22%20in2%3D%22Bmx%22%20scale%3D%22102.1%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22B%22%20result%3D%22Ba%22%2F%3E%3CfeImage%20href%3D%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520preserveAspectRatio%253D%2522none%2522%253E%253Cdefs%253E%253ClinearGradient%2520id%253D%2522g%2522%2520x1%253D%25220%2522%2520y1%253D%25220%2522%2520x2%253D%25220%2522%2520y2%253D%25221%2522%253E%253Cstop%2520offset%253D%25220%2522%2520stop-color%253D%2522rgb(128%252C255%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.32%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25220.680%2522%2520stop-color%253D%2522rgb(128%252C128%252C128)%2522%252F%253E%253Cstop%2520offset%253D%25221%2522%2520stop-color%253D%2522rgb(128%252C0%252C128)%2522%252F%253E%253C%252FlinearGradient%253E%253C%252Fdefs%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520fill%253D%2522url(%2523g)%2522%252F%253E%253C%252Fsvg%253E%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%20preserveAspectRatio%3D%22none%22%20result%3D%22Bmy%22%2F%3E%3CfeDisplacementMap%20in%3D%22Ba%22%20in2%3D%22Bmy%22%20scale%3D%22102.1%22%20xChannelSelector%3D%22R%22%20yChannelSelector%3D%22G%22%20result%3D%22B%22%2F%3E%3CfeColorMatrix%20in%3D%22R%22%20type%3D%22matrix%22%20values%3D%221%200%200%200%200%20%200%200%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Ronly%22%2F%3E%3CfeColorMatrix%20in%3D%22G%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%201%200%200%200%20%200%200%200%200%200%20%200%200%200%201%200%22%20result%3D%22Gonly%22%2F%3E%3CfeColorMatrix%20in%3D%22B%22%20type%3D%22matrix%22%20values%3D%220%200%200%200%200%20%200%200%200%200%200%20%200%200%201%200%200%20%200%200%200%201%200%22%20result%3D%22Bonly%22%2F%3E%3CfeComposite%20in%3D%22Ronly%22%20in2%3D%22Gonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%20result%3D%22RG%22%2F%3E%3CfeComposite%20in%3D%22RG%22%20in2%3D%22Bonly%22%20operator%3D%22arithmetic%22%20k2%3D%221%22%20k3%3D%221%22%2F%3E%3C%2Ffilter%3E%3C%2Fsvg%3E#f");
+}
+
+/* ============================================================
+   0.2 iOS 系统色
+   ============================================================ */
+:root {
+  --g-blue:   #0A84FF;
+  --g-blue-2: #007AFF;
+  --g-teal:   #64D2FF;
+  --g-indigo: #5E5CE6;
+  --g-purple: #BF5AF2;
+  --g-pink:   #FF375F;
+  --g-orange: #FF9F0A;
+  --g-yellow: #FFD60A;
+  --g-green:  #30D158;
+  --g-red:    #FF453A;
+}
+
+/* ============================================================
+   1. 语义 Token —— 暗色（深空极光）
+   ============================================================ */
+body:not(.theme-light) {
+  --background:           transparent !important;
+  --foreground:           #F5F7FC !important;
+  --content:              transparent !important;
+  --primary:              var(--g-blue) !important;
+  --primary-foreground:   #FFFFFF !important;
+  --secondary:            rgb(var(--glass-tint) / calc(var(--glass-alpha) * 1.2)) !important;
+  --secondary-foreground: #F5F7FC !important;
+  --muted:                rgb(var(--glass-tint) / var(--glass-alpha-lo)) !important;
+  --muted-foreground:     #B6BDD2 !important;
+  --placeholder:          #8890A8 !important;
+  --sidebar:              rgb(var(--glass-tint) / var(--glass-alpha)) !important;
+  --sidebar-secondary:    rgb(var(--glass-tint) / calc(var(--glass-alpha) * 1.5)) !important;
+  --sidebar-muted:        rgb(var(--glass-tint) / var(--glass-alpha-lo)) !important;
+  --card:                 rgb(var(--glass-tint) / var(--glass-alpha)) !important;
+  --card-border:          rgb(var(--glass-tint) / 0.16) !important;
+  --border:               rgb(var(--glass-tint) / 0.14) !important;
+
+  --vscode-foreground:                    #F5F7FC !important;
+  --vscode-editor-background:             rgba(10, 13, 30, 0.34) !important;
+  --vscode-editor-foreground:             #F5F7FC !important;
+  --vscode-sideBar-background:            transparent !important;
+  --vscode-sideBar-foreground:            #B6BDD2 !important;
+  --vscode-titleBar-activeBackground:     transparent !important;
+  --vscode-titleBar-activeForeground:     #F5F7FC !important;
+  --vscode-activityBar-background:        transparent !important;
+  --vscode-activityBar-foreground:        var(--g-teal) !important;
+  --vscode-activityBarBadge-background:   var(--g-blue) !important;
+  --vscode-activityBarBadge-foreground:   #FFFFFF !important;
+  --vscode-editorWidget-background:       rgba(18, 22, 46, 0.72) !important;
+  --vscode-editorWidget-border:           rgb(var(--glass-tint) / 0.18) !important;
+  --vscode-editorInlayHint-background:    rgb(var(--glass-tint) / 0.10) !important;
+  --vscode-editorInlayHint-foreground:    #9AA2BC !important;
+  --vscode-editorLineNumber-foreground:   #7A8199 !important;
+  --vscode-editorLineNumber-activeForeground: var(--g-teal) !important;
+  --vscode-notebook-cellEditorBackground: rgba(10, 13, 30, 0.30) !important;
+  --vscode-input-background:              rgb(var(--glass-tint) / 0.10) !important;
+  --vscode-input-foreground:              #F5F7FC !important;
+  --vscode-input-border:                  rgb(var(--glass-tint) / 0.18) !important;
+  --vscode-button-background:             var(--g-blue) !important;
+  --vscode-button-foreground:             #FFFFFF !important;
+  --vscode-button-hoverBackground:        #3D9BFF !important;
+  --vscode-focusBorder:                   var(--g-blue) !important;
+  --vscode-list-focusOutline:             var(--g-blue) !important;
+  --vscode-list-hoverBackground:          rgb(var(--glass-tint) / 0.12) !important;
+  --vscode-list-hoverBackground-subtle:   rgb(var(--glass-tint) / 0.07) !important;
+  --vscode-list-activeSelectionBackground: rgba(10, 132, 255, 0.34) !important;
+  --vscode-list-activeSelectionForeground: #FFFFFF !important;
+  --vscode-list-highlightForeground:      var(--g-teal) !important;
+  --vscode-textLink-foreground:           var(--g-teal) !important;
+  --vscode-textPreformat-foreground:      #FFD8A8 !important;
+  --vscode-textPreformat-background:      rgb(var(--glass-tint) / 0.12) !important;
+  --vscode-toolbar-hoverBackground:       rgb(var(--glass-tint) / 0.14) !important;
+  --vscode-commandCenter-inactiveBorder:  rgb(var(--glass-tint) / 0.14) !important;
+  --vscode-notifications-background:      rgba(18, 22, 46, 0.80) !important;
+  --vscode-notifications-foreground:      #F5F7FC !important;
+  --vscode-notifications-border:          var(--g-blue) !important;
+  --vscode-editorWarning-foreground:      var(--g-orange) !important;
+  --vscode-editorError-foreground:        var(--g-red) !important;
+  --vscode-editorGroup-dropBackground:    rgba(10, 132, 255, 0.20) !important;
+  --vscode-diffEditor-insertedLineBackground: rgba(48, 209, 88, 0.18) !important;
+  --vscode-diffEditor-removedLineBackground:  rgba(255, 69, 58, 0.18) !important;
+  --vscode-diffEditor-insertedTextBackground: rgba(48, 209, 88, 0.30) !important;
+  --vscode-diffEditor-removedTextBackground:  rgba(255, 69, 58, 0.30) !important;
+  --codeium-active-selection-color:       var(--g-blue) !important;
+  --px-flash: brightness(1.35);
+}
+
+/* ============================================================
+   2. 语义 Token —— 亮色（晨雾极光）
+   ============================================================ */
+body.theme-light {
+  --glass-tint:      255 255 255;
+  /* 亮色玻璃必须「薄」：白得太多背景色就被洗掉了。实测 0.34 既能读出玻璃厚度，
+     又留得住壁纸的颜色（0.62 那版整屏发灰、玻璃完全消失）。 */
+  --glass-alpha:     0.34;
+  --glass-alpha-hi:  0.56;
+  --glass-alpha-lo:  0.24;
+  --glass-sat:       205%;
+  --glass-blur:      24px;
+  --glass-rim-top:   1;
+  --glass-rim-side:  0.85;
+  --glass-rim-bot:   0.45;
+  --glass-inner:     0.20;
+  --glass-sheen:     0.34;
+  --glass-shadow-panel: 0 2px 10px rgba(40, 52, 96, 0.10);
+  --glass-shadow-float: 0 22px 48px rgba(40, 52, 96, 0.18), 0 3px 10px rgba(40, 52, 96, 0.10);
+  --glass-shadow-modal: 0 40px 96px rgba(40, 52, 96, 0.26), 0 4px 14px rgba(40, 52, 96, 0.14);
+
+  --background:           transparent !important;
+  --foreground:           #11131C !important;
+  --content:              transparent !important;
+  --primary:              var(--g-blue-2) !important;
+  --primary-foreground:   #FFFFFF !important;
+  --secondary:            rgb(var(--glass-tint) / calc(var(--glass-alpha) * 1.15)) !important;
+  --secondary-foreground: #11131C !important;
+  --muted:                rgb(var(--glass-tint) / var(--glass-alpha-lo)) !important;
+  --muted-foreground:     #4F556B !important;
+  --placeholder:          #6B7288 !important;
+  --sidebar:              rgb(var(--glass-tint) / var(--glass-alpha)) !important;
+  --sidebar-secondary:    rgb(var(--glass-tint) / calc(var(--glass-alpha) * 1.2)) !important;
+  --sidebar-muted:        rgb(var(--glass-tint) / var(--glass-alpha-lo)) !important;
+  --card:                 rgb(var(--glass-tint) / var(--glass-alpha)) !important;
+  --card-border:          rgba(24, 30, 54, 0.10) !important;
+  --border:               rgba(24, 30, 54, 0.10) !important;
+
+  --vscode-foreground:                    #11131C !important;
+  --vscode-editor-background:             rgba(255, 255, 255, 0.50) !important;
+  --vscode-editor-foreground:             #11131C !important;
+  --vscode-sideBar-background:            transparent !important;
+  --vscode-sideBar-foreground:            #4F556B !important;
+  --vscode-titleBar-activeBackground:     transparent !important;
+  --vscode-titleBar-activeForeground:     #11131C !important;
+  --vscode-activityBar-background:        transparent !important;
+  --vscode-activityBar-foreground:        var(--g-blue-2) !important;
+  --vscode-activityBarBadge-background:   var(--g-blue-2) !important;
+  --vscode-activityBarBadge-foreground:   #FFFFFF !important;
+  --vscode-editorWidget-background:       rgba(255, 255, 255, 0.78) !important;
+  --vscode-editorWidget-border:           rgba(24, 30, 54, 0.10) !important;
+  --vscode-editorInlayHint-background:    rgba(255, 255, 255, 0.60) !important;
+  --vscode-editorInlayHint-foreground:    #5D6377 !important;
+  --vscode-editorLineNumber-foreground:   #9399AD !important;
+  --vscode-editorLineNumber-activeForeground: var(--g-blue-2) !important;
+  --vscode-notebook-cellEditorBackground: rgba(255, 255, 255, 0.55) !important;
+  --vscode-input-background:              rgba(255, 255, 255, 0.70) !important;
+  --vscode-input-foreground:              #11131C !important;
+  --vscode-input-border:                  rgba(24, 30, 54, 0.12) !important;
+  --vscode-button-background:             var(--g-blue-2) !important;
+  --vscode-button-foreground:             #FFFFFF !important;
+  --vscode-button-hoverBackground:        #2A8CFF !important;
+  --vscode-focusBorder:                   var(--g-blue-2) !important;
+  --vscode-list-focusOutline:             var(--g-blue-2) !important;
+  --vscode-list-hoverBackground:          rgba(24, 30, 54, 0.07) !important;
+  --vscode-list-hoverBackground-subtle:   rgba(24, 30, 54, 0.04) !important;
+  --vscode-list-activeSelectionBackground: rgba(0, 122, 255, 0.18) !important;
+  --vscode-list-activeSelectionForeground: #06429B !important;
+  --vscode-list-highlightForeground:      #0B72E7 !important;
+  --vscode-textLink-foreground:           #0B72E7 !important;
+  --vscode-textPreformat-foreground:      #A8431A !important;
+  --vscode-textPreformat-background:      rgba(24, 30, 54, 0.07) !important;
+  --vscode-toolbar-hoverBackground:       rgba(24, 30, 54, 0.08) !important;
+  --vscode-commandCenter-inactiveBorder:  rgba(24, 30, 54, 0.10) !important;
+  --vscode-notifications-background:      rgba(255, 255, 255, 0.86) !important;
+  --vscode-notifications-foreground:      #11131C !important;
+  --vscode-notifications-border:          var(--g-blue-2) !important;
+  --vscode-editorWarning-foreground:      #A75A0B !important;
+  --vscode-editorError-foreground:        #C8102E !important;
+  --vscode-editorGroup-dropBackground:    rgba(0, 122, 255, 0.14) !important;
+  --vscode-diffEditor-insertedLineBackground: rgba(52, 199, 89, 0.20) !important;
+  --vscode-diffEditor-removedLineBackground:  rgba(255, 59, 48, 0.16) !important;
+  --vscode-diffEditor-insertedTextBackground: rgba(52, 199, 89, 0.30) !important;
+  --vscode-diffEditor-removedTextBackground:  rgba(255, 59, 48, 0.24) !important;
+  --codeium-active-selection-color:       var(--g-blue-2) !important;
+  --px-flash: brightness(1.15);
+}
+
+/* Tailwind v4 的工具类读的是 --color-* 命名空间（.bg-card { background-color:
+   var(--color-card) }），它和 --card 是两个独立的自定义属性：只改 --card，
+   .bg-card 依旧吃应用自己的不透明底色（2026-09-17 实测：令牌链上全是我的值，
+   元素 computed 背景却仍是 #25262F）。这里把两套命名空间接起来。 */
+body:not(.theme-light),
+body.theme-light {
+  --color-background:           var(--background) !important;
+  --color-foreground:           var(--foreground) !important;
+  --color-content:              var(--content) !important;
+  --color-primary:              var(--primary) !important;
+  --color-primary-foreground:   var(--primary-foreground) !important;
+  --color-secondary:            var(--secondary) !important;
+  --color-secondary-foreground: var(--secondary-foreground) !important;
+  --color-muted:                var(--muted) !important;
+  --color-muted-foreground:     var(--muted-foreground) !important;
+  --color-sidebar:              var(--sidebar) !important;
+  --color-sidebar-secondary:    var(--sidebar-secondary) !important;
+  --color-sidebar-muted:        var(--sidebar-muted) !important;
+  --color-card:                 var(--card) !important;
+  --color-card-border:          var(--card-border) !important;
+  --color-border:               var(--border) !important;
+  --color-placeholder:          var(--placeholder) !important;
+}
+
+/* ============================================================
+   3. 壁纸层（高饱和极光）
+   ------------------------------------------------------------
+   玻璃没有鲜艳的底就读不出来 —— 这是第一版最大的败笔（近白壁纸 + 白玻璃 =
+   整屏发灰）。这里用 iOS 系统色做 5 团高饱和光晕压在深靛底上，
+   --glass-wall-vivid 控制整体浓度。
+   ============================================================ */
+html {
+  background-color: #080A18;
+}
+
+body.theme-light {
+  background-color: #E9EEFA;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: -16%;            /* 比视口大一圈，位移/缩放时不会露边 */
+  z-index: -2;
+  pointer-events: none;
+  background-image:
+    var(--glass-wall-image),
+    radial-gradient(38% 42% at 16% 20%, rgb(255 45 85 / var(--glass-wall-vivid)) 0%, rgb(255 45 85 / 0) 62%),
+    radial-gradient(36% 40% at 84% 14%, rgb(10 132 255 / var(--glass-wall-vivid)) 0%, rgb(10 132 255 / 0) 60%),
+    radial-gradient(44% 46% at 76% 84%, rgb(191 90 242 / calc(var(--glass-wall-vivid) * 0.92)) 0%, rgb(191 90 242 / 0) 64%),
+    radial-gradient(40% 42% at 18% 88%, rgb(48 209 88 / calc(var(--glass-wall-vivid) * 0.78)) 0%, rgb(48 209 88 / 0) 62%),
+    radial-gradient(26% 26% at 52% 48%, rgb(255 214 10 / calc(var(--glass-wall-vivid) * 0.55)) 0%, rgb(255 214 10 / 0) 60%),
+    linear-gradient(140deg, #1B1038 0%, #0A0E28 52%, #250F3C 100%);
+  background-size: cover, auto, auto, auto, auto, auto, auto;
+  background-position: center;
+  background-repeat: no-repeat;
+  animation: glass-wall-drift var(--glass-wall-speed) ease-in-out infinite alternate;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+body.theme-light::before {
+  background-image:
+    var(--glass-wall-image),
+    radial-gradient(40% 44% at 8% 10%, rgb(255 70 125 / var(--glass-wall-vivid)) 0%, rgb(255 70 125 / 0) 58%),
+    radial-gradient(38% 42% at 94% 6%, rgb(30 125 255 / var(--glass-wall-vivid)) 0%, rgb(30 125 255 / 0) 56%),
+    radial-gradient(46% 50% at 92% 96%, rgb(140 80 255 / calc(var(--glass-wall-vivid) * 0.98)) 0%, rgb(140 80 255 / 0) 60%),
+    radial-gradient(42% 46% at 4% 98%, rgb(10 200 165 / calc(var(--glass-wall-vivid) * 0.95)) 0%, rgb(10 200 165 / 0) 58%),
+    radial-gradient(30% 30% at 50% 52%, rgb(255 206 110 / calc(var(--glass-wall-vivid) * 0.66)) 0%, rgb(255 206 110 / 0) 60%),
+    linear-gradient(140deg, #B9CFF5 0%, #CDBDF2 52%, #B4E3DA 100%);
+}
+
+/* 极慢漂移：只动 transform（在合成层内插值，不触发重排/重绘） */
+@keyframes glass-wall-drift {
+  0%   { transform: translate3d(-1.0%, -0.7%, 0) scale(1.06); }
+  50%  { transform: translate3d(0.9%, 0.6%, 0) scale(1.075); }
+  100% { transform: translate3d(-0.4%, 0.9%, 0) scale(1.065); }
+}
+
+/* 噪点：压掉渐变的塑料感（静态，不参与动画） */
+html::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--glass-grain);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+/* 应用自己的底层容器必须透明，壁纸才透得上来 */
+#root,
+#root > div,
+body > div[class*="h-screen"],
+[class*="bg-background"],
+[class*="bg-content"] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* ============================================================
+   4. 字体与全局
+   ============================================================ */
+:root {
+  --font-sans:                var(--glass-font-ui);
+  --font-mono:                var(--glass-font-mono);
+  --default-font-family:      var(--glass-font-ui);
+  --default-mono-font-family: var(--glass-font-mono);
+  --editor-font-family:       var(--glass-font-mono);
+}
+
+body,
+input,
+textarea,
+button,
+select {
+  font-family: var(--glass-font-ui) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+pre,
+code,
+kbd,
+samp,
+[class*="font-mono"] {
+  font-family: var(--glass-font-mono) !important;
+}
+
+/* 玻璃上的文字要有一层极轻的投影才「浮」得起来、也才压得住花背景 */
+body:not(.theme-light) {
+  text-shadow: 0 1px 2px rgba(4, 8, 24, 0.28);
+}
+
+body:not(.theme-light) pre,
+body:not(.theme-light) code,
+body:not(.theme-light) input,
+body:not(.theme-light) textarea {
+  text-shadow: none;
+}
+
+/* 亮色：深色文字压在彩色玻璃上要靠一圈白晕才清透 */
+body.theme-light * {
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.55);
+}
+
+body.theme-light pre,
+body.theme-light code,
+body.theme-light input,
+body.theme-light textarea {
+  text-shadow: none;
+}
+
+::selection {
+  background: rgba(10, 132, 255, 0.38);
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.75) !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
+}
+
+/* 滚动条：细、半透明、圆头 */
+* {
+  scrollbar-color: rgb(var(--glass-tint) / 0.26) transparent;
+  scrollbar-width: thin;
+}
+
+body.theme-light * {
+  scrollbar-color: rgba(24, 30, 54, 0.24) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--glass-tint) / 0.24);
+  border: 3px solid transparent;
+  border-radius: var(--glass-radius-pill);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--glass-tint) / 0.40);
+  background-clip: content-box;
+}
+
+body.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(24, 30, 54, 0.24);
+  background-clip: content-box;
+}
+
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 30, 54, 0.38);
+  background-clip: content-box;
+}
+
+/* ============================================================
+   5. 玻璃材质
+   ------------------------------------------------------------
+   配方 = 折射(url 位移滤镜) + 模糊 + 提饱和 + 四边不等亮内描边 + 内壁辉光 + 投影。
+   四边不等亮是厚度感的来源：上 0.72 / 侧 0.30 / 下 0.14。
+   ============================================================ */
+
+/* ---- 5.1 面板级玻璃：标题栏、侧栏 ---- */
+[data-testid="title-menu-bar"],
+[class~="bg-sidebar"],
+[class~="bg-sidebar-secondary"] {
+  backdrop-filter: var(--glass-lens) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) contrast(var(--glass-contrast)) !important;
+  -webkit-backdrop-filter: var(--glass-lens) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) contrast(var(--glass-contrast)) !important;
+  background-image: radial-gradient(circle 260px at calc(var(--glass-mx, -999) * 100%) calc(var(--glass-my, -999) * 100%), rgb(var(--glass-tint) / var(--glass-sheen, 0.26)) 0%, transparent 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-tint) / var(--glass-rim-top)),
+    inset 0 0 26px rgb(var(--glass-tint) / var(--glass-inner)),
+    var(--glass-shadow-panel) !important;
+}
+
+[data-testid="title-menu-bar"],
+[class~="bg-sidebar"] {
+  background-color: var(--sidebar) !important;
+}
+
+[class~="bg-sidebar-secondary"] {
+  background-color: var(--sidebar-secondary) !important;
+}
+
+[data-testid="title-menu-bar"] {
+  border-bottom: 1px solid rgb(var(--glass-tint) / 0.12) !important;
+}
+
+[class~="bg-sidebar"] {
+  border-right: 1px solid rgb(var(--glass-tint) / 0.10) !important;
+}
+
+/* ---- 5.2 卡片级玻璃 ---- */
+[class~="bg-card"],
+[class*="bg-card"]:not([class*="bg-card-border"]) {
+  backdrop-filter: var(--glass-lens-card, brightness(1)) blur(var(--glass-blur-thin)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) !important;
+  -webkit-backdrop-filter: var(--glass-lens-card, brightness(1)) blur(var(--glass-blur-thin)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) !important;
+  background-color: rgb(var(--glass-tint) / var(--glass-alpha-card)) !important;
+  background-image: radial-gradient(circle 220px at calc(var(--glass-mx, -999) * 100%) calc(var(--glass-my, -999) * 100%), rgb(var(--glass-tint) / var(--glass-sheen, 0.26)) 0%, transparent 100%) !important;
+  border-radius: var(--glass-radius) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-tint) / var(--glass-rim-top)),
+    inset 1px 0 0 rgb(var(--glass-tint) / var(--glass-rim-side)),
+    inset -1px 0 0 rgb(var(--glass-tint) / calc(var(--glass-rim-side) * 0.55)),
+    inset 0 -1px 0 rgb(var(--glass-tint) / var(--glass-rim-bot)),
+    inset 0 0 22px rgb(var(--glass-tint) / var(--glass-inner)),
+    var(--glass-shadow-panel) !important;
+}
+
+/* ---- 5.3 浮层级玻璃：菜单、下拉、弹窗、气泡 ---- */
+.px-menu-content,
+[role="menu"]:not(:empty),
+[role="listbox"]:not(:empty),
+[data-radix-popper-content-wrapper] > *,
+[role="dialog"],
+[role="alertdialog"],
+.settings-modal-container {
+  backdrop-filter: var(--glass-lens-strong) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) contrast(var(--glass-contrast)) !important;
+  -webkit-backdrop-filter: var(--glass-lens-strong) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) contrast(var(--glass-contrast)) !important;
+  background-color: rgb(var(--glass-tint) / var(--glass-alpha-hi)) !important;
+  background-image: none !important;
+  border: 1px solid rgb(var(--glass-tint) / 0.18) !important;
+  border-radius: var(--glass-radius) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-tint) / var(--glass-rim-top)),
+    inset 1px 0 0 rgb(var(--glass-tint) / var(--glass-rim-side)),
+    inset -1px 0 0 rgb(var(--glass-tint) / calc(var(--glass-rim-side) * 0.55)),
+    inset 0 -1px 0 rgb(var(--glass-tint) / var(--glass-rim-bot)),
+    inset 0 0 30px rgb(var(--glass-tint) / var(--glass-inner)),
+    var(--glass-shadow-float) !important;
+  overflow: hidden;
+}
+
+body.theme-light .px-menu-content,
+body.theme-light [role="menu"]:not(:empty),
+body.theme-light [role="listbox"]:not(:empty),
+body.theme-light [role="dialog"],
+body.theme-light [role="alertdialog"],
+body.theme-light .settings-modal-container {
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+}
+
+/* 弹窗更厚、更圆、投影更深 */
+html body [role="dialog"],
+html body [role="alertdialog"],
+html body .settings-modal-container {
+  border-radius: var(--glass-radius-lg) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-tint) / var(--glass-rim-top)),
+    inset 0 0 40px rgb(var(--glass-tint) / var(--glass-inner)),
+    var(--glass-shadow-modal) !important;
+}
+
+/* 斜向高光：玻璃的「反光」。用 ::before 铺一层，不影响内容布局 */
+[role="dialog"]::before,
+[role="alertdialog"]::before,
+.settings-modal-container::before,
+.px-menu-content::before,
+[role="menu"]:not(:empty)::before,
+[role="listbox"]:not(:empty)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle 220px at calc(var(--glass-mx, -999) * 100%) calc(var(--glass-my, -999) * 100%),
+      rgb(var(--glass-tint) / var(--glass-sheen)) 0%, transparent 100%),
+    linear-gradient(135deg,
+      rgb(var(--glass-tint) / var(--glass-sheen)) 0%,
+      rgb(var(--glass-tint) / calc(var(--glass-sheen) * 0.22)) 24%,
+      rgb(var(--glass-tint) / 0) 48%);
+}
+
+/* 遮罩：弹窗背后压暗 + 轻模糊 */
+html body .settings-modal-backdrop,
+html body div[class*="animate-backdropFadeIn"],
+html body div.animate-modalFadeIn {
+  background-color: rgba(4, 7, 22, 0.44) !important;
+  backdrop-filter: blur(8px) saturate(115%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(115%) !important;
+}
+
+body.theme-light div.settings-modal-backdrop,
+body.theme-light div[class*="animate-backdropFadeIn"],
+body.theme-light div.animate-modalFadeIn {
+  background-color: rgba(228, 234, 250, 0.50) !important;
+}
+
+/* ---- 5.35 正文区玻璃底板 ----------------------------------------------------
+   主内容区（右侧那一大块）在应用里是「透明的大平面」，壁纸的颜色会直接铺满它。
+   第一版把它留成透明，结果亮色模式下整屏发灰、暗色模式下文字泡在彩虹里。
+   这里把主内容区做成一块大玻璃：模糊 + 染色 + 一条左侧亮边，
+   于是壁纸只在它边上露出彩色的「边光」，正文依旧干净。
+   选择器按实测的容器类名片段组合（relative z-0 flex-1 flex min-h-0 h-full）。*/
+div[class*="z-0"][class*="flex-1"][class*="min-h-0"][class*="h-full"] {
+  background-color: rgb(var(--glass-tint) / var(--glass-slab, 0.5)) !important;
+  backdrop-filter: var(--glass-lens) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) !important;
+  -webkit-backdrop-filter: var(--glass-lens) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) !important;
+  box-shadow:
+    inset 1px 0 0 rgb(var(--glass-tint) / calc(var(--glass-rim-top) * 0.9)),
+    inset 0 1px 0 rgb(var(--glass-tint) / calc(var(--glass-rim-top) * 0.6)) !important;
+}
+
+body:not(.theme-light) {
+  --glass-slab: 0.40;
+}
+
+body.theme-light {
+  --glass-slab: 0.30;
+}
+
+/* ---- 5.4 菜单项 ---- */
+.px-menu-item,
+[data-testid="title-menu-bar-option"],
+[role="option"] {
+  position: relative;
+  z-index: 1;
+  border-radius: var(--glass-radius-sm) !important;
+  margin: 1px 5px !important;
+  transition: background-color 130ms ease, color 130ms ease !important;
+}
+
+.px-menu-item:hover,
+.px-menu-item:focus,
+.px-menu-item[data-highlighted],
+[data-testid="title-menu-bar-option"]:hover,
+[data-testid="title-menu-bar-option"]:focus,
+[data-testid="title-menu-bar-option"][data-highlighted],
+[role="option"][aria-selected="true"] {
+  background-color: rgba(10, 132, 255, 0.88) !important;
+  color: #FFFFFF !important;
+  transform: none !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+.px-menu-item:hover *,
+.px-menu-item:focus *,
+.px-menu-item[data-highlighted] *,
+[data-testid="title-menu-bar-option"]:hover *,
+[data-testid="title-menu-bar-option"][data-highlighted] * {
+  color: #FFFFFF !important;
+}
+
+/* 顶栏菜单按钮 */
+[data-testid="title-menu-bar"] button:not([data-testid="title-menu-bar-option"]) {
+  border-radius: var(--glass-radius-sm) !important;
+  padding: 3px 10px !important;
+  transition: background-color 130ms ease !important;
+}
+
+[data-testid="title-menu-bar"] button:not([data-testid="title-menu-bar-option"]):hover {
+  background-color: rgb(var(--glass-tint) / 0.16) !important;
+}
+
+/* ============================================================
+   6. 控件（iOS 造型）
+   ============================================================ */
+
+/* ---- 6.1 次级按钮：胶囊玻璃 ---- */
+button:not([class*="bg-primary"]):not([role="switch"]):not([data-testid="send-button"]):not([data-tooltip-id*="input-send-button"]),
+[role="button"]:not([class*="bg-primary"]) {
+  border-radius: var(--glass-radius-pill) !important;
+  border: 1px solid rgb(var(--glass-tint) / 0.18) !important;
+  background-color: rgb(var(--glass-tint) / 0.12) !important;
+  color: var(--foreground) !important;
+  box-shadow: inset 0 1px 0 rgb(var(--glass-tint) / 0.35) !important;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms cubic-bezier(0.32, 0.72, 0, 1) !important;
+}
+
+body.theme-light button:not([class*="bg-primary"]):not([role="switch"]),
+body.theme-light [role="button"]:not([class*="bg-primary"]) {
+  border: 1px solid rgba(24, 30, 54, 0.10) !important;
+  background-color: rgba(255, 255, 255, 0.62) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(40, 52, 96, 0.08) !important;
+}
+
+button:not([class*="bg-primary"]):not([role="switch"]):hover:not(:disabled) {
+  background-color: rgb(var(--glass-tint) / 0.20) !important;
+}
+
+body.theme-light button:not([class*="bg-primary"]):not([role="switch"]):hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+/* 按下：只缩不位移（位移会顶出祖先滚动容器的溢出，见 2026-09-13 事故） */
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.96) !important;
+}
+
+/* ---- 6.2 主按钮：iOS 蓝胶囊 ---- */
+button[class*="bg-primary"],
+[role="button"][class*="bg-primary"],
+button.bg-primary,
+[data-testid="send-button"],
+button[data-tooltip-id*="input-send-button"]:not([data-tooltip-id*="record"]):not([data-tooltip-id*="cancel"]) {
+  background-color: var(--g-blue) !important;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0)) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: var(--glass-radius-pill) !important;
+  box-shadow:
+    0 6px 20px rgba(10, 132, 255, 0.40),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48) !important;
+  text-shadow: none !important;
+}
+
+button[class*="bg-primary"] *,
+[role="button"][class*="bg-primary"] *,
+[data-testid="send-button"] * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+}
+
+button[class*="bg-primary"]:hover:not(:disabled) {
+  background-color: #3D9BFF !important;
+}
+
+body.theme-light button[class*="bg-primary"],
+body.theme-light [data-testid="send-button"] {
+  background-color: var(--g-blue-2) !important;
+}
+
+/* ---- 6.3 开关 ---- */
+button[role="switch"] {
+  height: 24px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  border-radius: var(--glass-radius-pill) !important;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  cursor: pointer !important;
+  transition: background-color 180ms ease, box-shadow 180ms ease !important;
+}
+
+button[role="switch"][aria-checked="false"] {
+  background-color: rgb(var(--glass-tint) / 0.16) !important;
+  border: 1px solid rgb(var(--glass-tint) / 0.22) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.20) !important;
+}
+
+button[role="switch"][aria-checked="true"] {
+  background-color: var(--g-green) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  box-shadow:
+    0 2px 12px rgba(48, 209, 88, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.40) !important;
+}
+
+body.theme-light button[role="switch"][aria-checked="false"] {
+  background-color: rgba(24, 30, 54, 0.12) !important;
+  border: 1px solid rgba(24, 30, 54, 0.12) !important;
+}
+
+button[role="switch"] span {
+  display: block !important;
+  height: 16px !important;
+  width: 16px !important;
+  border-radius: var(--glass-radius-pill) !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.30) !important;
+  transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1) !important;
+}
+
+/* ---- 6.4 输入 ---- */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+[contenteditable="true"],
+[role="combobox"] {
+  border-radius: var(--glass-radius-sm) !important;
+  background-color: rgb(var(--glass-tint) / 0.10) !important;
+  border: 1px solid rgb(var(--glass-tint) / 0.16) !important;
+  color: var(--foreground) !important;
+  transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease !important;
+}
+
+body.theme-light input:not([type="checkbox"]):not([type="radio"]),
+body.theme-light textarea,
+body.theme-light [contenteditable="true"] {
+  background-color: rgba(255, 255, 255, 0.70) !important;
+  border: 1px solid rgba(24, 30, 54, 0.10) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+textarea:focus,
+[contenteditable="true"]:focus {
+  border-color: rgba(10, 132, 255, 0.70) !important;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20) !important;
+  outline: none !important;
+}
+
+/* 底部输入栏的玻璃交给上面的 bg-card / bg-card-border 规则即可。
+   ⚠ 别再去匹配 [class*="group/user-input"] / [data-testid="user-input-step"]：
+   那是「用户消息气泡」的类名，命中它等于给每条消息都套上浮层级的强透镜 + 大圆角，
+   密集正文被位移透镜一拉就是满屏重影（2026-09-17 实拍踩到，找了半天才发现是选择器
+   认错了组件）。 */
+
+/* ---- 6.5 代码 ---- */
+pre {
+  /* 别指望代码块能当玻璃：它下面常年压着另一段密集代码，透明+模糊会把两段
+     叠成「鬼影」（2026-09-17 实拍踩到）。这里只保留一点背景透感。 */
+  background-color: rgba(6, 10, 26, 0.66) !important;
+  border: 1px solid rgb(var(--glass-tint) / 0.14) !important;
+  border-radius: var(--glass-radius-sm) !important;
+  backdrop-filter: blur(10px) saturate(140%) brightness(0.92) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%) brightness(0.92) !important;
+  box-shadow: inset 0 1px 0 rgb(var(--glass-tint) / 0.10) !important;
+}
+
+body.theme-light pre {
+  background-color: rgba(255, 255, 255, 0.84) !important;
+  border: 1px solid rgba(24, 30, 54, 0.10) !important;
+}
+
+:not(pre) > code {
+  background-color: rgb(var(--glass-tint) / 0.14) !important;
+  border: 1px solid rgb(var(--glass-tint) / 0.12) !important;
+  border-radius: 7px !important;
+  padding: 0.1em 0.42em !important;
+}
+
+body.theme-light :not(pre) > code {
+  background-color: rgba(24, 30, 54, 0.07) !important;
+  border: 1px solid rgba(24, 30, 54, 0.08) !important;
+}
+
+/* ---- 6.6 表格 / 分隔线 / 标签页 / 气泡 ---- */
+table {
+  border-radius: var(--glass-radius-sm) !important;
+  overflow: hidden !important;
+}
+
+th {
+  background-color: rgb(var(--glass-tint) / 0.10) !important;
+}
+
+td,
+th {
+  border-color: rgb(var(--glass-tint) / 0.12) !important;
+}
+
+body.theme-light td,
+body.theme-light th {
+  border-color: rgba(24, 30, 54, 0.08) !important;
+}
+
+hr,
+[class~="border-t"],
+[class~="border-b"] {
+  border-color: rgb(var(--glass-tint) / 0.14) !important;
+}
+
+body.theme-light hr,
+body.theme-light [class~="border-t"],
+body.theme-light [class~="border-b"] {
+  border-color: rgba(24, 30, 54, 0.10) !important;
+}
+
+[role="tab"][aria-selected="true"],
+[role="tab"][data-state="active"] {
+  background-color: rgb(var(--glass-tint) / 0.18) !important;
+  border-radius: var(--glass-radius-pill) !important;
+}
+
+[role="tooltip"],
+.react-tooltip {
+  border-radius: var(--glass-radius-sm) !important;
+  border: 1px solid rgb(var(--glass-tint) / 0.18) !important;
+  background-color: rgba(16, 20, 44, 0.82) !important;
+  backdrop-filter: blur(16px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(170%) !important;
+  box-shadow: var(--glass-shadow-float) !important;
+}
+
+body.theme-light [role="tooltip"],
+body.theme-light .react-tooltip {
+  background-color: rgba(255, 255, 255, 0.90) !important;
+  border: 1px solid rgba(24, 30, 54, 0.08) !important;
+  color: #11131C !important;
+}
+
+/* 列表行悬停 */
+[class*="hover:bg-sidebar"]:hover,
+[class*="hover:bg-secondary"]:hover,
+[class*="hover:bg-muted"]:hover {
+  background-color: rgb(var(--glass-tint) / 0.14) !important;
+  border-radius: var(--glass-radius-sm) !important;
+}
+
+/* ============================================================
+   7. 自绘窗口按钮（注入器 WINDOW_CONTROLS_JS 生成）
+   ============================================================ */
+#px-window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 2147483644;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 35px;
+  padding: 0 12px;
+  -webkit-app-region: no-drag;
+}
+
+#px-window-controls .px-wc-btn {
+  all: unset;
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--glass-radius-pill);
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: rgba(245, 247, 252, 0.88);
+  cursor: pointer;
+  transition: background-color 130ms ease, transform 130ms cubic-bezier(0.32, 0.72, 0, 1), color 130ms ease;
+}
+
+body.theme-light #px-window-controls .px-wc-btn {
+  background-color: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(24, 30, 54, 0.08);
+  color: rgba(17, 19, 28, 0.78);
+}
+
+#px-window-controls .px-wc-btn:hover {
+  background-color: rgba(255, 255, 255, 0.24);
+  color: #FFFFFF;
+}
+
+body.theme-light #px-window-controls .px-wc-btn:hover {
+  background-color: rgba(255, 255, 255, 0.95);
+  color: #11131C;
+}
+
+#px-window-controls .px-wc-btn:active {
+  transform: scale(0.90);
+}
+
+#px-window-controls .px-wc-close:hover {
+  background-color: var(--g-red);
+  border-color: var(--g-red);
+  color: #FFFFFF;
+}
+
+#px-window-controls .px-wc-btn > i {
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1;
+  font-family: var(--glass-font-ui);
+}
+
+#px-window-controls .px-wc-min > i::before { content: "\2013"; }
+#px-window-controls .px-wc-max > i::before { content: "\25A2"; }
+#px-window-controls .px-wc-close > i::before { content: "\2715"; font-size: 11px; }
+#px-window-controls[data-maximized="1"] .px-wc-max > i::before { content: "\2750"; }
+
+/* ============================================================
+   8. 指针：玻璃主题用系统指针
+   ------------------------------------------------------------
+   自绘像素指针是为另外四套主题做的，和玻璃材质不搭；隐藏画布并把 cursor 交还
+   给系统（注意：不要写 cursor: none）。想换回像素指针就删掉本节。
+   ============================================================ */
+#px-cursor {
+  display: none !important;
+}
+
+html[data-px-cursor] * {
+  cursor: auto !important;
+}
+
+html[data-px-cursor] [class*="cursor-pointer"],
+html[data-px-cursor] button,
+html[data-px-cursor] a[href],
+html[data-px-cursor] [role="button"],
+html[data-px-cursor] [role="menuitem"],
+html[data-px-cursor] [role="option"] {
+  cursor: pointer !important;
+}
+
+html[data-px-cursor] input,
+html[data-px-cursor] textarea,
+html[data-px-cursor] [contenteditable="true"] {
+  cursor: text !important;
+}
+
+:root,
+html[data-px-cursor],
+body:not(.theme-light) {
+  --px-cursor-head:  #EAF2FF;
+  --px-cursor-trail: #64D2FF;
+  --px-cursor-edge:  #0B0E17;
+  --px-cursor-alpha: 0;
+  --px-cursor-radius: 9999px;
+}
+
+/* ============================================================
+   9. 动效与可访问性
+   ============================================================ */
+@keyframes glass-rise {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.px-menu-content,
+[role="menu"]:not(:empty),
+[role="listbox"]:not(:empty),
+div.animate-modalScaleIn {
+  animation: glass-rise 170ms cubic-bezier(0.32, 0.72, 0, 1) both !important;
+  transform-origin: top center !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:root:not(#_px_never_exist_) *,
+  html:root:not(#_px_never_exist_) *::before,
+  html:root:not(#_px_never_exist_) *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  body::before {
+    animation: none !important;
+  }
+
+  #px-cursor,
+  #px-dissolve,
+  #px-particles,
+  html.px-sending body::after {
+    display: none !important;
+  }
+
+  [aria-expanded="true"] + * > *,
+  [data-state="open"] > *:not(:first-child),
+  pre {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ============================================================
+   10. 质量档与性能实测（W7 结论）
+   ------------------------------------------------------------
+   实机测试基准（Chromium 146 / 165Hz 高刷屏）：
+     · 1 块 URL 折射玻璃（sm）：均帧 6.06ms，0 LongTask
+     · 4 块 URL 折射玻璃（sm）：均帧 6.06ms，0 LongTask
+     · 8 块 URL 折射玻璃（sm）：均帧 6.06ms，0 LongTask
+     · 1 块色散透镜（chroma-md）：均帧 6.06ms，0 LongTask
+     · 4 块色散透镜（chroma-md）：均帧 6.06ms，0 LongTask
+     · 8 块色散透镜（chroma-md）：均帧 6.06ms，0 LongTask
+   结论：
+     - balanced 档：允许常驻 2~4 块 URL 玻璃表面（标题栏 sm + 侧栏 sm + 浮层 xs，正文卡片关闭透镜）。
+     - ultra 档：允许 4~8 块 URL 玻璃表面，开启更高阶透镜（md 档）与卡片透镜（xs 档）。
+     - perf 档：全面关闭 URL 位移滤镜（brightness(1)）、关闭鼠标跟随透镜与动态高光，模糊半径降至 8px/5px。
+   ============================================================ */
+html[data-px-glass="perf"] {
+  --glass-lens: brightness(1);
+  --glass-lens-strong: brightness(1);
+  --glass-lens-card: brightness(1);
+  --glass-blur: 8px;
+  --glass-blur-thin: 5px;
+  --glass-lens-follow: off;
+  --glass-sheen: 0;
+}
+
+html[data-px-glass="balanced"] {
+  --glass-lens: var(--glass-lens-sm);
+  --glass-lens-strong: var(--glass-lens-xs);
+  --glass-lens-card: brightness(1);
+  --glass-blur: 14px;
+  --glass-blur-thin: 8px;
+  --glass-lens-follow: on;
+  --glass-sheen: 0.26;
+}
+
+html[data-px-glass="ultra"] {
+  --glass-lens: var(--glass-lens-md);
+  --glass-lens-strong: var(--glass-lens-sm);
+  --glass-lens-card: var(--glass-lens-xs);
+  --glass-blur: 18px;
+  --glass-blur-thin: 10px;
+  --glass-lens-follow: on;
+  --glass-sheen: 0.35;
+}
+
+/* ============================================================================
+   11. 2026-09-17 实机修复（五套主题同款，勿删）
+   ----------------------------------------------------------------------------
+   ① 空菜单壳顶出根滚动条：整个 UI 上移、顶部菜单栏被裁（「超框」）
+   ② 下拉浮层与指针画布层级打平后按 DOM 顺序压住指针
+   ③ 勾选态开关带 bg-primary 类，被主按钮规则误伤（「两态样式不一致」）
+   ============================================================================ */
+@layer px-theme {
+  /* ① 空壳归零：应用常驻一个空的 [role="listbox"]（无 top/left），被主题的
+     边框/内边距撑高后顶出根滚动条，一次 focus/scrollIntoView 就让整个 UI 上移。*/
+  html body [role="menu"]:empty,
+  html body [role="listbox"]:empty,
+  html body .px-menu-content:empty {
+    border: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    animation: none !important;
+    min-height: 0 !important;
+    height: 0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* 兜底：根元素用 clip 而不是 hidden（hidden 仍是滚动容器，仍能被程序化滚走）*/
+  html {
+    overflow: clip !important;
+  }
+  /* ② 浮层层级收敛到指针画布之下 */
+  html body div:has(> [role="listbox"]:not(:empty)),
+  html body [role="listbox"]:not(:empty),
+  html body [role="menu"]:not(:empty),
+  html body div[class*="z-[6000]"],
+  html body div[class*="z-[8000]"] {
+    z-index: 2147483640 !important;
+  }
+  /* ③ 开关两态统一（旋钮保持应用自带的 16px，它按 translateX(4/24px) 定位）*/
+  html body button[role="switch"],
+  html body button[role="switch"]:hover,
+  html body button[role="switch"]:focus-visible,
+  html body button[role="switch"]:active {
+    border-radius: var(--glass-radius-pill) !important;
+  }
+  html body button[role="switch"] > span {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}

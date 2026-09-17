@@ -81,7 +81,7 @@ else
 fi
 
 # 3. Clean up theme assets and config
-ALL_THEMES=('pixel-theme' 'doodle-theme' 'matcha-theme' 'phantom-theme')
+ALL_THEMES=('pixel-theme' 'doodle-theme' 'matcha-theme' 'phantom-theme' 'glass-theme')
 for t in "${ALL_THEMES[@]}"; do
   dst="$RESOURCES/$t"
   if [[ -d "$dst" ]]; then

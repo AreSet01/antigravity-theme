@@ -1,10 +1,10 @@
-﻿# ============================================================================
-# PIXEL GRAVITY - 一键极速切换主题脚本 (4 套主题秒级生效)
-# 支持主题：phantom (P5怪盗) | matcha (日式抹茶) | doodle (漫画粉印) | pixel (复古像素)
+# ============================================================================
+# PIXEL GRAVITY - 一键极速切换主题脚本 (5 套主题秒级生效)
+# 支持主题：phantom (P5怪盗) | matcha (日式抹茶) | doodle (漫画粉印) | pixel (复古像素) | glass (液态玻璃)
 # 特性：无需重启 Antigravity，无需重新打包 asar，自动同步本地最新 CSS，CDP 自动刷新！
 # ============================================================================
 param(
-    [ValidateSet("phantom", "matcha", "doodle", "pixel", "phantom-theme", "matcha-theme", "doodle-theme", "pixel-theme", "")]
+    [ValidateSet("phantom", "matcha", "doodle", "pixel", "glass", "phantom-theme", "matcha-theme", "doodle-theme", "pixel-theme", "glass-theme", "")]
     [string]$Theme = ""
 )
 $ErrorActionPreference = 'Stop'
@@ -14,6 +14,7 @@ $ThemesMeta = @{
     "matcha"  = @{ Name = "matcha-theme";  Title = "MATCHA GRAVITY (治愈系抹茶日记手帐风)";    Color = "Green"; File = "matcha.css" }
     "doodle"  = @{ Name = "doodle-theme";  Title = "DOODLE GRAVITY (纯线稿漫画粉印手绘风)";    Color = "Magenta"; File = "doodle.css" }
     "pixel"   = @{ Name = "pixel-theme";   Title = "PIXEL GRAVITY (8-Bit 复古像素极客风)";      Color = "Yellow"; File = "pixel.css" }
+    "glass"   = @{ Name = "glass-theme";   Title = "LIQUID GRAVITY (液体玻璃拟态风 [Demo版])";      Color = "Cyan"; File = "glass.css" }
 }
 
 # 交互式选择菜单（如果未传参）
@@ -26,8 +27,9 @@ if ([string]::IsNullOrWhiteSpace($Theme)) {
     Write-Host "   [2] matcha   - 治愈系抹茶日记手帐风 (抹茶绿/和纸白/便签书签)" -ForegroundColor Green
     Write-Host "   [3] doodle   - 纯线稿漫画粉印手绘风 (粉白红印/分镜直角/微动效)" -ForegroundColor Magenta
     Write-Host "   [4] pixel    - 8-Bit 复古像素极客风 (Sweetie-16/CRT扫描线/方块滑块)" -ForegroundColor Yellow
+    Write-Host "   [5] glass    - 液体玻璃拟态风 [Demo版] (极光壁纸/毛玻璃折射/胶囊控件)" -ForegroundColor Cyan
     Write-Host "  =======================================================" -ForegroundColor Cyan
-    $choice = Read-Host " 请输入编号或主题名称 [1-4 / phantom / matcha / doodle / pixel] (默认 1)"
+    $choice = Read-Host " 请输入编号或主题名称 [1-5 / phantom / matcha / doodle / pixel / glass] (默认 1)"
     if ([string]::IsNullOrWhiteSpace($choice)) { $choice = "1" }
     
     switch ($choice.Trim().ToLower()) {
@@ -35,6 +37,7 @@ if ([string]::IsNullOrWhiteSpace($Theme)) {
         "2" { $Theme = "matcha" }
         "3" { $Theme = "doodle" }
         "4" { $Theme = "pixel" }
+        "5" { $Theme = "glass" }
         default { $Theme = $choice.Trim().ToLower() }
     }
 }
@@ -42,7 +45,7 @@ if ([string]::IsNullOrWhiteSpace($Theme)) {
 # 规范化主题名称
 $Key = $Theme.Replace("-theme", "").ToLower()
 if (-not $ThemesMeta.ContainsKey($Key)) {
-    Write-Host "[theme] 未知主题: '$Theme'，有效主题为: phantom, matcha, doodle, pixel" -ForegroundColor Red
+    Write-Host "[theme] 未知主题: '$Theme'，有效主题为: phantom, matcha, doodle, pixel, glass" -ForegroundColor Red
     exit 1
 }
 

@@ -38,7 +38,7 @@ else {
 }
 
 # 清理 4 套主题资源及激活配置
-$AllThemes = @('pixel-theme', 'doodle-theme', 'matcha-theme', 'phantom-theme')
+$AllThemes = @('pixel-theme', 'doodle-theme', 'matcha-theme', 'phantom-theme', 'glass-theme')
 foreach ($t in $AllThemes) {
     $tDst = Join-Path $Resources $t
     if (Test-Path $tDst) {

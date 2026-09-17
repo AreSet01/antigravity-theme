@@ -11,6 +11,8 @@ exports.attachPixelTheme = attachPixelTheme;
 exports.attachPixelLoadingOverlay = attachPixelLoadingOverlay;
 exports.chromeColors = chromeColors;
 exports.wantsNativeCaption = wantsNativeCaption;
+exports.wantsPixelCursor = wantsPixelCursor;
+exports.isGlassTheme = isGlassTheme;
 const electron_1 = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -81,7 +83,7 @@ function buildFontCss() {
 // the chrome/native-caption lookups), each a full 120-180KB read; the
 // stat-sync costs microseconds and still picks up theme edits (any write
 // changes mtime), so the edit-then-Ctrl+R workflow is unaffected.
-const cssReadCache = { path: null, mtime: 0, size: 0, css: null };
+const cssReadCache = { path: null, mtime: 0, size: 0, userMtime: 0, userSize: 0, css: null };
 
 function readThemeCss() {
     try {
@@ -107,20 +109,60 @@ function readThemeCss() {
                 if (fs.existsSync(p)) { target = p; break; }
             }
         }
+        // 3. 通用兜底：第 1、2 步都是写死的四套主题名，新增第五套主题（glass-theme/
+        //    glass.css 等）会双双落空 —— readThemeCss 返回空串，insertCSS 插入空表，
+        //    表现为「切过去之后整个应用完全没有主题」（2026-09-17 实测踩到）。
+        //    这里按目录名推出同名 CSS（<目录名去掉 -theme>.css），再退一步取目录里
+        //    任意一个 .css，任何新主题都不必再改注入器。
         if (!target || !fs.existsSync(target)) {
+            const byName = path.join(themeDir, themeBase.replace(/-theme$/, "") + ".css");
+            if (fs.existsSync(byName)) {
+                target = byName;
+            }
+            else {
+                const hit = fs.readdirSync(themeDir).find((f) => f.toLowerCase().endsWith(".css"));
+                if (hit) {
+                    target = path.join(themeDir, hit);
+                }
+            }
+        }
+        if (!target || !fs.existsSync(target)) {
+            console.error("[theme] no CSS file found in theme dir:", themeDir);
             return "";
         }
 
         const st = fs.statSync(target);
+        const userCssPath = path.join(themeDir, "glass-user.css");
+        let userMtime = 0;
+        let userSize = 0;
+        if (fs.existsSync(userCssPath)) {
+            try {
+                const ust = fs.statSync(userCssPath);
+                userMtime = ust.mtimeMs;
+                userSize = ust.size;
+            } catch (e) {}
+        }
+
         if (cssReadCache.path === target &&
             cssReadCache.mtime === st.mtimeMs &&
-            cssReadCache.size === st.size) {
+            cssReadCache.size === st.size &&
+            cssReadCache.userMtime === userMtime &&
+            cssReadCache.userSize === userSize) {
             return cssReadCache.css;
         }
-        const css = fs.readFileSync(target, "utf-8");
+
+        let css = fs.readFileSync(target, "utf-8");
+        if (userMtime > 0) {
+            try {
+                css += "\n/* [glass-user.css override] */\n" + fs.readFileSync(userCssPath, "utf-8");
+            } catch (e) {}
+        }
+
         cssReadCache.path = target;
         cssReadCache.mtime = st.mtimeMs;
         cssReadCache.size = st.size;
+        cssReadCache.userMtime = userMtime;
+        cssReadCache.userSize = userSize;
         cssReadCache.css = css;
         return css;
     }
@@ -143,7 +185,7 @@ function buildCss() {
  * matches the prose explaining an option instead of the option itself -- which
  * is exactly how `--px-native-caption: off` first read as "on".
  */
-const declCache = { src: null, out: "" };
+let declCache = { src: null, out: "" };
 function readThemeDeclarations() {
     const src = readThemeCss();
     // Identity-keyed memo: readThemeCss() now returns the same string object
@@ -180,6 +222,24 @@ const CHROME_FALLBACK = {
 function wantsNativeCaption() {
     try {
         return /--px-native-caption\s*:\s*on\b/.test(readThemeDeclarations());
+    }
+    catch (e) {
+        return false;
+    }
+}
+
+function wantsPixelCursor() {
+    try {
+        return !/--px-cursor\s*:\s*off\b/.test(readThemeDeclarations());
+    }
+    catch (e) {
+        return true;
+    }
+}
+
+function isGlassTheme() {
+    try {
+        return /--px-glass\s*:\s*on\b/.test(readThemeDeclarations());
     }
     catch (e) {
         return false;
@@ -1471,6 +1531,837 @@ const SETTINGS_MODAL_JS = `(() => {
 })()`;
 
 /**
+ * Liquid Glass dynamic pointer sheen (W1).
+ * Tracks pointer position across glass surfaces and sets inline --glass-mx/--glass-my.
+ */
+const GLASS_SHEEN_JS = `(() => {
+  if (window.__pxGlassSheen) return 'already-present';
+
+  const SURFACE_SEL = '[data-testid="title-menu-bar"], [class~="bg-sidebar"], [class~="bg-sidebar-secondary"], [class~="bg-card"], [class*="bg-card"]:not([class*="bg-card-border"]), [role="dialog"], [role="alertdialog"], .settings-modal-container, .px-menu-content, [role="menu"]:not(:empty), [role="listbox"]:not(:empty)';
+  let activeSurface = null;
+  let lastX = -1, lastY = -1;
+  let lastTarget = null;
+  let rafId = null;
+  let idleTimer = null;
+  let isRunning = false;
+
+  const clearSurface = (el) => {
+    if (!el) return;
+    try {
+      el.style.removeProperty('--glass-mx');
+      el.style.removeProperty('--glass-my');
+    } catch (e) {}
+  };
+
+  const update = () => {
+    rafId = null;
+    if (lastX < 0 || lastY < 0) return;
+    const surface = lastTarget ? lastTarget.closest(SURFACE_SEL) : null;
+    if (surface !== activeSurface) {
+      clearSurface(activeSurface);
+      activeSurface = surface;
+    }
+    if (activeSurface) {
+      const rect = activeSurface.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const mx = Math.max(0, Math.min(1, (lastX - rect.left) / rect.width));
+        const my = Math.max(0, Math.min(1, (lastY - rect.top) / rect.height));
+        activeSurface.style.setProperty('--glass-mx', mx.toFixed(3));
+        activeSurface.style.setProperty('--glass-my', my.toFixed(3));
+      }
+    }
+  };
+
+  const onIdle = () => {
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    isRunning = false;
+  };
+
+  const onBlur = () => {
+    clearTimeout(idleTimer);
+    onIdle();
+    clearSurface(activeSurface);
+    activeSurface = null;
+  };
+
+  const onPointerMove = (e) => {
+    if (document.documentElement.getAttribute('data-px-glass') === 'perf') {
+      if (isRunning) onBlur();
+      return;
+    }
+    lastX = e.clientX;
+    lastY = e.clientY;
+    lastTarget = e.target;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(onIdle, 250);
+
+    if (!isRunning) {
+      isRunning = true;
+      update();
+    } else if (!rafId) {
+      rafId = requestAnimationFrame(update);
+    }
+  };
+
+  document.addEventListener('pointermove', onPointerMove, { capture: true, passive: true });
+  window.addEventListener('blur', onBlur);
+  document.addEventListener('mouseleave', onBlur);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) onBlur();
+  });
+
+  window.__pxGlassSheen = {
+    stop: () => {
+      document.removeEventListener('pointermove', onPointerMove, { capture: true });
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('mouseleave', onBlur);
+      clearTimeout(idleTimer);
+      onBlur();
+      delete window.__pxGlassSheen;
+    },
+    status: () => ({
+      running: isRunning,
+      activeSurface: activeSurface ? (activeSurface.tagName + (activeSurface.className ? '.' + activeSurface.className.split(' ').join('.') : '')) : null,
+      lastX,
+      lastY
+    })
+  };
+  return 'installed';
+})()`;
+
+/**
+ * Liquid Glass mouse follower lens (W2).
+ * Follows cursor with a high-strength refraction lens and auto-idle stop.
+ */
+const GLASS_LENS_JS = `(() => {
+  const ID = 'px-glass-lens';
+  if (document.getElementById(ID) || window.__pxGlassLens) return 'already-present';
+
+  const de = document.documentElement;
+  const IDLE_STOP_MS = 300;
+  const LENS_SIZE = 140;
+  const HALF = LENS_SIZE / 2;
+
+  let lens = document.createElement('div');
+  lens.id = ID;
+  lens.setAttribute('aria-hidden', 'true');
+  lens.style.cssText = [
+    'position:fixed!important',
+    'top:0!important',
+    'left:0!important',
+    'width:' + LENS_SIZE + 'px!important',
+    'height:' + LENS_SIZE + 'px!important',
+    'margin:-' + HALF + 'px 0 0 -' + HALF + 'px!important',
+    'border-radius:50%!important',
+    'pointer-events:none!important',
+    'z-index:2147483638!important',
+    'backdrop-filter:var(--glass-lens-mouse, var(--glass-lens-lg)) blur(0.5px) saturate(160%) brightness(1.04)!important',
+    '-webkit-backdrop-filter:var(--glass-lens-mouse, var(--glass-lens-lg)) blur(0.5px) saturate(160%) brightness(1.04)!important',
+    'border:1px solid rgba(255,255,255,0.45)!important',
+    'box-shadow:inset 0 1px 2px rgba(255,255,255,0.75), inset 0 0 14px rgba(255,255,255,0.22), 0 12px 36px rgba(0,0,0,0.32)!important',
+    'display:none',
+    'will-change:transform'
+  ].join(';');
+
+  (document.body || de).appendChild(lens);
+
+  let lastX = -999, lastY = -999;
+  let raf = 0;
+  let idleTimer = null;
+  let running = false;
+  let visible = false;
+
+  const isFollowEnabled = () => {
+    if (de.getAttribute('data-px-glass') === 'perf') return false;
+    if (de.getAttribute('data-px-lens-follow') === 'off') return false;
+    const val = (de.style.getPropertyValue('--glass-lens-follow') || getComputedStyle(de).getPropertyValue('--glass-lens-follow')).trim();
+    return val !== 'off';
+  };
+
+  const render = () => {
+    raf = 0;
+    if (!isFollowEnabled()) {
+      if (visible) { lens.style.display = 'none'; visible = false; }
+      running = false;
+      return;
+    }
+    if (lastX > 0 && lastY > 0) {
+      if (!visible) { lens.style.display = 'block'; visible = true; }
+      lens.style.transform = 'translate3d(' + lastX.toFixed(1) + 'px,' + lastY.toFixed(1) + 'px,0)';
+    }
+  };
+
+  const onIdle = () => {
+    running = false;
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+  };
+
+  const onPointerMove = (e) => {
+    if (de.getAttribute('data-px-glass') === 'perf') {
+      if (visible) { lens.style.display = 'none'; visible = false; }
+      running = false;
+      return;
+    }
+    lastX = e.clientX;
+    lastY = e.clientY;
+    running = true;
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(onIdle, IDLE_STOP_MS);
+
+    if (!raf) {
+      raf = requestAnimationFrame(render);
+    }
+  };
+
+  const hideLens = () => {
+    if (visible) {
+      lens.style.display = 'none';
+      visible = false;
+    }
+    running = false;
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (idleTimer) clearTimeout(idleTimer);
+  };
+
+  window.addEventListener('pointermove', onPointerMove, { capture: true, passive: true });
+  window.addEventListener('blur', hideLens);
+  document.addEventListener('mouseleave', hideLens);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') hideLens();
+  });
+
+  window.__pxGlassLens = {
+    stop: () => {
+      window.removeEventListener('pointermove', onPointerMove, { capture: true });
+      window.removeEventListener('blur', hideLens);
+      document.removeEventListener('mouseleave', hideLens);
+      if (raf) cancelAnimationFrame(raf);
+      if (idleTimer) clearTimeout(idleTimer);
+      try { lens.remove(); } catch (e) {}
+      delete window.__pxGlassLens;
+    },
+    status: () => ({
+      running,
+      visible,
+      lastX,
+      lastY,
+      transform: lens.style.transform,
+      display: lens.style.display
+    })
+  };
+  return 'installed';
+})()`;
+
+/**
+ * Liquid Glass realtime parameter tuning panel (W3).
+ * Draggable floating glass panel with sliders, presets, copy CSS and persistence.
+ */
+const GLASS_PANEL_JS = `(() => {
+  const ID = 'px-glass-panel-root';
+  if (document.getElementById(ID) || window.__pxGlassPanel) return 'already-present';
+
+  const de = document.documentElement;
+
+  const root = document.createElement('div');
+  root.id = ID;
+  root.setAttribute('aria-hidden', 'true');
+  root.style.cssText = 'position:fixed;bottom:16px;right:20px;z-index:2147483639;font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:12px;color:#f0f3fc;user-select:none;-webkit-user-select:none;pointer-events:none;';
+
+  // Floating trigger pill (always docked at bottom-right)
+  const pill = document.createElement('button');
+  pill.type = 'button';
+  pill.id = 'px-glass-panel-pill';
+  pill.innerHTML = '🔮 调参面板';
+  pill.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:9999px;border:1px solid rgba(255,255,255,0.32);background:rgba(18,22,46,0.78);backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);color:#fff;font-size:12px;font-weight:500;cursor:pointer;pointer-events:auto;box-shadow:0 6px 20px rgba(0,0,0,0.32),inset 0 1px 0 rgba(255,255,255,0.6);transition:all 150ms ease;';
+  pill.onmouseenter = () => { pill.style.transform = 'scale(1.05)'; pill.style.background = 'rgba(30,36,70,0.88)'; };
+  pill.onmouseleave = () => { pill.style.transform = 'none'; pill.style.background = 'rgba(18,22,46,0.78)'; };
+
+  // Main floating panel container
+  const panel = document.createElement('div');
+  panel.id = 'px-glass-panel-card';
+  panel.style.cssText = 'display:none;position:fixed;bottom:16px;right:20px;z-index:2147483639;width:320px;max-height:85vh;overflow-y:auto;border-radius:20px;border:1px solid rgba(255,255,255,0.22);background:rgba(12,15,35,0.86);backdrop-filter:blur(24px) saturate(190%);-webkit-backdrop-filter:blur(24px) saturate(190%);box-shadow:0 24px 60px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6);padding:14px 16px;flex-direction:column;gap:12px;pointer-events:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.2) transparent;';
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;cursor:grab;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.12);';
+  header.innerHTML = '<span style="font-weight:600;font-size:13px;letter-spacing:0.3px;display:flex;align-items:center;gap:6px;">🔮 液态玻璃调参</span>';
+
+  const headerBtns = document.createElement('div');
+  headerBtns.style.cssText = 'display:flex;gap:6px;';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.innerHTML = '✕';
+  closeBtn.style.cssText = 'background:none;border:none;color:#9aa2bc;font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px;';
+  closeBtn.onmouseenter = () => { closeBtn.style.color = '#fff'; closeBtn.style.background = 'rgba(255,255,255,0.1)'; };
+  closeBtn.onmouseleave = () => { closeBtn.style.color = '#9aa2bc'; closeBtn.style.background = 'none'; };
+  headerBtns.appendChild(closeBtn);
+  header.appendChild(headerBtns);
+  panel.appendChild(header);
+
+  // Dragging support (operates on panel independently, pill remains anchored)
+  let isDragging = false, dragStartX = 0, dragStartY = 0, panelStartX = 0, panelStartY = 0;
+  let savedPanelLeft = null, savedPanelTop = null;
+
+  const clampPanelPos = (left, top) => {
+    const w = panel.offsetWidth || 320;
+    const h = panel.offsetHeight || 420;
+    const maxLeft = Math.max(10, window.innerWidth - w - 10);
+    const maxTop = Math.max(10, window.innerHeight - h - 10);
+    return {
+      left: Math.max(10, Math.min(maxLeft, left)),
+      top: Math.max(10, Math.min(maxTop, top))
+    };
+  };
+
+  const applyPanelPos = (left, top) => {
+    const clamped = clampPanelPos(left, top);
+    panel.style.bottom = 'auto';
+    panel.style.right = 'auto';
+    panel.style.left = clamped.left + 'px';
+    panel.style.top = clamped.top + 'px';
+    savedPanelLeft = clamped.left;
+    savedPanelTop = clamped.top;
+  };
+
+  header.addEventListener('pointerdown', (e) => {
+    if (e.target === closeBtn) return;
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    const r = panel.getBoundingClientRect();
+    panelStartX = r.left;
+    panelStartY = r.top;
+    header.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  const onDragMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    applyPanelPos(panelStartX + dx, panelStartY + dy);
+  };
+
+  const onDragEnd = () => {
+    if (isDragging) {
+      isDragging = false;
+      header.style.cursor = 'grab';
+    }
+  };
+
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragEnd);
+
+  const onWindowResize = () => {
+    if (savedPanelLeft !== null && savedPanelTop !== null && panel.style.display !== 'none') {
+      applyPanelPos(savedPanelLeft, savedPanelTop);
+    }
+  };
+  window.addEventListener('resize', onWindowResize);
+
+  // Presets row
+  const presetRow = document.createElement('div');
+  presetRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+  const presets = [
+    {
+      name: '默认深空',
+      quality: 'balanced',
+      lens: 'sm',
+      lensStrong: 'xs',
+      lensCard: 'none',
+      chroma: false,
+      follow: true,
+      vars: {
+        '--glass-blur': '14px', '--glass-sat': '185%', '--glass-bright': '1.06',
+        '--glass-alpha': '0.11', '--glass-alpha-card': '0.20', '--glass-alpha-hi': '0.17',
+        '--glass-rim-top': '0.72', '--glass-rim-side': '0.30', '--glass-rim-bot': '0.14',
+        '--glass-sheen': '0.26', '--glass-radius': '18px', '--glass-wall-vivid': '0.88',
+        '--glass-wall-speed': '48s', '--glass-grain': '0.030'
+      }
+    },
+    {
+      name: 'iOS明亮',
+      quality: 'balanced',
+      lens: 'sm',
+      lensStrong: 'xs',
+      lensCard: 'none',
+      chroma: false,
+      follow: true,
+      vars: {
+        '--glass-blur': '22px', '--glass-sat': '205%', '--glass-bright': '1.08',
+        '--glass-alpha': '0.34', '--glass-alpha-card': '0.38', '--glass-alpha-hi': '0.52',
+        '--glass-rim-top': '0.95', '--glass-rim-side': '0.35', '--glass-rim-bot': '0.12',
+        '--glass-sheen': '0.34', '--glass-radius': '20px', '--glass-wall-vivid': '0.95',
+        '--glass-wall-speed': '48s', '--glass-grain': '0.020'
+      }
+    },
+    {
+      name: '夜间高对比',
+      quality: 'balanced',
+      lens: 'md',
+      lensStrong: 'sm',
+      lensCard: 'none',
+      chroma: false,
+      follow: true,
+      vars: {
+        '--glass-blur': '16px', '--glass-sat': '195%', '--glass-bright': '1.00',
+        '--glass-alpha': '0.08', '--glass-alpha-card': '0.16', '--glass-alpha-hi': '0.22',
+        '--glass-rim-top': '0.88', '--glass-rim-side': '0.42', '--glass-rim-bot': '0.22',
+        '--glass-sheen': '0.36', '--glass-radius': '18px', '--glass-wall-vivid': '0.92',
+        '--glass-wall-speed': '40s', '--glass-grain': '0.035'
+      }
+    },
+    {
+      name: '极速省电',
+      quality: 'perf',
+      lens: 'none',
+      lensStrong: 'none',
+      lensCard: 'none',
+      chroma: false,
+      follow: false,
+      vars: {
+        '--glass-blur': '8px', '--glass-sat': '120%', '--glass-bright': '1.00',
+        '--glass-alpha': '0.22', '--glass-alpha-card': '0.30', '--glass-alpha-hi': '0.35',
+        '--glass-rim-top': '0.40', '--glass-rim-side': '0.20', '--glass-rim-bot': '0.10',
+        '--glass-sheen': '0.10', '--glass-radius': '16px', '--glass-wall-vivid': '0.50',
+        '--glass-wall-speed': '0s', '--glass-grain': '0.010'
+      }
+    }
+  ];
+
+  // Parameter definitions
+  const PARAMS = [
+    { key: '--glass-blur', label: '背景模糊', min: 4, max: 32, step: 1, unit: 'px', def: 14 },
+    { key: '--glass-sat', label: '饱和增强', min: 100, max: 260, step: 5, unit: '%', def: 185 },
+    { key: '--glass-bright', label: '画面增亮', min: 0.90, max: 1.25, step: 0.01, unit: '', def: 1.06 },
+    { key: '--glass-alpha', label: '侧栏透明度', min: 0.03, max: 0.45, step: 0.01, unit: '', def: 0.11 },
+    { key: '--glass-alpha-card', label: '卡片透明度', min: 0.05, max: 0.50, step: 0.01, unit: '', def: 0.20 },
+    { key: '--glass-alpha-hi', label: '浮层透明度', min: 0.06, max: 0.60, step: 0.01, unit: '', def: 0.17 },
+    { key: '--glass-rim-top', label: '顶部亮边', min: 0, max: 1, step: 0.02, unit: '', def: 0.72 },
+    { key: '--glass-rim-side', label: '侧面描边', min: 0, max: 1, step: 0.02, unit: '', def: 0.30 },
+    { key: '--glass-rim-bot', label: '底部阴影', min: 0, max: 1, step: 0.02, unit: '', def: 0.14 },
+    { key: '--glass-sheen', label: '高光强度', min: 0, max: 0.8, step: 0.02, unit: '', def: 0.26 },
+    { key: '--glass-radius', label: '圆角半径', min: 8, max: 32, step: 1, unit: 'px', def: 18 },
+    { key: '--glass-wall-vivid', label: '极光浓度', min: 0.2, max: 1.0, step: 0.02, unit: '', def: 0.88 },
+    { key: '--glass-wall-speed', label: '极光周期', min: 0, max: 90, step: 2, unit: 's', def: 48 },
+    { key: '--glass-grain', label: '噪点颗粒', min: 0, max: 0.08, step: 0.002, unit: '', def: 0.030 }
+  ];
+
+  const controls = {};
+
+  const getComputedVal = (key, unit) => {
+    let val = de.style.getPropertyValue(key).trim() || getComputedStyle(de).getPropertyValue(key).trim();
+    if (!val) return null;
+    if (unit && val.endsWith(unit)) val = val.slice(0, -unit.length);
+    const num = parseFloat(val);
+    return isNaN(num) ? null : num;
+  };
+
+  const applyParam = (key, val, unit) => {
+    const full = val + (unit || '');
+    de.style.setProperty(key, full);
+    if (controls[key] && controls[key].badge) {
+      controls[key].badge.textContent = full;
+    }
+  };
+
+  // Sliders container
+  const slidersBox = document.createElement('div');
+  slidersBox.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+
+  PARAMS.forEach(param => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
+
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#a8b2d1;';
+
+    const label = document.createElement('span');
+    label.textContent = param.label;
+
+    const cur = getComputedVal(param.key, param.unit);
+    const initialVal = cur !== null ? cur : param.def;
+
+    const badge = document.createElement('span');
+    badge.style.cssText = 'font-family:monospace;color:#73eff7;font-size:11px;';
+    badge.textContent = initialVal + (param.unit || '');
+
+    top.appendChild(label);
+    top.appendChild(badge);
+    row.appendChild(top);
+
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = param.min;
+    input.max = param.max;
+    input.step = param.step;
+    input.value = initialVal;
+    input.style.cssText = 'width:100%;height:4px;accent-color:#0a84ff;cursor:pointer;';
+
+    input.oninput = () => {
+      applyParam(param.key, input.value, param.unit);
+    };
+
+    controls[param.key] = { input, badge };
+    row.appendChild(input);
+    slidersBox.appendChild(row);
+  });
+
+  // Dropdowns & Toggles section
+  const optSection = document.createElement('div');
+  optSection.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.12);';
+
+  // State flags
+  let chromaOn = false;
+  let followOn = de.getAttribute('data-px-lens-follow') !== 'off';
+
+  // 1. Chrome Lens tier selector (--glass-lens)
+  const lensRow = document.createElement('div');
+  lensRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#a8b2d1;';
+  lensRow.innerHTML = '<span>Chrome 折射档</span>';
+  const lensSel = document.createElement('select');
+  lensSel.style.cssText = 'background:rgba(20,24,50,0.9);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;outline:none;';
+  [
+    { v: 'sm', l: 'sm (默认)' },
+    { v: 'xs', l: 'xs (微弱)' },
+    { v: 'md', l: 'md (中等)' },
+    { v: 'lg', l: 'lg (强)' },
+    { v: 'xl', l: 'xl (极强)' },
+    { v: 'none', l: 'none (关闭)' }
+  ].forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt.v;
+    o.textContent = opt.l;
+    lensSel.appendChild(o);
+  });
+  const updateLens = () => {
+    const v = lensSel.value;
+    if (v === 'none') {
+      de.style.setProperty('--glass-lens', 'brightness(1)');
+    } else {
+      const prefix = chromaOn ? '--glass-lens-chroma-' : '--glass-lens-';
+      de.style.setProperty('--glass-lens', 'var(' + prefix + v + ')');
+    }
+  };
+  lensSel.onchange = updateLens;
+  lensRow.appendChild(lensSel);
+  optSection.appendChild(lensRow);
+
+  // 2. Floating Lens tier selector (--glass-lens-strong)
+  const strongRow = document.createElement('div');
+  strongRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#a8b2d1;';
+  strongRow.innerHTML = '<span>浮层折射档</span>';
+  const lensStrongSel = document.createElement('select');
+  lensStrongSel.style.cssText = 'background:rgba(20,24,50,0.9);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;outline:none;';
+  [
+    { v: 'xs', l: 'xs (默认)' },
+    { v: 'sm', l: 'sm (微弱)' },
+    { v: 'md', l: 'md (中等)' },
+    { v: 'lg', l: 'lg (强)' },
+    { v: 'xl', l: 'xl (极强)' },
+    { v: 'none', l: 'none (关闭)' }
+  ].forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt.v;
+    o.textContent = opt.l;
+    lensStrongSel.appendChild(o);
+  });
+  const updateLensStrong = () => {
+    const v = lensStrongSel.value;
+    if (v === 'none') {
+      de.style.setProperty('--glass-lens-strong', 'brightness(1)');
+    } else {
+      const prefix = chromaOn ? '--glass-lens-chroma-' : '--glass-lens-';
+      de.style.setProperty('--glass-lens-strong', 'var(' + prefix + v + ')');
+    }
+  };
+  lensStrongSel.onchange = updateLensStrong;
+  strongRow.appendChild(lensStrongSel);
+  optSection.appendChild(strongRow);
+
+  // 3. Card Lens tier selector (--glass-lens-card)
+  const cardRow = document.createElement('div');
+  cardRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#a8b2d1;';
+  cardRow.innerHTML = '<span>卡片折射档</span>';
+  const lensCardSel = document.createElement('select');
+  lensCardSel.style.cssText = 'background:rgba(20,24,50,0.9);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;outline:none;';
+  [
+    { v: 'none', l: 'none (默认关闭)' },
+    { v: 'xs', l: 'xs (微弱)' },
+    { v: 'sm', l: 'sm (轻度)' },
+    { v: 'md', l: 'md (中等)' }
+  ].forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt.v;
+    o.textContent = opt.l;
+    lensCardSel.appendChild(o);
+  });
+  const updateLensCard = () => {
+    const v = lensCardSel.value;
+    if (v === 'none') {
+      de.style.setProperty('--glass-lens-card', 'brightness(1)');
+    } else {
+      de.style.setProperty('--glass-lens-card', 'var(--glass-lens-' + v + ')');
+    }
+  };
+  lensCardSel.onchange = updateLensCard;
+  cardRow.appendChild(lensCardSel);
+  optSection.appendChild(cardRow);
+
+  // 4. Chroma (色散彩虹) toggle
+  const chromaRow = document.createElement('div');
+  chromaRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#a8b2d1;';
+  chromaRow.innerHTML = '<span>边缘色散 (Chroma)</span>';
+  const chromaBtn = document.createElement('button');
+  chromaBtn.type = 'button';
+  const updateChromaBtn = () => {
+    chromaBtn.textContent = chromaOn ? '开启' : '关闭';
+    chromaBtn.style.cssText = 'padding:2px 12px;border-radius:12px;font-size:11px;cursor:pointer;border:1px solid ' +
+      (chromaOn ? 'rgba(255,105,180,0.6)' : 'rgba(255,255,255,0.2)') + ';background:' +
+      (chromaOn ? 'rgba(255,105,180,0.25)' : 'rgba(255,255,255,0.08)') + ';color:' +
+      (chromaOn ? '#ff79c6' : '#8890a8') + ';';
+    if (chromaOn) {
+      de.style.setProperty('--glass-lens-mouse', 'var(--glass-lens-chroma-lg)');
+    } else {
+      de.style.removeProperty('--glass-lens-mouse');
+    }
+    updateLens();
+    updateLensStrong();
+  };
+  updateChromaBtn();
+  chromaBtn.onclick = () => {
+    chromaOn = !chromaOn;
+    updateChromaBtn();
+  };
+  chromaRow.appendChild(chromaBtn);
+  optSection.appendChild(chromaRow);
+
+  // 5. Mouse Lens toggle (--glass-lens-follow)
+  const followRow = document.createElement('div');
+  followRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#a8b2d1;';
+  followRow.innerHTML = '<span>鼠标跟随透镜</span>';
+  const followBtn = document.createElement('button');
+  followBtn.type = 'button';
+  const updateFollowBtn = () => {
+    followBtn.textContent = followOn ? '开启' : '关闭';
+    followBtn.style.cssText = 'padding:2px 12px;border-radius:12px;font-size:11px;cursor:pointer;border:1px solid ' +
+      (followOn ? 'rgba(48,209,88,0.6)' : 'rgba(255,255,255,0.2)') + ';background:' +
+      (followOn ? 'rgba(48,209,88,0.25)' : 'rgba(255,255,255,0.08)') + ';color:' +
+      (followOn ? '#30d158' : '#8890a8') + ';';
+    de.setAttribute('data-px-lens-follow', followOn ? 'on' : 'off');
+    de.style.setProperty('--glass-lens-follow', followOn ? 'on' : 'off');
+  };
+  updateFollowBtn();
+  followBtn.onclick = () => {
+    followOn = !followOn;
+    updateFollowBtn();
+  };
+  followRow.appendChild(followBtn);
+  optSection.appendChild(followRow);
+
+  // 6. Quality tier selector (ultra / balanced / perf)
+  const qualRow = document.createElement('div');
+  qualRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#a8b2d1;';
+  qualRow.innerHTML = '<span>画质档位</span>';
+  const qualSel = document.createElement('select');
+  qualSel.style.cssText = 'background:rgba(20,24,50,0.9);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;outline:none;';
+  [
+    { k: 'balanced', label: '均衡 (Balanced)' },
+    { k: 'ultra', label: '极致 (Ultra)' },
+    { k: 'perf', label: '省电 (Perf)' }
+  ].forEach(q => {
+    const o = document.createElement('option');
+    o.value = q.k;
+    o.textContent = q.label;
+    qualSel.appendChild(o);
+  });
+  qualSel.value = de.getAttribute('data-px-glass') || 'balanced';
+  qualSel.onchange = () => {
+    const q = qualSel.value;
+    de.setAttribute('data-px-glass', q);
+    de.style.setProperty('--glass-quality', q);
+  };
+  qualRow.appendChild(qualSel);
+  optSection.appendChild(qualRow);
+
+  // Presets click handler
+  presets.forEach(p => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = p.name;
+    btn.style.cssText = 'flex:1 1 45%;padding:4px 6px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.08);color:#e2e8f8;font-size:11px;cursor:pointer;transition:all 120ms;text-align:center;';
+    btn.onmouseenter = () => btn.style.background = 'rgba(255,255,255,0.18)';
+    btn.onmouseleave = () => btn.style.background = 'rgba(255,255,255,0.08)';
+    btn.onclick = () => {
+      // 1. Sliders
+      for (const [k, v] of Object.entries(p.vars)) {
+        de.style.setProperty(k, v);
+        const def = PARAMS.find(x => x.key === k);
+        if (def && controls[k]) {
+          controls[k].input.value = parseFloat(v);
+          controls[k].badge.textContent = v;
+        }
+      }
+      // 2. Quality
+      qualSel.value = p.quality;
+      de.setAttribute('data-px-glass', p.quality);
+      de.style.setProperty('--glass-quality', p.quality);
+      // 3. Lens tiers
+      lensSel.value = p.lens;
+      lensStrongSel.value = p.lensStrong;
+      lensCardSel.value = p.lensCard;
+      chromaOn = p.chroma;
+      updateChromaBtn();
+      updateLensCard();
+      // 4. Mouse Follow
+      followOn = p.follow;
+      updateFollowBtn();
+    };
+    presetRow.appendChild(btn);
+  });
+
+  panel.appendChild(presetRow);
+  panel.appendChild(slidersBox);
+  panel.appendChild(optSection);
+
+  // Full Configuration Extractor for Copy & Save
+  const getAllConfig = () => {
+    const data = {};
+    PARAMS.forEach(p => {
+      const val = de.style.getPropertyValue(p.key).trim() || (p.def + (p.unit || ''));
+      data[p.key] = val;
+    });
+    data['--glass-lens'] = de.style.getPropertyValue('--glass-lens').trim() || 'var(--glass-lens-sm)';
+    data['--glass-lens-strong'] = de.style.getPropertyValue('--glass-lens-strong').trim() || 'var(--glass-lens-xs)';
+    data['--glass-lens-card'] = de.style.getPropertyValue('--glass-lens-card').trim() || 'brightness(1)';
+    data['--glass-lens-follow'] = followOn ? 'on' : 'off';
+    data['--glass-quality'] = qualSel.value || 'balanced';
+    return data;
+  };
+
+  // Bottom action buttons
+  const actionRow = document.createElement('div');
+  actionRow.style.cssText = 'display:flex;gap:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.12);';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.textContent = '📋 复制 CSS';
+  copyBtn.style.cssText = 'flex:1;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.22);background:rgba(10,132,255,0.25);color:#64d2ff;font-size:11px;cursor:pointer;font-weight:500;transition:all 120ms;';
+  copyBtn.onclick = () => {
+    const data = getAllConfig();
+    let css = ':root {\\n';
+    for (const [k, v] of Object.entries(data)) {
+      css += '  ' + k + ': ' + v + ';\\n';
+    }
+    css += '}\\n';
+    navigator.clipboard.writeText(css).then(() => {
+      const oldText = copyBtn.textContent;
+      copyBtn.textContent = '✓ 已复制!';
+      setTimeout(() => copyBtn.textContent = oldText, 1500);
+    }).catch(() => {});
+  };
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = '💾 固化配置';
+  saveBtn.style.cssText = 'flex:1;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.22);background:rgba(48,209,88,0.22);color:#30d158;font-size:11px;cursor:pointer;font-weight:500;transition:all 120ms;';
+  saveBtn.onclick = () => {
+    const data = getAllConfig();
+    console.log('[px-glass] ' + JSON.stringify(data));
+    const oldText = saveBtn.textContent;
+    saveBtn.textContent = '✓ 已固化!';
+    setTimeout(() => saveBtn.textContent = oldText, 1500);
+  };
+
+  actionRow.appendChild(copyBtn);
+  actionRow.appendChild(saveBtn);
+  panel.appendChild(actionRow);
+
+  root.appendChild(pill);
+  root.appendChild(panel);
+  (document.body || de).appendChild(root);
+
+  // Toggle open / close
+  const openPanel = () => {
+    pill.style.display = 'none';
+    panel.style.display = 'flex';
+    if (savedPanelLeft !== null && savedPanelTop !== null) {
+      applyPanelPos(savedPanelLeft, savedPanelTop);
+    }
+  };
+  const closePanel = () => {
+    panel.style.display = 'none';
+    pill.style.display = 'flex';
+  };
+
+  pill.onclick = openPanel;
+  closeBtn.onclick = closePanel;
+
+  // Global toggle shortcut: Ctrl + Alt + G (and Escape to close)
+  const onKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'g' || e.key === 'G')) {
+      e.preventDefault();
+      if (panel.style.display === 'none') openPanel();
+      else closePanel();
+    } else if (e.key === 'Escape' && panel.style.display !== 'none') {
+      e.preventDefault();
+      closePanel();
+    }
+  };
+  window.addEventListener('keydown', onKeyDown);
+
+  window.__pxGlassPanel = {
+    open: openPanel,
+    close: closePanel,
+    stop: () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('pointermove', onDragMove);
+      window.removeEventListener('pointerup', onDragEnd);
+      window.removeEventListener('resize', onWindowResize);
+      try { root.remove(); } catch (e) {}
+      delete window.__pxGlassPanel;
+    },
+    isOpen: () => panel.style.display !== 'none'
+  };
+  return 'installed';
+})()`;
+
+/**
+ * Liquid Glass quality profile linkage (W4).
+ * Reflects --glass-quality onto html[data-px-glass="ultra|balanced|perf"].
+ */
+const GLASS_QUALITY_JS = `(() => {
+  if (window.__pxGlassQuality) return 'already-present';
+
+  let currentQuality = '';
+  const sync = () => {
+    const de = document.documentElement;
+    const val = (de.style.getPropertyValue('--glass-quality') || getComputedStyle(de).getPropertyValue('--glass-quality') || 'balanced').trim();
+    if (val && val !== currentQuality) {
+      currentQuality = val;
+      de.setAttribute('data-px-glass', val);
+    }
+  };
+
+  sync();
+  const obs = new MutationObserver(() => sync());
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+
+  window.__pxGlassQuality = {
+    sync,
+    stop: () => {
+      obs.disconnect();
+      delete window.__pxGlassQuality;
+    }
+  };
+  return 'installed';
+})()`;
+
+/**
  * Injects the pixel theme stylesheet into a window's web contents.
  * Re-injects on every dom-ready so in-app navigations stay themed.
  */
@@ -1562,13 +2453,15 @@ function attachPixelTheme(win) {
                 .catch((e) => console.error("[pixel-theme] stream watch failed:", e));
             // Pixel cursor. Reads its colors from pixel.css, so a theme change
             // is picked up by the rebuild on the next dom-ready.
-            wc.executeJavaScript(CURSOR_JS, true)
-                .then((r) => {
-                    if (r !== "installed" && r !== "refreshed" && r !== "reduced-motion") {
-                        console.error("[pixel-theme] cursor not installed:", r);
-                    }
-                })
-                .catch((e) => console.error("[pixel-theme] cursor failed:", e));
+            if (wantsPixelCursor()) {
+                wc.executeJavaScript(CURSOR_JS, true)
+                    .then((r) => {
+                        if (r !== "installed" && r !== "refreshed" && r !== "reduced-motion") {
+                            console.error("[pixel-theme] cursor not installed:", r);
+                        }
+                    })
+                    .catch((e) => console.error("[pixel-theme] cursor failed:", e));
+            }
             // Draw our own caption buttons whenever the native ones are off (Windows/Linux only; macOS has native traffic lights).
             if (!wantsNativeCaption() && process.platform !== "darwin") {
                 wc.executeJavaScript(WINDOW_CONTROLS_JS, true)
@@ -1595,8 +2488,43 @@ function attachPixelTheme(win) {
                     }
                 })
                 .catch((e) => console.error("[pixel-theme] comment tracker opt failed:", e));
+            // Liquid Glass widgets (Phase 2). Only injected if theme declares --px-glass: on.
+            if (isGlassTheme()) {
+                wc.executeJavaScript(GLASS_QUALITY_JS, true)
+                    .catch((e) => console.error("[pixel-theme] glass quality failed:", e));
+                wc.executeJavaScript(GLASS_SHEEN_JS, true)
+                    .catch((e) => console.error("[pixel-theme] glass sheen failed:", e));
+                wc.executeJavaScript(GLASS_LENS_JS, true)
+                    .catch((e) => console.error("[pixel-theme] glass lens failed:", e));
+                wc.executeJavaScript(GLASS_PANEL_JS, true)
+                    .catch((e) => console.error("[pixel-theme] glass panel failed:", e));
+            }
         });
         syncTitleBarOverlay(win);
+
+        // Intercept glass tuning panel persistence message: [px-glass] { ... }
+        wc.on("console-message", (...args) => {
+            const msg = args.find((a) => typeof a === "string" && a.startsWith("[px-glass] "));
+            if (!msg) return;
+            try {
+                const jsonStr = msg.slice(11);
+                const params = JSON.parse(jsonStr);
+                const lines = [":root {"];
+                for (const [k, v] of Object.entries(params)) {
+                    lines.push("  " + k + ": " + v + " !important;");
+                }
+                lines.push("}\n");
+                const userContent = lines.join("\n");
+                const themeDir = getThemeDir();
+                const userCssPath = path.join(themeDir, "glass-user.css");
+                fs.writeFileSync(userCssPath, userContent, "utf-8");
+                const newCss = buildCss();
+                if (newCss) applyCss(newCss);
+                wc.executeJavaScript("window.__pxGlassQuality && window.__pxGlassQuality.sync()", true).catch(() => {});
+            } catch (e) {
+                console.error("[pixel-theme] failed to handle [px-glass] message:", e);
+            }
+        });
 
         // Ctrl +/- changes DPR without a navigation, so dom-ready never fires.
         wc.on("zoom-changed", () => {
