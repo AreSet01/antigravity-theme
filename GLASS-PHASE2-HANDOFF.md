@@ -6,6 +6,34 @@
 
 ---
 
+## -1. 2026-09-18 更新：光学引擎已换成 zsio/liquid-glass 移植版（先读这段）
+
+- **注入器新增 `LIQUID_GLASS_CORE_JS`**（`patch/pixelTheme.js`）：移植自 `zsio/liquid-glass/src/glass.ts` 的
+  原生 JS 引擎，暴露 `window.__pxLiquidGlass.mount(host, options)`。贴图（位移 R/G + 内反射 B、法线光照、
+  倒角遮罩）在 Worker + OffscreenCanvas 里合成，Worker 不可用退回主线程 canvas；SVG 滤镜 = 三趟
+  feDisplacementMap 色散 + 反向采样内反射 + screen 合成。host 结构：`.px-lg > .px-lg-surface / .px-lg-light / .px-lg-sheen`
+  （类名带 px- 前缀，避免和宿主应用撞名）；材质基础样式随引擎注入 `<style id="px-lg-base-style">`。
+- **`GLASS_LENS_JS` 整体重写**：真 2D SDF 圆形透镜（中心光学平坦、只有倒角一圈折射），高光带惯性汇聚在
+  运动后缘，静止 `--glass-lens-idle` ms 后淡出、打字隐藏、悬停 input/textarea/pre/code 时降到 `--glass-lens-dim`。
+  参数全部从 CSS 变量读（`--glass-lens-size/refraction/bevel/blur/dispersion/idle/opacity/dim`），
+  `window.__pxGlassLens.sync()` 重读。装载顺序：core → lens → panel（串行 then 链）。
+- **调参面板**新增「透镜光学」六个滑杆，保存到 `glass-user.css` 后主进程会调 `__pxGlassLens.sync()`。
+  `--glass-lens-mouse` 变量已删除（色散开关只影响静态 chrome 滤镜）。
+- **静态 chrome 滤镜 `--glass-lens-*` 重新生成**：`gen_glass_lens.js` 的位移曲线改成斯涅尔轮廓（12 段采样），
+  带宽收窄一半；chroma 档的两张贴图只声明一次、三趟复用（URI 从 22KB 降到 8.8KB）。
+- **暗色可读性修复**：拆出 `--glass-fill`（填充）与 `--glass-tint`（高光）。暗色填充 `14 18 42`、alpha
+  0.32/0.58/0.44、饱和 150%、壁纸浓度 0.74、正文底板 0.30。之前暗色也用白填充，输入框压在壁纸亮团上被冲成近白。
+- **实机验收（冷启动、asar 已重打包 2026-09-18 01:34）**：core/lens/panel/sheen 全部就位，透镜 renderer=svg、
+  z=2147483638、三层子节点、defs 1 份；根无溢出、overflow clip、p-4=16px、空 listbox 0×0；
+  改 `--glass-lens-size` 160 → 贴图重生成（feImage width 160、cache +1）、还原命中缓存。
+- **测试坑**：Antigravity 窗口被终端遮住时 `visibilityState=hidden`，rAF 与 CSS transition 全部冻结，
+  任何依赖 rAF 的验证（贴图重生成、淡出）都会假失败。要在同一个 PowerShell 里先 `AppActivate` 再跑 node。
+- 新探针：`glass_lab_0918.js`（彩色底 + 多组光学参数对照板）、`lens_live_0918.js`（热装载新引擎/透镜）、
+  `glass_reload_0918.js`（reload + 热装载 + 切亮暗 + 截图）、`glass_cold_verify_0918.js`（冷启动验收）、
+  `click_text_0918.js`（按文本点元素）。
+- 仍未做：W7 性能上限实测；把标题栏/侧栏也挂真 SDF 实例（目前 chrome 仍用静态 data: URI 滤镜，
+  Gemini 文档建议顶栏/侧栏各 1 实例，但大面板的贴图每次 resize 都要重生成，先没上）。
+
 ## 0. 现状（开工前先读）
 
 ### 已交付

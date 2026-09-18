@@ -41,7 +41,7 @@
 | **🔮 glass** | **液态玻璃拟态风** <br>`[Demo 尝鲜版]` | 极光流体渐变壁纸<br>`#70D6FF` (冰晶蓝)<br>`#FF70A6` (极光粉) | 真实 SVG 边缘折射滤镜、毛玻璃背景模糊、不等亮内描边高光、胶囊拟态控件 | `switch glass` |
 
 > 💡 **关于 `glass` (液态玻璃) Demo 尝鲜版说明**：
-> `glass` 主题引入了真正的 SVG 边缘透镜折射滤镜（Displacement Map）与 CSS 极光动态壁纸。当前处于 **Demo 预览尝鲜阶段**，已支持全套玻璃视觉材质渲染与免重启热切，后续将持续迭代动态交互光效与调参面板。
+> `glass` 主题引入了真正的 SVG 边缘透镜折射滤镜（Displacement Map）与 CSS 极光动态壁纸。2026-09-18 起鼠标跟随透镜换成移植自 [zsio/liquid-glass](https://github.com/zsio/liquid-glass) 的 2D SDF 光学引擎（斯涅尔折射轮廓 + 三通道色散 + 全内反射 + 倒角流光），透镜中心光学平坦、底下文字照常可读；暗色模式改用深色填充玻璃，输入框/卡片不再被壁纸亮色冲白。右下角「调参面板」可实时调透镜直径/折射/倒角/色散。当前仍处于 **Demo 预览阶段**。
 
 ---
 
@@ -164,7 +164,7 @@ It replaces the default monochromatic interface with five high-aesthetic, produc
 | **🔮 glass** | **Liquid Glass Skeuomorphism** <br>`[Demo Preview]` | Aurora gradient fluid mesh<br>`#70D6FF` (Ice Blue)<br>`#FF70A6` (Aurora Pink) | Real SVG backdrop lens refraction, frosted blur, multi-edge specular highlight rims | `switch glass` |
 
 > 💡 **Note on `glass` (Liquid Glass) Demo Preview**:
-> `glass` introduces true SVG displacement map lens refraction and CSS aurora fluid mesh gradients. Currently in active **Demo Preview**, supporting full glass material styling and instant hot-switching.
+> `glass` introduces true SVG displacement map lens refraction and CSS aurora fluid mesh gradients. Since 2026-09-18 the pointer-following lens runs on a 2D-SDF optics engine ported from [zsio/liquid-glass](https://github.com/zsio/liquid-glass) (Snell-law refraction profile, RGB dispersion, total internal reflection, rim-masked sheen): the lens centre is optically flat so text under it stays readable. Dark mode now uses a dark-tinted glass fill so inputs and cards are no longer washed out by bright wallpaper blobs. The bottom-right tuning panel exposes lens size / refraction / bevel / dispersion live. Still a **Demo Preview**.
 
 ---
 
