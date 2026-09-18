@@ -1531,6 +1531,519 @@ const SETTINGS_MODAL_JS = `(() => {
 })()`;
 
 /**
+ * Liquid Glass optics core — 移植自 zsio/liquid-glass (src/glass.ts)。
+ * 2D SDF 法线 + 斯涅尔折射轮廓 + 三通道色散 + 全内反射 + 倒角流光遮罩。
+ * 只提供 window.__pxLiquidGlass.mount()，自己不挂载任何元素。
+ */
+const LIQUID_GLASS_CORE_JS = `(() => {
+  if (window.__pxLiquidGlass) return 'already-present';
+
+  /* ------------------------------------------------------------------
+     液态玻璃光学引擎（移植自 zsio/liquid-glass 的 src/glass.ts）
+     - 2D 符号距离场(SDF) 求精确外法线
+     - 斯涅尔定律查找表 -> 非线性折射轮廓（中心零失真、边缘骤聚）
+     - 三通道色散 + B 通道全内反射
+     - 法线光照贴图 + 倒角遮罩（指针流光只在倒角上流动）
+     贴图在 Worker(OffscreenCanvas) 里生成，Worker 不可用时退回主线程 canvas。
+     本模块只提供能力，不自己挂载任何元素。
+     ------------------------------------------------------------------ */
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var DEFAULTS = {
+    radius: 40, refraction: 56, bevel: 22, blur: 0.35,
+    dispersion: 1.2, tint: 'rgba(255,255,255,0.018)', mode: 'auto'
+  };
+
+  function clamp(n, a, b) { return Math.max(a, Math.min(n, b)); }
+  function num(v, f, a, b) {
+    return typeof v === 'number' && isFinite(v) ? clamp(v, a, b) : f;
+  }
+  function normalize(v) {
+    v = v || {};
+    return {
+      radius: num(v.radius, DEFAULTS.radius, 0, 10000),
+      refraction: num(v.refraction, DEFAULTS.refraction, 0, 100),
+      bevel: num(v.bevel, DEFAULTS.bevel, 2, 100),
+      blur: num(v.blur, DEFAULTS.blur, 0, 24),
+      dispersion: num(v.dispersion, DEFAULTS.dispersion, 0, 5),
+      tint: typeof v.tint === 'string' ? v.tint : DEFAULTS.tint,
+      mode: v.mode === 'svg' || v.mode === 'css' ? v.mode : 'auto'
+    };
+  }
+
+  /* backdrop-filter: url(#id) 只在桌面 Chromium 上可靠；其余退回纯模糊 */
+  var svgBackdropCache = null;
+  function useSVGBackdrop() {
+    if (svgBackdropCache === null) {
+      try {
+        var ua = navigator.userAgent || '';
+        var chromium = ua.indexOf('Chrome/') >= 0 || ua.indexOf('Chromium/') >= 0 || ua.indexOf('Edg/') >= 0;
+        svgBackdropCache = chromium && CSS.supports('backdrop-filter', 'url("#probe")');
+      } catch (e) { svgBackdropCache = false; }
+    }
+    return svgBackdropCache;
+  }
+
+  function element(tag, attrs) {
+    var el = document.createElementNS(NS, tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+    return el;
+  }
+
+  /* ------------------------------------------------------------------
+     贴图合成：只依赖自己的参数与内建对象，因此可以被 toString 进 Worker。
+     md = 位移贴图(R=X偏折, G=Y偏折, B=内反射权重)
+     ld = 法线光照贴图   rd = 倒角遮罩
+     ------------------------------------------------------------------ */
+  function fillTextures(md, ld, rd, w, h, width, height, radius, bevel, density, refract) {
+    var clamp2 = function (n, a, b) { return Math.max(a, Math.min(n, b)); };
+    var STEPS = 1024;
+    var profile = null;
+    if (refract) {
+      profile = new Float32Array(STEPS + 1);
+      for (var pi = 0; pi <= STEPS; pi++) {
+        var t0 = pi / STEPS;
+        var sinIncident = Math.pow(1 - t0, 1.28) * 0.985;
+        var incident = Math.asin(sinIncident);
+        var transmitted = Math.asin(sinIncident / 1.46);
+        var thickness = 0.72 + 0.28 * Math.sqrt(Math.max(0, 1 - (1 - t0) * (1 - t0)));
+        var edgeRef = Math.tan(Math.asin(0.985) - Math.asin(0.985 / 1.46)) * 0.72;
+        profile[pi] = 0.92 * Math.tan(incident - transmitted) * thickness / edgeRef;
+      }
+    }
+    var r = Math.min(radius, width / 2, height / 2);
+    var b = Math.min(bevel, width / 2, height / 2);
+    /* 倒角带以外光学上是平的：位移取中性值(128,128,0,255)，两张浮层 alpha 归零。
+       先整片填中性值，再只对边缘一圈算超越函数 —— 大面板也不卡的关键。 */
+    if (refract) {
+      new Uint32Array(md.buffer).fill(new Uint32Array(new Uint8Array([128, 128, 0, 255]).buffer)[0]);
+    }
+    var band = b + 6;
+    var qx = new Float64Array(w), sx = new Float64Array(w);
+    var qy = new Float64Array(h), sy = new Float64Array(h);
+    for (var x0 = 0; x0 < w; x0++) {
+      var px = (x0 + 0.5) / w * width - width / 2;
+      qx[x0] = Math.abs(px) - (width / 2 - r);
+      sx[x0] = Math.sign(px);
+    }
+    for (var y0 = 0; y0 < h; y0++) {
+      var py = (y0 + 0.5) / h * height - height / 2;
+      qy[y0] = Math.abs(py) - (height / 2 - r);
+      sy[y0] = Math.sign(py);
+    }
+    for (var y = 0; y < h; y++) {
+      var rowQ = qy[y], oy = Math.max(rowQ, 0), oy2 = oy * oy, rowS = sy[y];
+      var i = y * w * 4;
+      for (var x = 0; x < w; x++, i += 4) {
+        var colQ = qx[x], ox = Math.max(colQ, 0);
+        var len = Math.sqrt(ox * ox + oy2);
+        var d = len + Math.min(Math.max(colQ, rowQ), 0) - r;
+        if (-d > band) continue;
+        var nx = 0, ny = 0;
+        if (len > 0.0001) { nx = ox / len * sx[x]; ny = oy / len * rowS; }
+        else if (colQ > rowQ) { nx = sx[x]; } else { ny = rowS; }
+        var s = Math.max(0, -d);
+        if (refract) {
+          var t = clamp2(s / b, 0, 1), ti = t * STEPS;
+          var j = Math.min(STEPS - 1, Math.floor(ti));
+          var bend = profile[j] + (profile[j + 1] - profile[j]) * (ti - j);
+          md[i] = Math.round(127.5 - nx * bend * 127.5);
+          md[i + 1] = Math.round(127.5 - ny * bend * 127.5);
+          md[i + 3] = 255;
+        }
+        if (d > 0) continue;
+        var coverage = clamp2(0.5 - d * density, 0, 1);
+        var top = Math.max(0, -nx * 0.40 - ny * 0.9165);
+        var bottom = Math.max(0, nx * 0.22 + ny * 0.9755);
+        var side = Math.max(0, nx * 0.95 - ny * 0.31);
+        var e1 = (s - 0.72) / 0.60, edge = Math.exp(-e1 * e1);
+        var i1 = (s - 2.5) / 1.32, inner = Math.exp(-i1 * i1);
+        var h1 = (s - b * 0.31) / (b * 0.29), shoulder = Math.exp(-h1 * h1);
+        var t2 = top * top, b2 = bottom * bottom;
+        var white = edge * (0.08 + 0.78 * t2 + 0.64 * b2 * bottom * b2)
+          + inner * 0.16 * t2 * t2 + shoulder * (0.033 * top + 0.054 * b2 * bottom);
+        var s1 = (s - 1.8) / 0.86;
+        var shade = Math.exp(-s1 * s1) * 0.21 * side + shoulder * 0.032 * side;
+        var v = white - shade;
+        ld[i] = v >= 0 ? 255 : 37;
+        ld[i + 1] = v >= 0 ? 255 : 46;
+        ld[i + 2] = v >= 0 ? 255 : 62;
+        ld[i + 3] = Math.round(clamp2(Math.abs(v), 0, 0.96) * 255 * coverage);
+        var g1 = (s - 1.25) / 1.15;
+        if (refract) md[i + 2] = Math.round(255 * 0.20 * Math.exp(-g1 * g1) * coverage);
+        rd[i] = rd[i + 1] = rd[i + 2] = 255;
+        rd[i + 3] = Math.round(255 * coverage * (edge * 0.85 + inner * 0.20));
+      }
+    }
+  }
+
+  function density(width, height) {
+    var dpr = window.devicePixelRatio || 1;
+    return Math.min(Math.max(2, Math.min(dpr, 2.5)), 1536 / Math.max(width, height));
+  }
+  function cacheKey(width, height, radius, bevel, refract) {
+    var dn = density(width, height);
+    var w = Math.max(2, Math.ceil(width * dn)), h = Math.max(2, Math.ceil(height * dn));
+    return [width, height, radius, bevel, w, h, refract ? 1 : 0].join('/');
+  }
+
+  var cache = new Map();
+  var EMPTY = new Uint8ClampedArray(0);
+
+  /* ---- Worker：贴图合成与 PNG 编码都不占主线程 ---- */
+  var WORKER_SOURCE = 'var fill=(' + fillTextures.toString() + ');'
+    + 'var oc=null,ctx=null,map=null,light=null,rim=null;var empty=new Uint8ClampedArray(0);'
+    + 'self.onmessage=async function(e){var d=e.data||{};try{'
+    + 'var dn=Math.min(Math.max(2,Math.min(d.dpr||1,2.5)),1536/Math.max(d.width,d.height));'
+    + 'var w=Math.max(2,Math.ceil(d.width*dn)),h=Math.max(2,Math.ceil(d.height*dn));'
+    + 'if(!oc||oc.width!==w||oc.height!==h){oc=new OffscreenCanvas(w,h);ctx=oc.getContext("2d");'
+    + 'if(!ctx)throw new Error("no 2d context");map=null;light=ctx.createImageData(w,h);rim=ctx.createImageData(w,h);}'
+    + 'if(d.refract&&!map)map=ctx.createImageData(w,h);'
+    + 'light.data.fill(0);rim.data.fill(0);'
+    + 'fill(d.refract?map.data:empty,light.data,rim.data,w,h,d.width,d.height,d.radius,d.bevel,dn,d.refract);'
+    + 'var read=async function(img){ctx.putImageData(img,0,0);return new FileReaderSync().readAsDataURL(await oc.convertToBlob());};'
+    + 'self.postMessage({key:d.key,displacement:d.refract?await read(map):"",lighting:await read(light),rim:await read(rim)});'
+    + '}catch(err){self.postMessage({key:d.key,error:String((err&&err.message)||err)});}};';
+
+  var listeners = new Set();
+  var pending = new Map();
+  var active = null, timer = 0;
+  var engine = null, broken = false, live = 0, engineURL = '';
+
+  function breakWorker() {
+    broken = true; pending.clear(); active = null; clearTimeout(timer);
+    if (engine) { engine.terminate(); engine = null; }
+    if (engineURL) { URL.revokeObjectURL(engineURL); engineURL = ''; }
+    listeners.forEach(function (l) { l('', null); });
+  }
+  function worker() {
+    try {
+      if (broken || typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') return null;
+      if (!engine) {
+        engineURL = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));
+        engine = new Worker(engineURL);
+        engine.onmessage = function (e) {
+          var d = e.data || {};
+          clearTimeout(timer); active = null;
+          if (d.error || typeof d.displacement !== 'string') { breakWorker(); return; }
+          var data = { displacement: d.displacement, lighting: d.lighting, rim: d.rim };
+          if (cache.size >= 16) cache.delete(cache.keys().next().value);
+          cache.set(d.key, data);
+          listeners.forEach(function (l) { l(d.key, data); });
+          pump();
+        };
+        engine.onerror = function () { breakWorker(); };
+      }
+      return engine;
+    } catch (e) { broken = true; return null; }
+  }
+  function pump() {
+    if (active || !worker()) return;
+    var it = pending.entries().next();
+    if (it.done) return;
+    var owner = it.value[0], job = it.value[1];
+    pending.delete(owner);
+    var hit = cache.get(job.key);
+    if (hit) { owner(job.key, hit); pump(); return; }
+    active = job;
+    timer = setTimeout(breakWorker, 5000);
+    try { engine.postMessage(job); } catch (e) { breakWorker(); }
+  }
+  function request(owner, job) {
+    if (active && active.key === job.key) pending.delete(owner);
+    else pending.set(owner, job);
+    pump();
+  }
+
+  /* ---- 主线程兜底（Worker 不可用时；只对小面积元素划算） ---- */
+  var scratch = { canvas: null, w: 0, h: 0, map: null, light: null, rim: null };
+  function optics(width, height, radius, bevel, refract) {
+    var dn = density(width, height);
+    var w = Math.max(2, Math.ceil(width * dn)), h = Math.max(2, Math.ceil(height * dn));
+    var key = cacheKey(width, height, radius, bevel, refract);
+    var cached = cache.get(key);
+    if (cached) return cached;
+    if (!scratch.canvas) scratch.canvas = document.createElement('canvas');
+    var canvas = scratch.canvas;
+    if (scratch.w !== w || scratch.h !== h) {
+      canvas.width = w; canvas.height = h;
+      var prime = canvas.getContext('2d');
+      if (!prime) throw new Error('Canvas 2D unavailable');
+      scratch.map = null;
+      scratch.light = prime.createImageData(w, h);
+      scratch.rim = prime.createImageData(w, h);
+      scratch.w = w; scratch.h = h;
+    }
+    var ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D unavailable');
+    if (refract && !scratch.map) scratch.map = ctx.createImageData(w, h);
+    var light = scratch.light, rim = scratch.rim;
+    light.data.fill(0); rim.data.fill(0);
+    fillTextures(refract ? scratch.map.data : EMPTY, light.data, rim.data, w, h, width, height, radius, bevel, dn, refract);
+    var displacement = '';
+    if (refract) { ctx.putImageData(scratch.map, 0, 0); displacement = canvas.toDataURL(); }
+    ctx.putImageData(light, 0, 0); var lighting = canvas.toDataURL();
+    ctx.putImageData(rim, 0, 0); var rimURL = canvas.toDataURL();
+    var data = { displacement: displacement, lighting: lighting, rim: rimURL };
+    if (cache.size >= 16) cache.delete(cache.keys().next().value);
+    cache.set(key, data);
+    return data;
+  }
+
+  /* ------------------------------------------------------------------
+     mount：host 需要有直接子节点 .px-lg-surface / .px-lg-light
+     （可选 .px-lg-sheen），且尺寸非零。
+     ------------------------------------------------------------------ */
+  function mount(host, initial) {
+    var surface = host.querySelector(':scope > .px-lg-surface');
+    var lighting = host.querySelector(':scope > .px-lg-light');
+    var sheen = host.querySelector(':scope > .px-lg-sheen');
+    if (!surface || !lighting) throw new Error('missing .px-lg-surface / .px-lg-light');
+
+    var options = normalize(initial);
+    var dead = false, failed = false, frame = 0, lightFrame = 0, geometry = '', wanted = '';
+    var lastGen = -Infinity, followUp = 0;
+    var appliedRadius = '', appliedTint = '', appliedFrame = '', appliedBlur = '',
+        appliedScales = '', appliedBackdrop = '', appliedRenderer = '';
+    var renderer = 'css';
+
+    var uid = 'px-lens-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    /* Chromium 下 defs 容器不能 display:none，否则滤镜失效 */
+    var root = element('svg', { width: '0', height: '0', 'aria-hidden': 'true', 'data-px-lg-defs': '', focusable: 'false' });
+    root.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
+    var defs = element('defs');
+    var filter = element('filter', {
+      id: uid, filterUnits: 'userSpaceOnUse', primitiveUnits: 'userSpaceOnUse', 'color-interpolation-filters': 'sRGB'
+    });
+    var blurNode = element('feGaussianBlur', { in: 'SourceGraphic', stdDeviation: String(options.blur), result: 'source' });
+    var mapNode = element('feImage', { x: '0', y: '0', preserveAspectRatio: 'none', result: 'raw-map' });
+    var mapSmooth = element('feGaussianBlur', { in: 'raw-map', stdDeviation: '.55', edgeMode: 'duplicate', result: 'map' });
+    filter.append(blurNode, mapNode, mapSmooth);
+    var displacements = [];
+    for (var c = 0; c < 3; c++) {
+      var dm = element('feDisplacementMap', {
+        in: 'source', in2: 'map', scale: '0', xChannelSelector: 'R', yChannelSelector: 'G', result: 'd' + c
+      });
+      var mtx = new Array(20).fill(0);
+      mtx[c * 5 + c] = 1; mtx[18] = 1;
+      filter.append(dm, element('feColorMatrix', { in: 'd' + c, type: 'matrix', values: mtx.join(' '), result: 'c' + c }));
+      displacements.push(dm);
+    }
+    filter.append(
+      element('feBlend', { in: 'c0', in2: 'c1', mode: 'screen', result: 'rg' }),
+      element('feBlend', { in: 'rg', in2: 'c2', mode: 'screen', result: 'refracted' })
+    );
+    var reflected = element('feDisplacementMap', {
+      in: 'source', in2: 'map', scale: '0', xChannelSelector: 'R', yChannelSelector: 'G', result: 'edge-sample'
+    });
+    var weight = element('feColorMatrix', {
+      in: 'map', type: 'matrix', values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0', result: 'edge-weight'
+    });
+    filter.append(reflected, weight,
+      element('feComposite', { in: 'edge-sample', in2: 'edge-weight', operator: 'in', result: 'reflection' }),
+      element('feBlend', { in: 'refracted', in2: 'reflection', mode: 'screen', result: 'optics' }),
+      element('feGaussianBlur', { in: 'optics', stdDeviation: '.48' }));
+    defs.append(filter); root.append(defs);
+    (document.body || document.documentElement).append(root);
+
+    var media = ['(prefers-reduced-transparency: reduce)', '(prefers-contrast: more)', '(forced-colors: active)']
+      .map(function (q) { return matchMedia(q); });
+    var motion = matchMedia('(prefers-reduced-motion: reduce)');
+    var lightLayers = [lighting, sheen];
+
+    function applyTextures(tx, w, h) {
+      if (tx.displacement) {
+        mapNode.setAttribute('width', String(w));
+        mapNode.setAttribute('height', String(h));
+        mapNode.setAttribute('href', tx.displacement);
+      }
+      lighting.style.backgroundImage = 'url("' + tx.lighting + '")';
+      lighting.style.setProperty('--px-lg-rim-mask', 'url("' + tx.rim + '")');
+    }
+    function onTexture(key, data) {
+      if (!dead && (!data || key === wanted)) schedule();
+    }
+    function render() {
+      if (dead) return;
+      frame = 0;
+      var w = host.offsetWidth, h = host.offsetHeight;
+      var r = Math.min(options.radius, w / 2, h / 2);
+      var radiusPx = options.radius + 'px';
+      if (radiusPx !== appliedRadius) { host.style.setProperty('--px-lg-radius', radiusPx); appliedRadius = radiusPx; }
+      if (options.tint !== appliedTint) { host.style.setProperty('--px-lg-tint', options.tint); appliedTint = options.tint; }
+      var accessible = media.some(function (m) { return m.matches; });
+      renderer = accessible ? 'solid'
+        : (!failed && options.mode !== 'css' && (options.mode === 'svg' || useSVGBackdrop()) ? 'svg' : 'css');
+      if (w > 0 && h > 0 && !failed && !accessible) {
+        try {
+          var refract = renderer === 'svg';
+          var key = cacheKey(w, h, r, options.bevel, refract);
+          wanted = key;
+          if (key !== geometry) {
+            var now = performance.now(), wk = worker(), hit = cache.get(key);
+            if (hit) { pending.delete(onTexture); applyTextures(hit, w, h); geometry = key; }
+            else if (wk) {
+              request(onTexture, {
+                key: key, width: w, height: h, radius: r, bevel: options.bevel,
+                dpr: window.devicePixelRatio || 1, refract: refract
+              });
+            } else if (now - lastGen >= 48) {
+              lastGen = now; applyTextures(optics(w, h, r, options.bevel, refract), w, h); geometry = key;
+            } else if (!followUp) {
+              followUp = setTimeout(function () { followUp = 0; schedule(); }, 48 - (now - lastGen));
+            }
+          } else pending.delete(onTexture);
+          if (refract) {
+            var pad = Math.ceil(options.refraction / 2 + options.blur * 3 + 4);
+            var frameKey = pad + '/' + w + '/' + h;
+            if (frameKey !== appliedFrame) {
+              filter.setAttribute('x', String(-pad)); filter.setAttribute('y', String(-pad));
+              filter.setAttribute('width', String(w + pad * 2)); filter.setAttribute('height', String(h + pad * 2));
+              appliedFrame = frameKey;
+            }
+            var blurValue = String(options.blur);
+            if (blurValue !== appliedBlur) { blurNode.setAttribute('stdDeviation', blurValue); appliedBlur = blurValue; }
+            var strength = Math.min(options.refraction, Math.min(w, h) * 0.46);
+            var separation = options.refraction === 0 ? 0 : Math.min(options.dispersion, strength * 0.10);
+            var scaleKey = strength + '/' + separation;
+            if (scaleKey !== appliedScales) {
+              displacements.forEach(function (node, idx) { node.setAttribute('scale', String(strength + (idx - 1) * separation)); });
+              reflected.setAttribute('scale', String(-strength * 0.22));
+              appliedScales = scaleKey;
+            }
+          }
+        } catch (e) {
+          failed = true; renderer = 'css';
+          try { console.warn('[px-glass] optics fallback', e && e.message); } catch (e2) {}
+        }
+      }
+      if (accessible || failed) { pending.delete(onTexture); wanted = ''; }
+      if (renderer === 'svg' && !mapNode.getAttribute('href')) renderer = 'css';
+      var value = renderer === 'solid' ? 'none'
+        : renderer === 'svg' ? 'url("#' + uid + '")'
+        : 'blur(' + Math.max(options.blur, 5) + 'px) saturate(1.08)';
+      if (value !== appliedBackdrop) {
+        surface.style.backdropFilter = value;
+        surface.style.setProperty('-webkit-backdrop-filter', value);
+        appliedBackdrop = value;
+      }
+      if (renderer !== appliedRenderer) { host.setAttribute('data-px-lg-renderer', renderer); appliedRenderer = renderer; }
+    }
+    function schedule() { if (!frame && !dead) frame = requestAnimationFrame(render); }
+
+    /* ---- 位移 + 指针流光合并在同一帧 ---- */
+    var targetX = 28, targetY = 12, currentX = 28, currentY = 12, lastTime = 0, targetTime = 0;
+    var pendingPos = null, appliedPos = null, appliedPX = '', appliedPY = '';
+    function queuePosition(x, y) {
+      pendingPos = { x: x, y: y };
+      if (!lightFrame && !dead) lightFrame = requestAnimationFrame(animate);
+    }
+    function animate(time) {
+      lightFrame = 0;
+      if (dead) return;
+      var next = pendingPos; pendingPos = null;
+      if (next) {
+        if (!appliedPos || next.x !== appliedPos.x || next.y !== appliedPos.y) {
+          host.style.transform = 'translate3d(' + next.x + 'px, ' + next.y + 'px, 0)';
+          appliedPos = next;
+        }
+      }
+      var dt = lastTime ? time - lastTime : 16;
+      var mix = 1 - Math.exp(-Math.min(64, dt) / 62);
+      lastTime = time;
+      currentX += (targetX - currentX) * mix;
+      currentY += (targetY - currentY) * mix;
+      if (time - targetTime > 450) { currentX = targetX; currentY = targetY; }
+      var px = currentX.toFixed(3) + '%', py = currentY.toFixed(3) + '%';
+      if (px !== appliedPX || py !== appliedPY) {
+        lightLayers.forEach(function (l) {
+          if (!l) return;
+          if (px !== appliedPX) l.style.setProperty('--px-lg-pointer-x', px);
+          if (py !== appliedPY) l.style.setProperty('--px-lg-pointer-y', py);
+        });
+        appliedPX = px; appliedPY = py;
+      }
+      if (!motion.matches && renderer !== 'solid'
+        && Math.abs(targetX - currentX) + Math.abs(targetY - currentY) > 0.04) {
+        lightFrame = requestAnimationFrame(animate);
+      } else lastTime = 0;
+    }
+    function moveLight(x, y) {
+      targetX = clamp(x, -40, 140); targetY = clamp(y, -40, 140);
+      targetTime = performance.now();
+      if (!dead && !lightFrame && !motion.matches) lightFrame = requestAnimationFrame(animate);
+    }
+
+    var observer = null;
+    try { observer = new ResizeObserver(schedule); observer.observe(host); } catch (e) {}
+    media.forEach(function (m) { m.addEventListener('change', schedule); });
+    window.addEventListener('resize', schedule, { passive: true });
+    listeners.add(onTexture); live++;
+    render();
+
+    return {
+      get renderer() { return renderer; },
+      update: function (v) { options = normalize(Object.assign({}, options, v || {})); schedule(); },
+      refresh: schedule,
+      light: moveLight,
+      position: queuePosition,
+      options: function () { return Object.assign({}, options); },
+      destroy: function () {
+        if (dead) return;
+        dead = true;
+        cancelAnimationFrame(frame); cancelAnimationFrame(lightFrame); clearTimeout(followUp);
+        if (observer) observer.disconnect();
+        media.forEach(function (m) { m.removeEventListener('change', schedule); });
+        window.removeEventListener('resize', schedule);
+        try { root.remove(); } catch (e) {}
+        listeners.delete(onTexture); pending.delete(onTexture);
+        if (--live === 0 && engine) {
+          engine.terminate(); engine = null; pending.clear(); active = null; clearTimeout(timer);
+          if (engineURL) { URL.revokeObjectURL(engineURL); engineURL = ''; }
+        }
+      }
+    };
+  }
+
+  /* ---- 共用材质样式：随引擎一起下发，避免与主题 CSS 版本错配 ---- */
+  (function () {
+    var SID = 'px-lg-base-style';
+    if (document.getElementById(SID)) return;
+    var st = document.createElement('style');
+    st.id = SID;
+    st.textContent = [
+      '.px-lg{position:relative;border-radius:var(--px-lg-radius,40px);--px-lg-pointer-x:50%;--px-lg-pointer-y:50%}',
+      '.px-lg-surface,.px-lg-light,.px-lg-sheen{position:absolute;inset:0;pointer-events:none;border-radius:inherit}',
+      '.px-lg-surface{z-index:0;background:var(--px-lg-tint,rgba(255,255,255,.018));-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}',
+      '.px-lg-light{z-index:1;background-size:100% 100%;background-repeat:no-repeat}',
+      '.px-lg-light::after{content:"";position:absolute;inset:0;border-radius:inherit;',
+      'background:radial-gradient(ellipse at var(--px-lg-pointer-x) var(--px-lg-pointer-y),',
+      'rgba(255,255,255,.60),rgba(255,255,255,.13) 38%,transparent 68%);',
+      '-webkit-mask-image:var(--px-lg-rim-mask,linear-gradient(transparent,transparent));',
+      'mask-image:var(--px-lg-rim-mask,linear-gradient(transparent,transparent));',
+      '-webkit-mask-size:100% 100%;mask-size:100% 100%}',
+      '.px-lg-sheen{z-index:2;background:linear-gradient(155deg,rgba(255,255,255,.07),transparent 24%,transparent 77%,rgba(255,255,255,.018)),',
+      'radial-gradient(ellipse at var(--px-lg-pointer-x) var(--px-lg-pointer-y),rgba(255,255,255,.04),transparent 57%)}',
+      '.px-lg-content{position:relative;z-index:3;border-radius:inherit}',
+      '.px-lg[data-px-lg-renderer="solid"] > .px-lg-surface{background:var(--px-lg-solid,rgba(232,236,246,.92))!important;',
+      'backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
+      '.px-lg[data-px-lg-renderer="solid"] > .px-lg-light,',
+      '.px-lg[data-px-lg-renderer="solid"] > .px-lg-sheen{display:none}'
+    ].join('');
+    (document.head || document.documentElement).appendChild(st);
+  })();
+
+  window.__pxLiquidGlass = {
+    mount: mount,
+    defaults: DEFAULTS,
+    supported: useSVGBackdrop,
+    version: 1,
+    stats: function () { return { cached: cache.size, instances: live, worker: !!engine, broken: broken }; }
+  };
+  return 'installed';
+})()`;
+
+/**
  * Liquid Glass dynamic pointer sheen (W1).
  * Tracks pointer position across glass surfaces and sets inline --glass-mx/--glass-my.
  */
@@ -1633,123 +2146,187 @@ const GLASS_SHEEN_JS = `(() => {
 })()`;
 
 /**
- * Liquid Glass mouse follower lens (W2).
- * Follows cursor with a high-strength refraction lens and auto-idle stop.
+ * Liquid Glass mouse follower lens (W2)。
+ * 真 SDF 圆形透镜：中心光学平坦（底下文字照常可读）、只有倒角一圈折射，
+ * 高光带惯性汇聚在运动后缘；静止 / 打字 / 悬停文本区时自动淡出或减弱。
  */
 const GLASS_LENS_JS = `(() => {
   const ID = 'px-glass-lens';
   if (document.getElementById(ID) || window.__pxGlassLens) return 'already-present';
+  const LG = window.__pxLiquidGlass;
+  if (!LG || typeof LG.mount !== 'function') return 'core-missing';
 
   const de = document.documentElement;
-  const IDLE_STOP_MS = 300;
-  const LENS_SIZE = 140;
-  const HALF = LENS_SIZE / 2;
+  const readNum = (name, fallback) => {
+    let v = de.style.getPropertyValue(name).trim();
+    if (!v) v = getComputedStyle(de).getPropertyValue(name).trim();
+    const n = parseFloat(v);
+    return isFinite(n) ? n : fallback;
+  };
+  const readCfg = () => ({
+    size: Math.max(28, Math.min(360, readNum('--glass-lens-size', 104))),
+    refraction: readNum('--glass-lens-refraction', 44),
+    bevel: readNum('--glass-lens-bevel', 16),
+    blur: readNum('--glass-lens-blur', 0.3),
+    dispersion: readNum('--glass-lens-dispersion', 1.1),
+    idleMs: readNum('--glass-lens-idle', 300),
+    opacity: readNum('--glass-lens-opacity', 1),
+    dim: readNum('--glass-lens-dim', 0.26)
+  });
 
-  let lens = document.createElement('div');
-  lens.id = ID;
-  lens.setAttribute('aria-hidden', 'true');
-  lens.style.cssText = [
-    'position:fixed!important',
-    'top:0!important',
-    'left:0!important',
-    'width:' + LENS_SIZE + 'px!important',
-    'height:' + LENS_SIZE + 'px!important',
-    'margin:-' + HALF + 'px 0 0 -' + HALF + 'px!important',
-    'border-radius:50%!important',
-    'pointer-events:none!important',
-    'z-index:2147483638!important',
-    'backdrop-filter:var(--glass-lens-mouse, var(--glass-lens-lg)) blur(0.5px) saturate(160%) brightness(1.04)!important',
-    '-webkit-backdrop-filter:var(--glass-lens-mouse, var(--glass-lens-lg)) blur(0.5px) saturate(160%) brightness(1.04)!important',
-    'border:1px solid rgba(255,255,255,0.45)!important',
-    'box-shadow:inset 0 1px 2px rgba(255,255,255,0.75), inset 0 0 14px rgba(255,255,255,0.22), 0 12px 36px rgba(0,0,0,0.32)!important',
-    'display:none',
-    'will-change:transform'
+  let cfg = readCfg();
+
+  const host = document.createElement('div');
+  host.id = ID;
+  host.className = 'px-lg';
+  host.setAttribute('aria-hidden', 'true');
+  host.innerHTML = '<span class="px-lg-surface"></span><span class="px-lg-light"></span><span class="px-lg-sheen"></span>';
+
+  const layout = () => {
+    const half = cfg.size / 2;
+    host.style.width = cfg.size + 'px';
+    host.style.height = cfg.size + 'px';
+    host.style.margin = (-half) + 'px 0 0 ' + (-half) + 'px';
+  };
+  /* 透镜层级必须低于自绘指针画布(2147483647)与窗口按钮(2147483644) */
+  host.style.cssText = [
+    'position:fixed', 'left:0', 'top:0',
+    'pointer-events:none',
+    'z-index:2147483638',
+    'opacity:0',
+    'transform:translate3d(-9999px,-9999px,0)',
+    'transition:opacity 170ms ease, width 140ms ease, height 140ms ease',
+    'will-change:transform,opacity',
+    'contain:layout style size',
+    'box-shadow:0 10px 26px -18px rgba(8,12,30,.55)'
   ].join(';');
+  layout();
+  (document.body || de).appendChild(host);
 
-  (document.body || de).appendChild(lens);
+  let ctrl = null;
+  try {
+    ctrl = LG.mount(host, {
+      radius: cfg.size / 2,
+      refraction: cfg.refraction,
+      bevel: cfg.bevel,
+      blur: cfg.blur,
+      dispersion: cfg.dispersion,
+      tint: 'rgba(255,255,255,0.016)'
+    });
+  } catch (e) {
+    try { host.remove(); } catch (e2) {}
+    return 'mount-failed: ' + (e && e.message);
+  }
 
-  let lastX = -999, lastY = -999;
-  let raf = 0;
-  let idleTimer = null;
-  let running = false;
-  let visible = false;
+  /* ---- 跟随状态 ---- */
+  let lastX = -9999, lastY = -9999, lastT = 0;
+  let vx = 0, vy = 0;
+  let shown = false, dimmed = false, typing = false;
+  let idleTimer = 0;
+  const TEXT_SEL = 'input, textarea, [contenteditable="true"], [contenteditable=""], pre, code, .cm-editor, .monaco-editor, [role="textbox"], [role="code"]';
 
-  const isFollowEnabled = () => {
+  const enabled = () => {
     if (de.getAttribute('data-px-glass') === 'perf') return false;
     if (de.getAttribute('data-px-lens-follow') === 'off') return false;
-    const val = (de.style.getPropertyValue('--glass-lens-follow') || getComputedStyle(de).getPropertyValue('--glass-lens-follow')).trim();
-    return val !== 'off';
+    let v = de.style.getPropertyValue('--glass-lens-follow').trim();
+    if (!v) v = getComputedStyle(de).getPropertyValue('--glass-lens-follow').trim();
+    return v !== 'off';
   };
 
-  const render = () => {
-    raf = 0;
-    if (!isFollowEnabled()) {
-      if (visible) { lens.style.display = 'none'; visible = false; }
-      running = false;
-      return;
-    }
-    if (lastX > 0 && lastY > 0) {
-      if (!visible) { lens.style.display = 'block'; visible = true; }
-      lens.style.transform = 'translate3d(' + lastX.toFixed(1) + 'px,' + lastY.toFixed(1) + 'px,0)';
-    }
+  const setOpacity = () => {
+    host.style.opacity = shown ? String(dimmed ? cfg.dim : cfg.opacity) : '0';
   };
-
+  const hide = () => {
+    if (shown) { shown = false; setOpacity(); }
+    if (idleTimer) { clearTimeout(idleTimer); idleTimer = 0; }
+  };
   const onIdle = () => {
-    running = false;
-    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    idleTimer = 0;
+    vx = 0; vy = 0;
+    if (ctrl) ctrl.light(50, 50);
+    hide();
   };
 
   const onPointerMove = (e) => {
-    if (de.getAttribute('data-px-glass') === 'perf') {
-      if (visible) { lens.style.display = 'none'; visible = false; }
-      running = false;
-      return;
+    if (!enabled()) { hide(); return; }
+    typing = false;
+    const now = e.timeStamp || performance.now();
+    const dt = lastT ? Math.max(1, Math.min(64, now - lastT)) : 16;
+    if (lastX > -9000) {
+      const k = 1 - Math.exp(-dt / 48);
+      vx += ((e.clientX - lastX) / dt * 16 - vx) * k;
+      vy += ((e.clientY - lastY) / dt * 16 - vy) * k;
     }
-    lastX = e.clientX;
-    lastY = e.clientY;
-    running = true;
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(onIdle, IDLE_STOP_MS);
+    lastX = e.clientX; lastY = e.clientY; lastT = now;
 
-    if (!raf) {
-      raf = requestAnimationFrame(render);
+    /* 文本密集区自动减弱：只读事件自带的 target，不做每帧命中测试 */
+    let overText = false;
+    try {
+      const t = e.target;
+      overText = !!(t && t.closest && t.closest(TEXT_SEL));
+    } catch (e2) {}
+    if (overText !== dimmed) { dimmed = overText; }
+
+    if (!shown) { shown = true; }
+    setOpacity();
+
+    ctrl.position(e.clientX, e.clientY);
+    /* 惯性流光：高光汇聚在运动的「后缘」，停下来就回到中心 */
+    const mag = Math.hypot(vx, vy);
+    if (mag > 0.4) {
+      const speed = Math.min(1, mag / 26);
+      ctrl.light(50 - vx / mag * speed * 32, 50 - vy / mag * speed * 32);
+    } else {
+      ctrl.light(50, 50);
     }
+
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(onIdle, cfg.idleMs);
   };
 
-  const hideLens = () => {
-    if (visible) {
-      lens.style.display = 'none';
-      visible = false;
-    }
-    running = false;
-    if (raf) { cancelAnimationFrame(raf); raf = 0; }
-    if (idleTimer) clearTimeout(idleTimer);
+  const onKeyDown = () => {
+    if (!typing) { typing = true; hide(); }
   };
+  const onVisibility = () => { if (document.visibilityState !== 'visible') hide(); };
 
   window.addEventListener('pointermove', onPointerMove, { capture: true, passive: true });
-  window.addEventListener('blur', hideLens);
-  document.addEventListener('mouseleave', hideLens);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') hideLens();
-  });
+  window.addEventListener('blur', hide);
+  window.addEventListener('keydown', onKeyDown, { capture: true, passive: true });
+  document.addEventListener('mouseleave', hide);
+  document.addEventListener('visibilitychange', onVisibility);
+
+  const sync = () => {
+    const next = readCfg();
+    const sizeChanged = next.size !== cfg.size;
+    cfg = next;
+    if (sizeChanged) layout();
+    ctrl.update({
+      radius: cfg.size / 2, refraction: cfg.refraction, bevel: cfg.bevel,
+      blur: cfg.blur, dispersion: cfg.dispersion
+    });
+    setOpacity();
+    if (!enabled()) hide();
+  };
 
   window.__pxGlassLens = {
+    sync,
     stop: () => {
       window.removeEventListener('pointermove', onPointerMove, { capture: true });
-      window.removeEventListener('blur', hideLens);
-      document.removeEventListener('mouseleave', hideLens);
-      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('blur', hide);
+      window.removeEventListener('keydown', onKeyDown, { capture: true });
+      document.removeEventListener('mouseleave', hide);
+      document.removeEventListener('visibilitychange', onVisibility);
       if (idleTimer) clearTimeout(idleTimer);
-      try { lens.remove(); } catch (e) {}
+      try { ctrl.destroy(); } catch (e) {}
+      try { host.remove(); } catch (e) {}
       delete window.__pxGlassLens;
     },
     status: () => ({
-      running,
-      visible,
-      lastX,
-      lastY,
-      transform: lens.style.transform,
-      display: lens.style.display
+      renderer: ctrl.renderer,
+      shown, dimmed, typing,
+      cfg,
+      transform: host.style.transform,
+      opacity: host.style.opacity
     })
   };
   return 'installed';
@@ -2124,11 +2701,6 @@ const GLASS_PANEL_JS = `(() => {
       (chromaOn ? 'rgba(255,105,180,0.6)' : 'rgba(255,255,255,0.2)') + ';background:' +
       (chromaOn ? 'rgba(255,105,180,0.25)' : 'rgba(255,255,255,0.08)') + ';color:' +
       (chromaOn ? '#ff79c6' : '#8890a8') + ';';
-    if (chromaOn) {
-      de.style.setProperty('--glass-lens-mouse', 'var(--glass-lens-chroma-lg)');
-    } else {
-      de.style.removeProperty('--glass-lens-mouse');
-    }
     updateLens();
     updateLensStrong();
   };
@@ -2154,6 +2726,7 @@ const GLASS_PANEL_JS = `(() => {
       (followOn ? '#30d158' : '#8890a8') + ';';
     de.setAttribute('data-px-lens-follow', followOn ? 'on' : 'off');
     de.style.setProperty('--glass-lens-follow', followOn ? 'on' : 'off');
+    if (window.__pxGlassLens && window.__pxGlassLens.sync) window.__pxGlassLens.sync();
   };
   updateFollowBtn();
   followBtn.onclick = () => {
@@ -2162,6 +2735,53 @@ const GLASS_PANEL_JS = `(() => {
   };
   followRow.appendChild(followBtn);
   optSection.appendChild(followRow);
+
+  // 5.5 Mouse lens optics (real SDF engine: window.__pxLiquidGlass)
+  const LENS_PARAMS = [
+    { key: '--glass-lens-size', label: '透镜直径', min: 48, max: 240, step: 4, def: 104, unit: 'px' },
+    { key: '--glass-lens-refraction', label: '折射强度', min: 0, max: 100, step: 1, def: 44, unit: '' },
+    { key: '--glass-lens-bevel', label: '倒角带宽', min: 4, max: 60, step: 1, def: 16, unit: 'px' },
+    { key: '--glass-lens-dispersion', label: '色散分离', min: 0, max: 5, step: 0.1, def: 1.1, unit: '' },
+    { key: '--glass-lens-blur', label: '透镜微模糊', min: 0, max: 3, step: 0.05, def: 0.3, unit: 'px' },
+    { key: '--glass-lens-dim', label: '文本区减弱', min: 0, max: 1, step: 0.02, def: 0.26, unit: '' }
+  ];
+  const lensTitle = document.createElement('div');
+  lensTitle.style.cssText = 'font-size:11px;color:#73eff7;letter-spacing:0.3px;padding-top:2px;';
+  lensTitle.textContent = '透镜光学（真 SDF 折射 · 中心不失真）';
+  optSection.appendChild(lensTitle);
+  const syncLens = () => { if (window.__pxGlassLens && window.__pxGlassLens.sync) window.__pxGlassLens.sync(); };
+  LENS_PARAMS.forEach(param => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#a8b2d1;';
+    const label = document.createElement('span');
+    label.textContent = param.label;
+    const cur = getComputedVal(param.key, '');
+    const initialVal = cur !== null ? cur : param.def;
+    const badge = document.createElement('span');
+    badge.style.cssText = 'font-family:monospace;color:#73eff7;font-size:11px;';
+    badge.textContent = initialVal + param.unit;
+    top.appendChild(label);
+    top.appendChild(badge);
+    row.appendChild(top);
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = param.min;
+    input.max = param.max;
+    input.step = param.step;
+    input.value = initialVal;
+    input.style.cssText = 'width:100%;height:4px;accent-color:#0a84ff;cursor:pointer;';
+    input.oninput = () => {
+      // 透镜参数一律是无单位数字（注入器 parseFloat 读取），单位只用于显示
+      de.style.setProperty(param.key, input.value);
+      badge.textContent = input.value + param.unit;
+      syncLens();
+    };
+    controls[param.key] = { input, badge };
+    row.appendChild(input);
+    optSection.appendChild(row);
+  });
 
   // 6. Quality tier selector (ultra / balanced / perf)
   const qualRow = document.createElement('div');
@@ -2239,6 +2859,10 @@ const GLASS_PANEL_JS = `(() => {
     data['--glass-lens-strong'] = de.style.getPropertyValue('--glass-lens-strong').trim() || 'var(--glass-lens-xs)';
     data['--glass-lens-card'] = de.style.getPropertyValue('--glass-lens-card').trim() || 'brightness(1)';
     data['--glass-lens-follow'] = followOn ? 'on' : 'off';
+    LENS_PARAMS.forEach(p => {
+      const v = de.style.getPropertyValue(p.key).trim();
+      if (v) data[p.key] = v;
+    });
     data['--glass-quality'] = qualSel.value || 'balanced';
     return data;
   };
@@ -2494,10 +3118,21 @@ function attachPixelTheme(win) {
                     .catch((e) => console.error("[pixel-theme] glass quality failed:", e));
                 wc.executeJavaScript(GLASS_SHEEN_JS, true)
                     .catch((e) => console.error("[pixel-theme] glass sheen failed:", e));
-                wc.executeJavaScript(GLASS_LENS_JS, true)
-                    .catch((e) => console.error("[pixel-theme] glass lens failed:", e));
-                wc.executeJavaScript(GLASS_PANEL_JS, true)
-                    .catch((e) => console.error("[pixel-theme] glass panel failed:", e));
+                // 光学引擎必须先装载：透镜与调参面板都依赖 window.__pxLiquidGlass。
+                wc.executeJavaScript(LIQUID_GLASS_CORE_JS, true)
+                    .then((r) => {
+                        if (r !== "installed" && r !== "already-present") {
+                            console.error("[pixel-theme] liquid glass core not installed:", r);
+                        }
+                        return wc.executeJavaScript(GLASS_LENS_JS, true);
+                    })
+                    .then((r) => {
+                        if (r && r !== "installed" && r !== "already-present") {
+                            console.error("[pixel-theme] glass lens not installed:", r);
+                        }
+                        return wc.executeJavaScript(GLASS_PANEL_JS, true);
+                    })
+                    .catch((e) => console.error("[pixel-theme] glass widgets failed:", e));
             }
         });
         syncTitleBarOverlay(win);
@@ -2521,6 +3156,7 @@ function attachPixelTheme(win) {
                 const newCss = buildCss();
                 if (newCss) applyCss(newCss);
                 wc.executeJavaScript("window.__pxGlassQuality && window.__pxGlassQuality.sync()", true).catch(() => {});
+                wc.executeJavaScript("window.__pxGlassLens && window.__pxGlassLens.sync && window.__pxGlassLens.sync()", true).catch(() => {});
             } catch (e) {
                 console.error("[pixel-theme] failed to handle [px-glass] message:", e);
             }
