@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # PIXEL GRAVITY installer for Antigravity 2.x (Windows)
 # - Backs up app.asar, patches dist/utils.js to load the pixel theme injector,
 #   repacks the asar, and deploys pixel-theme assets next to it.
