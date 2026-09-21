@@ -1597,6 +1597,53 @@ const LIQUID_GLASS_CORE_JS = `(() => {
      ------------------------------------------------------------------ */
   function fillTextures(md, ld, rd, w, h, width, height, radius, bevel, density, refract) {
     var clamp2 = function (n, a, b) { return Math.max(a, Math.min(n, b)); };
+    var isCircle = Math.abs(width - height) <= 4 && radius >= (Math.min(width, height) / 2 - 2);
+
+    if (isCircle) {
+      /* ---- 真·液态水滴凸透镜（Spherical Droplet Lens） ----
+         全域球冠微弧度放大 + 边缘弯月面聚集折射 + 菲涅尔内反射 + 晶莹高光点 */
+      var cx = w / 2, cy = h / 2;
+      var R = Math.min(w, h) / 2;
+      for (var y = 0; y < h; y++) {
+        var dy = (y + 0.5 - cy) / R;
+        var i = y * w * 4;
+        for (var x = 0; x < w; x++, i += 4) {
+          var dx = (x + 0.5 - cx) / R;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 1.0) {
+            md[i] = 128; md[i + 1] = 128; md[i + 2] = 0; md[i + 3] = 255;
+            ld[i] = 255; ld[i + 1] = 255; ld[i + 2] = 255; ld[i + 3] = 0;
+            rd[i] = 255; rd[i + 1] = 255; rd[i + 2] = 255; rd[i + 3] = 0;
+          } else {
+            var nx = dx / (dist || 1);
+            var ny = dy / (dist || 1);
+            /* 斯涅尔水滴曲面：中心微放大平缓过渡，外圈骤聚弯折 */
+            var bend = Math.pow(dist, 1.25) * 0.96;
+            if (refract) {
+              md[i] = Math.round(128 - nx * bend * 127);
+              md[i + 1] = Math.round(128 - ny * bend * 127);
+              md[i + 2] = Math.round(Math.pow(dist, 3.5) * 255);
+              md[i + 3] = 255;
+            }
+            /* 左上高光汇聚点 + 边缘菲涅尔反光环 */
+            var spotDist = Math.sqrt((dx + 0.28) * (dx + 0.28) + (dy + 0.30) * (dy + 0.30));
+            var spot = Math.exp(-spotDist * spotDist / 0.045) * 0.75;
+            var rimPeak = Math.exp(-Math.pow(dist - 0.94, 2) / 0.006);
+            var topLight = Math.max(0, -nx * 0.45 - ny * 0.89);
+            var rimLight = rimPeak * (0.35 + 0.65 * topLight);
+            var totalLight = Math.min(0.96, spot + rimLight);
+
+            ld[i] = 255; ld[i + 1] = 255; ld[i + 2] = 255;
+            ld[i + 3] = Math.round(totalLight * 255);
+
+            rd[i] = 255; rd[i + 1] = 255; rd[i + 2] = 255;
+            rd[i + 3] = Math.round(rimPeak * 255);
+          }
+        }
+      }
+      return;
+    }
+
     var STEPS = 1024;
     var profile = null;
     if (refract) {
@@ -1813,36 +1860,30 @@ const LIQUID_GLASS_CORE_JS = `(() => {
     root.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none';
     var defs = element('defs');
     var filter = element('filter', {
-      id: uid, filterUnits: 'userSpaceOnUse', primitiveUnits: 'userSpaceOnUse', 'color-interpolation-filters': 'sRGB'
+      id: uid, x: '-20%', y: '-20%', width: '140%', height: '140%', 'color-interpolation-filters': 'sRGB'
     });
-    var blurNode = element('feGaussianBlur', { in: 'SourceGraphic', stdDeviation: String(options.blur), result: 'source' });
-    var mapNode = element('feImage', { x: '0', y: '0', preserveAspectRatio: 'none', result: 'raw-map' });
-    var mapSmooth = element('feGaussianBlur', { in: 'raw-map', stdDeviation: '.55', edgeMode: 'duplicate', result: 'map' });
-    filter.append(blurNode, mapNode, mapSmooth);
-    var displacements = [];
-    for (var c = 0; c < 3; c++) {
-      var dm = element('feDisplacementMap', {
-        in: 'source', in2: 'map', scale: '0', xChannelSelector: 'R', yChannelSelector: 'G', result: 'd' + c
-      });
-      var mtx = new Array(20).fill(0);
-      mtx[c * 5 + c] = 1; mtx[18] = 1;
-      filter.append(dm, element('feColorMatrix', { in: 'd' + c, type: 'matrix', values: mtx.join(' '), result: 'c' + c }));
-      displacements.push(dm);
-    }
-    filter.append(
-      element('feBlend', { in: 'c0', in2: 'c1', mode: 'screen', result: 'rg' }),
-      element('feBlend', { in: 'rg', in2: 'c2', mode: 'screen', result: 'refracted' })
-    );
-    var reflected = element('feDisplacementMap', {
-      in: 'source', in2: 'map', scale: '0', xChannelSelector: 'R', yChannelSelector: 'G', result: 'edge-sample'
+    var mapNode = element('feImage', { preserveAspectRatio: 'none', result: 'map' });
+    var dmR = element('feDisplacementMap', {
+      in: 'SourceGraphic', in2: 'map', scale: '0', xChannelSelector: 'R', yChannelSelector: 'G', result: 'd0'
     });
-    var weight = element('feColorMatrix', {
-      in: 'map', type: 'matrix', values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0', result: 'edge-weight'
+    var cmR = element('feColorMatrix', {
+      in: 'd0', type: 'matrix', values: '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0', result: 'c0'
     });
-    filter.append(reflected, weight,
-      element('feComposite', { in: 'edge-sample', in2: 'edge-weight', operator: 'in', result: 'reflection' }),
-      element('feBlend', { in: 'refracted', in2: 'reflection', mode: 'screen', result: 'optics' }),
-      element('feGaussianBlur', { in: 'optics', stdDeviation: '.48' }));
+    var dmG = element('feDisplacementMap', {
+      in: 'SourceGraphic', in2: 'map', scale: '0', xChannelSelector: 'R', yChannelSelector: 'G', result: 'd1'
+    });
+    var cmG = element('feColorMatrix', {
+      in: 'd1', type: 'matrix', values: '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0', result: 'c1'
+    });
+    var dmB = element('feDisplacementMap', {
+      in: 'SourceGraphic', in2: 'map', scale: '0', xChannelSelector: 'R', yChannelSelector: 'G', result: 'd2'
+    });
+    var cmB = element('feColorMatrix', {
+      in: 'd2', type: 'matrix', values: '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0', result: 'c2'
+    });
+    var blendRG = element('feBlend', { in: 'c0', in2: 'c1', mode: 'screen', result: 'rg' });
+    var blendRGB = element('feBlend', { in: 'rg', in2: 'c2', mode: 'screen', result: 'refracted' });
+    filter.append(mapNode, dmR, cmR, dmG, cmG, dmB, cmB, blendRG, blendRGB);
     defs.append(filter); root.append(defs);
     (document.body || document.documentElement).append(root);
 
@@ -1853,8 +1894,6 @@ const LIQUID_GLASS_CORE_JS = `(() => {
 
     function applyTextures(tx, w, h) {
       if (tx.displacement) {
-        mapNode.setAttribute('width', String(w));
-        mapNode.setAttribute('height', String(h));
         mapNode.setAttribute('href', tx.displacement);
       }
       lighting.style.backgroundImage = 'url("' + tx.lighting + '")';
@@ -1894,21 +1933,13 @@ const LIQUID_GLASS_CORE_JS = `(() => {
             }
           } else pending.delete(onTexture);
           if (refract) {
-            var pad = Math.ceil(options.refraction / 2 + options.blur * 3 + 4);
-            var frameKey = pad + '/' + w + '/' + h;
-            if (frameKey !== appliedFrame) {
-              filter.setAttribute('x', String(-pad)); filter.setAttribute('y', String(-pad));
-              filter.setAttribute('width', String(w + pad * 2)); filter.setAttribute('height', String(h + pad * 2));
-              appliedFrame = frameKey;
-            }
-            var blurValue = String(options.blur);
-            if (blurValue !== appliedBlur) { blurNode.setAttribute('stdDeviation', blurValue); appliedBlur = blurValue; }
-            var strength = Math.min(options.refraction, Math.min(w, h) * 0.46);
-            var separation = options.refraction === 0 ? 0 : Math.min(options.dispersion, strength * 0.10);
-            var scaleKey = strength + '/' + separation;
+            var strength = Math.min(options.refraction, Math.min(w, h) * 0.52);
+            var dispersion = (options.dispersion !== undefined ? options.dispersion : 1.2) * 0.07;
+            var scaleKey = strength + '/' + dispersion;
             if (scaleKey !== appliedScales) {
-              displacements.forEach(function (node, idx) { node.setAttribute('scale', String(strength + (idx - 1) * separation)); });
-              reflected.setAttribute('scale', String(-strength * 0.22));
+              dmR.setAttribute('scale', String(strength * (1 + dispersion)));
+              dmG.setAttribute('scale', String(strength));
+              dmB.setAttribute('scale', String(strength * (1 - dispersion)));
               appliedScales = scaleKey;
             }
           }
@@ -2050,7 +2081,7 @@ const LIQUID_GLASS_CORE_JS = `(() => {
 const GLASS_SHEEN_JS = `(() => {
   if (window.__pxGlassSheen) return 'already-present';
 
-  const SURFACE_SEL = '[data-testid="title-menu-bar"], [class~="bg-sidebar"], [class~="bg-sidebar-secondary"], [class~="bg-card"], [class*="bg-card"]:not([class*="bg-card-border"]), [role="dialog"], [role="alertdialog"], .settings-modal-container, .px-menu-content, [role="menu"]:not(:empty), [role="listbox"]:not(:empty)';
+  const SURFACE_SEL = '[data-testid="title-menu-bar"], [class~="bg-sidebar"], [class~="bg-sidebar-secondary"], [class~="bg-card"], [class*="bg-card"]:not([class*="bg-card-border"]), [role="dialog"], [role="alertdialog"], .settings-modal-container, .px-menu-content, [role="menu"]:not(:empty), [role="listbox"]:not(:empty), .leading-relaxed, [class*="prose"], [class*="user-input-step"] [class*="bg-card"], .code-block';
   let activeSurface = null;
   let lastX = -1, lastY = -1;
   let lastTarget = null;
@@ -2164,14 +2195,14 @@ const GLASS_LENS_JS = `(() => {
     return isFinite(n) ? n : fallback;
   };
   const readCfg = () => ({
-    size: Math.max(28, Math.min(360, readNum('--glass-lens-size', 104))),
-    refraction: readNum('--glass-lens-refraction', 44),
-    bevel: readNum('--glass-lens-bevel', 16),
-    blur: readNum('--glass-lens-blur', 0.3),
-    dispersion: readNum('--glass-lens-dispersion', 1.1),
-    idleMs: readNum('--glass-lens-idle', 300),
-    opacity: readNum('--glass-lens-opacity', 1),
-    dim: readNum('--glass-lens-dim', 0.26)
+    size: Math.max(28, Math.min(360, readNum('--glass-lens-size', 140))),
+    refraction: readNum('--glass-lens-refraction', 60),
+    bevel: readNum('--glass-lens-bevel', 26),
+    blur: readNum('--glass-lens-blur', 0),
+    dispersion: readNum('--glass-lens-dispersion', 1.8),
+    idleMs: readNum('--glass-lens-idle', 0),
+    opacity: readNum('--glass-lens-opacity', 0.96),
+    dim: readNum('--glass-lens-dim', 0.96)
   });
 
   let cfg = readCfg();
@@ -2180,7 +2211,7 @@ const GLASS_LENS_JS = `(() => {
   host.id = ID;
   host.className = 'px-lg';
   host.setAttribute('aria-hidden', 'true');
-  host.innerHTML = '<span class="px-lg-surface"></span><span class="px-lg-light"></span><span class="px-lg-sheen"></span>';
+  host.innerHTML = '<span class="px-lg-surface"></span><span class="px-lg-light" style="display:none"></span><span class="px-lg-sheen" style="display:none"></span>';
 
   const layout = () => {
     const half = cfg.size / 2;
@@ -2193,12 +2224,14 @@ const GLASS_LENS_JS = `(() => {
     'position:fixed', 'left:0', 'top:0',
     'pointer-events:none',
     'z-index:2147483638',
+    'border-radius:50%',
     'opacity:0',
     'transform:translate3d(-9999px,-9999px,0)',
-    'transition:opacity 170ms ease, width 140ms ease, height 140ms ease',
+    'transition:opacity 200ms ease, width 140ms ease, height 140ms ease',
     'will-change:transform,opacity',
     'contain:layout style size',
-    'box-shadow:0 10px 26px -18px rgba(8,12,30,.55)'
+    'box-shadow:inset 0 1.5px 2px 0 rgba(255,255,255,0.95), inset 0 -1.5px 2px 0 rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.30), 0 12px 32px -6px rgba(10,15,30,0.45), 0 4px 10px -2px rgba(10,15,30,0.25)',
+    'background:radial-gradient(circle at 35% 26%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.10) 18%, transparent 40%)'
   ].join(';');
   layout();
   (document.body || de).appendChild(host);
@@ -2211,7 +2244,7 @@ const GLASS_LENS_JS = `(() => {
       bevel: cfg.bevel,
       blur: cfg.blur,
       dispersion: cfg.dispersion,
-      tint: 'rgba(255,255,255,0.016)'
+      tint: 'rgba(255,255,255,0.01)'
     });
   } catch (e) {
     try { host.remove(); } catch (e2) {}
@@ -2221,9 +2254,8 @@ const GLASS_LENS_JS = `(() => {
   /* ---- 跟随状态 ---- */
   let lastX = -9999, lastY = -9999, lastT = 0;
   let vx = 0, vy = 0;
-  let shown = false, dimmed = false, typing = false;
+  let shown = false, typing = false;
   let idleTimer = 0;
-  const TEXT_SEL = 'input, textarea, [contenteditable="true"], [contenteditable=""], pre, code, .cm-editor, .monaco-editor, [role="textbox"], [role="code"]';
 
   const enabled = () => {
     if (de.getAttribute('data-px-glass') === 'perf') return false;
@@ -2234,7 +2266,7 @@ const GLASS_LENS_JS = `(() => {
   };
 
   const setOpacity = () => {
-    host.style.opacity = shown ? String(dimmed ? cfg.dim : cfg.opacity) : '0';
+    host.style.opacity = shown ? String(cfg.opacity) : '0';
   };
   const hide = () => {
     if (shown) { shown = false; setOpacity(); }
@@ -2244,7 +2276,7 @@ const GLASS_LENS_JS = `(() => {
     idleTimer = 0;
     vx = 0; vy = 0;
     if (ctrl) ctrl.light(50, 50);
-    hide();
+    if (cfg.idleMs > 0) hide();
   };
 
   const onPointerMove = (e) => {
@@ -2258,14 +2290,6 @@ const GLASS_LENS_JS = `(() => {
       vy += ((e.clientY - lastY) / dt * 16 - vy) * k;
     }
     lastX = e.clientX; lastY = e.clientY; lastT = now;
-
-    /* 文本密集区自动减弱：只读事件自带的 target，不做每帧命中测试 */
-    let overText = false;
-    try {
-      const t = e.target;
-      overText = !!(t && t.closest && t.closest(TEXT_SEL));
-    } catch (e2) {}
-    if (overText !== dimmed) { dimmed = overText; }
 
     if (!shown) { shown = true; }
     setOpacity();
@@ -2281,7 +2305,9 @@ const GLASS_LENS_JS = `(() => {
     }
 
     if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(onIdle, cfg.idleMs);
+    if (cfg.idleMs > 0) {
+      idleTimer = setTimeout(onIdle, cfg.idleMs);
+    }
   };
 
   const onKeyDown = () => {
@@ -2323,7 +2349,7 @@ const GLASS_LENS_JS = `(() => {
     },
     status: () => ({
       renderer: ctrl.renderer,
-      shown, dimmed, typing,
+      shown, typing,
       cfg,
       transform: host.style.transform,
       opacity: host.style.opacity
@@ -2447,64 +2473,68 @@ const GLASS_PANEL_JS = `(() => {
     {
       name: '默认深空',
       quality: 'balanced',
+      vibrance: 'balanced',
       lens: 'sm',
       lensStrong: 'xs',
-      lensCard: 'none',
+      lensCard: 'xs',
       chroma: false,
       follow: true,
       vars: {
-        '--glass-blur': '14px', '--glass-sat': '185%', '--glass-bright': '1.06',
-        '--glass-alpha': '0.11', '--glass-alpha-card': '0.20', '--glass-alpha-hi': '0.17',
-        '--glass-rim-top': '0.72', '--glass-rim-side': '0.30', '--glass-rim-bot': '0.14',
-        '--glass-sheen': '0.26', '--glass-radius': '18px', '--glass-wall-vivid': '0.88',
+        '--glass-blur': '5px', '--glass-sat': '125%', '--glass-bright': '1.02',
+        '--glass-alpha': '0.06', '--glass-alpha-card': '0.06', '--glass-alpha-hi': '0.14',
+        '--glass-rim-top': '0.70', '--glass-rim-side': '0.28', '--glass-rim-bot': '0.10',
+        '--glass-sheen': '0.08', '--glass-radius': '18px', '--glass-wall-vivid': '0.74',
         '--glass-wall-speed': '48s', '--glass-grain': '0.030'
       }
     },
     {
       name: 'iOS明亮',
       quality: 'balanced',
+      vibrance: 'vivid',
       lens: 'sm',
       lensStrong: 'xs',
-      lensCard: 'none',
+      lensCard: 'sm',
       chroma: false,
       follow: true,
       vars: {
-        '--glass-blur': '22px', '--glass-sat': '205%', '--glass-bright': '1.08',
-        '--glass-alpha': '0.34', '--glass-alpha-card': '0.38', '--glass-alpha-hi': '0.52',
-        '--glass-rim-top': '0.95', '--glass-rim-side': '0.35', '--glass-rim-bot': '0.12',
-        '--glass-sheen': '0.34', '--glass-radius': '20px', '--glass-wall-vivid': '0.95',
+        '--glass-blur': '8px', '--glass-sat': '160%', '--glass-bright': '1.04',
+        '--glass-alpha': '0.12', '--glass-alpha-card': '0.12', '--glass-alpha-hi': '0.20',
+        '--glass-rim-top': '0.85', '--glass-rim-side': '0.35', '--glass-rim-bot': '0.12',
+        '--glass-sheen': '0.14', '--glass-radius': '20px', '--glass-wall-vivid': '0.90',
         '--glass-wall-speed': '48s', '--glass-grain': '0.020'
       }
     },
     {
       name: '夜间高对比',
       quality: 'balanced',
+      vibrance: 'vivid',
       lens: 'md',
       lensStrong: 'sm',
-      lensCard: 'none',
+      lensCard: 'xs',
       chroma: false,
       follow: true,
       vars: {
-        '--glass-blur': '16px', '--glass-sat': '195%', '--glass-bright': '1.00',
-        '--glass-alpha': '0.08', '--glass-alpha-card': '0.16', '--glass-alpha-hi': '0.22',
-        '--glass-rim-top': '0.88', '--glass-rim-side': '0.42', '--glass-rim-bot': '0.22',
-        '--glass-sheen': '0.36', '--glass-radius': '18px', '--glass-wall-vivid': '0.92',
+        '--glass-blur': '6px', '--glass-sat': '140%', '--glass-bright': '1.00',
+        '--glass-alpha': '0.16', '--glass-alpha-card': '0.18', '--glass-alpha-hi': '0.25',
+        '--glass-rim-top': '0.75', '--glass-rim-side': '0.30', '--glass-rim-bot': '0.18',
+        '--glass-sheen': '0.12', '--glass-radius': '18px', '--glass-wall-vivid': '0.88',
         '--glass-wall-speed': '40s', '--glass-grain': '0.035'
       }
     },
     {
       name: '极速省电',
       quality: 'perf',
+      vibrance: 'calm',
       lens: 'none',
       lensStrong: 'none',
       lensCard: 'none',
       chroma: false,
       follow: false,
       vars: {
-        '--glass-blur': '8px', '--glass-sat': '120%', '--glass-bright': '1.00',
-        '--glass-alpha': '0.22', '--glass-alpha-card': '0.30', '--glass-alpha-hi': '0.35',
-        '--glass-rim-top': '0.40', '--glass-rim-side': '0.20', '--glass-rim-bot': '0.10',
-        '--glass-sheen': '0.10', '--glass-radius': '16px', '--glass-wall-vivid': '0.50',
+        '--glass-blur': '4px', '--glass-sat': '110%', '--glass-bright': '1.00',
+        '--glass-alpha': '0.05', '--glass-alpha-card': '0.05', '--glass-alpha-hi': '0.10',
+        '--glass-rim-top': '0.40', '--glass-rim-side': '0.20', '--glass-rim-bot': '0.08',
+        '--glass-sheen': '0.04', '--glass-radius': '16px', '--glass-wall-vivid': '0.50',
         '--glass-wall-speed': '0s', '--glass-grain': '0.010'
       }
     }
@@ -2512,18 +2542,18 @@ const GLASS_PANEL_JS = `(() => {
 
   // Parameter definitions
   const PARAMS = [
-    { key: '--glass-blur', label: '背景模糊', min: 4, max: 32, step: 1, unit: 'px', def: 14 },
-    { key: '--glass-sat', label: '饱和增强', min: 100, max: 260, step: 5, unit: '%', def: 185 },
-    { key: '--glass-bright', label: '画面增亮', min: 0.90, max: 1.25, step: 0.01, unit: '', def: 1.06 },
-    { key: '--glass-alpha', label: '侧栏透明度', min: 0.03, max: 0.45, step: 0.01, unit: '', def: 0.11 },
-    { key: '--glass-alpha-card', label: '卡片透明度', min: 0.05, max: 0.50, step: 0.01, unit: '', def: 0.20 },
-    { key: '--glass-alpha-hi', label: '浮层透明度', min: 0.06, max: 0.60, step: 0.01, unit: '', def: 0.17 },
-    { key: '--glass-rim-top', label: '顶部亮边', min: 0, max: 1, step: 0.02, unit: '', def: 0.72 },
-    { key: '--glass-rim-side', label: '侧面描边', min: 0, max: 1, step: 0.02, unit: '', def: 0.30 },
-    { key: '--glass-rim-bot', label: '底部阴影', min: 0, max: 1, step: 0.02, unit: '', def: 0.14 },
-    { key: '--glass-sheen', label: '高光强度', min: 0, max: 0.8, step: 0.02, unit: '', def: 0.26 },
+    { key: '--glass-blur', label: '背景模糊', min: 2, max: 32, step: 1, unit: 'px', def: 5 },
+    { key: '--glass-sat', label: '饱和增强', min: 100, max: 260, step: 5, unit: '%', def: 125 },
+    { key: '--glass-bright', label: '画面增亮', min: 0.90, max: 1.25, step: 0.01, unit: '', def: 1.02 },
+    { key: '--glass-alpha', label: '侧栏透明度', min: 0.01, max: 0.45, step: 0.01, unit: '', def: 0.06 },
+    { key: '--glass-alpha-card', label: '卡片透明度', min: 0.01, max: 0.50, step: 0.01, unit: '', def: 0.06 },
+    { key: '--glass-alpha-hi', label: '浮层透明度', min: 0.02, max: 0.60, step: 0.01, unit: '', def: 0.14 },
+    { key: '--glass-rim-top', label: '顶部亮边', min: 0, max: 1, step: 0.02, unit: '', def: 0.70 },
+    { key: '--glass-rim-side', label: '侧面描边', min: 0, max: 1, step: 0.02, unit: '', def: 0.28 },
+    { key: '--glass-rim-bot', label: '底部阴影', min: 0, max: 1, step: 0.02, unit: '', def: 0.10 },
+    { key: '--glass-sheen', label: '高光强度', min: 0, max: 0.8, step: 0.02, unit: '', def: 0.08 },
     { key: '--glass-radius', label: '圆角半径', min: 8, max: 32, step: 1, unit: 'px', def: 18 },
-    { key: '--glass-wall-vivid', label: '极光浓度', min: 0.2, max: 1.0, step: 0.02, unit: '', def: 0.88 },
+    { key: '--glass-wall-vivid', label: '极光浓度', min: 0.2, max: 1.0, step: 0.02, unit: '', def: 0.74 },
     { key: '--glass-wall-speed', label: '极光周期', min: 0, max: 90, step: 2, unit: 's', def: 48 },
     { key: '--glass-grain', label: '噪点颗粒', min: 0, max: 0.08, step: 0.002, unit: '', def: 0.030 }
   ];
@@ -2531,16 +2561,23 @@ const GLASS_PANEL_JS = `(() => {
   const controls = {};
 
   const getComputedVal = (key, unit) => {
-    let val = de.style.getPropertyValue(key).trim() || getComputedStyle(de).getPropertyValue(key).trim();
+    let val = (document.body && document.body.style.getPropertyValue(key).trim()) || de.style.getPropertyValue(key).trim() || getComputedStyle(document.body || de).getPropertyValue(key).trim();
     if (!val) return null;
     if (unit && val.endsWith(unit)) val = val.slice(0, -unit.length);
     const num = parseFloat(val);
     return isNaN(num) ? null : num;
   };
 
+  const setVar = (key, val) => {
+    de.style.setProperty(key, val, 'important');
+    if (document.body) {
+      document.body.style.setProperty(key, val, 'important');
+    }
+  };
+
   const applyParam = (key, val, unit) => {
     const full = val + (unit || '');
-    de.style.setProperty(key, full);
+    setVar(key, full);
     if (controls[key] && controls[key].badge) {
       controls[key].badge.textContent = full;
     }
@@ -2592,8 +2629,12 @@ const GLASS_PANEL_JS = `(() => {
   const optSection = document.createElement('div');
   optSection.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.12);';
 
+  // Active config reader helper
+  const getRawVar = (k) => (document.body && document.body.style.getPropertyValue(k).trim()) || de.style.getPropertyValue(k).trim() || getComputedStyle(document.body || de).getPropertyValue(k).trim();
+
   // State flags
-  let chromaOn = false;
+  const initialLensVal = getRawVar('--glass-lens');
+  let chromaOn = initialLensVal.includes('chroma');
   let followOn = de.getAttribute('data-px-lens-follow') !== 'off';
 
   // 1. Chrome Lens tier selector (--glass-lens)
@@ -2615,13 +2656,17 @@ const GLASS_PANEL_JS = `(() => {
     o.textContent = opt.l;
     lensSel.appendChild(o);
   });
+  ['xs', 'sm', 'md', 'lg', 'xl'].forEach(t => {
+    if (initialLensVal.includes('-' + t)) lensSel.value = t;
+  });
+  if (initialLensVal.includes('brightness(1)') || initialLensVal === 'none') lensSel.value = 'none';
   const updateLens = () => {
     const v = lensSel.value;
     if (v === 'none') {
-      de.style.setProperty('--glass-lens', 'brightness(1)');
+      setVar('--glass-lens', 'brightness(1)');
     } else {
       const prefix = chromaOn ? '--glass-lens-chroma-' : '--glass-lens-';
-      de.style.setProperty('--glass-lens', 'var(' + prefix + v + ')');
+      setVar('--glass-lens', 'var(' + prefix + v + ')');
     }
   };
   lensSel.onchange = updateLens;
@@ -2647,13 +2692,18 @@ const GLASS_PANEL_JS = `(() => {
     o.textContent = opt.l;
     lensStrongSel.appendChild(o);
   });
+  const initialStrongVal = getRawVar('--glass-lens-strong');
+  ['xs', 'sm', 'md', 'lg', 'xl'].forEach(t => {
+    if (initialStrongVal.includes('-' + t)) lensStrongSel.value = t;
+  });
+  if (initialStrongVal.includes('brightness(1)') || initialStrongVal === 'none') lensStrongSel.value = 'none';
   const updateLensStrong = () => {
     const v = lensStrongSel.value;
     if (v === 'none') {
-      de.style.setProperty('--glass-lens-strong', 'brightness(1)');
+      setVar('--glass-lens-strong', 'brightness(1)');
     } else {
       const prefix = chromaOn ? '--glass-lens-chroma-' : '--glass-lens-';
-      de.style.setProperty('--glass-lens-strong', 'var(' + prefix + v + ')');
+      setVar('--glass-lens-strong', 'var(' + prefix + v + ')');
     }
   };
   lensStrongSel.onchange = updateLensStrong;
@@ -2667,22 +2717,27 @@ const GLASS_PANEL_JS = `(() => {
   const lensCardSel = document.createElement('select');
   lensCardSel.style.cssText = 'background:rgba(20,24,50,0.9);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;outline:none;';
   [
-    { v: 'none', l: 'none (默认关闭)' },
-    { v: 'xs', l: 'xs (微弱)' },
+    { v: 'xs', l: 'xs (微弱 - 默认)' },
     { v: 'sm', l: 'sm (轻度)' },
-    { v: 'md', l: 'md (中等)' }
+    { v: 'md', l: 'md (中等)' },
+    { v: 'none', l: 'none (关闭)' }
   ].forEach(opt => {
     const o = document.createElement('option');
     o.value = opt.v;
     o.textContent = opt.l;
     lensCardSel.appendChild(o);
   });
+  const initialCardVal = getRawVar('--glass-lens-card');
+  ['xs', 'sm', 'md'].forEach(t => {
+    if (initialCardVal.includes('-' + t)) lensCardSel.value = t;
+  });
+  if (initialCardVal.includes('brightness(1)') || initialCardVal === 'none') lensCardSel.value = 'none';
   const updateLensCard = () => {
     const v = lensCardSel.value;
     if (v === 'none') {
-      de.style.setProperty('--glass-lens-card', 'brightness(1)');
+      setVar('--glass-lens-card', 'brightness(1)');
     } else {
-      de.style.setProperty('--glass-lens-card', 'var(--glass-lens-' + v + ')');
+      setVar('--glass-lens-card', 'var(--glass-lens-' + v + ')');
     }
   };
   lensCardSel.onchange = updateLensCard;
@@ -2725,7 +2780,7 @@ const GLASS_PANEL_JS = `(() => {
       (followOn ? 'rgba(48,209,88,0.25)' : 'rgba(255,255,255,0.08)') + ';color:' +
       (followOn ? '#30d158' : '#8890a8') + ';';
     de.setAttribute('data-px-lens-follow', followOn ? 'on' : 'off');
-    de.style.setProperty('--glass-lens-follow', followOn ? 'on' : 'off');
+    setVar('--glass-lens-follow', followOn ? 'on' : 'off');
     if (window.__pxGlassLens && window.__pxGlassLens.sync) window.__pxGlassLens.sync();
   };
   updateFollowBtn();
@@ -2738,16 +2793,16 @@ const GLASS_PANEL_JS = `(() => {
 
   // 5.5 Mouse lens optics (real SDF engine: window.__pxLiquidGlass)
   const LENS_PARAMS = [
-    { key: '--glass-lens-size', label: '透镜直径', min: 48, max: 240, step: 4, def: 104, unit: 'px' },
-    { key: '--glass-lens-refraction', label: '折射强度', min: 0, max: 100, step: 1, def: 44, unit: '' },
-    { key: '--glass-lens-bevel', label: '倒角带宽', min: 4, max: 60, step: 1, def: 16, unit: 'px' },
-    { key: '--glass-lens-dispersion', label: '色散分离', min: 0, max: 5, step: 0.1, def: 1.1, unit: '' },
-    { key: '--glass-lens-blur', label: '透镜微模糊', min: 0, max: 3, step: 0.05, def: 0.3, unit: 'px' },
-    { key: '--glass-lens-dim', label: '文本区减弱', min: 0, max: 1, step: 0.02, def: 0.26, unit: '' }
+    { key: '--glass-lens-size', label: '透镜直径', min: 48, max: 240, step: 4, def: 140, unit: 'px' },
+    { key: '--glass-lens-refraction', label: '折射强度', min: 0, max: 120, step: 1, def: 60, unit: '' },
+    { key: '--glass-lens-bevel', label: '倒角带宽', min: 4, max: 60, step: 1, def: 26, unit: 'px' },
+    { key: '--glass-lens-dispersion', label: '色散分离', min: 0, max: 5, step: 0.1, def: 1.8, unit: '' },
+    { key: '--glass-lens-blur', label: '透镜微模糊', min: 0, max: 3, step: 0.05, def: 0, unit: 'px' },
+    { key: '--glass-lens-dim', label: '文本区透明度', min: 0, max: 1, step: 0.02, def: 0.96, unit: '' }
   ];
   const lensTitle = document.createElement('div');
   lensTitle.style.cssText = 'font-size:11px;color:#73eff7;letter-spacing:0.3px;padding-top:2px;';
-  lensTitle.textContent = '透镜光学（真 SDF 折射 · 中心不失真）';
+  lensTitle.textContent = '透镜光学（真液滴穹顶折射 · 边缘色散）';
   optSection.appendChild(lensTitle);
   const syncLens = () => { if (window.__pxGlassLens && window.__pxGlassLens.sync) window.__pxGlassLens.sync(); };
   LENS_PARAMS.forEach(param => {
@@ -2774,7 +2829,7 @@ const GLASS_PANEL_JS = `(() => {
     input.style.cssText = 'width:100%;height:4px;accent-color:#0a84ff;cursor:pointer;';
     input.oninput = () => {
       // 透镜参数一律是无单位数字（注入器 parseFloat 读取），单位只用于显示
-      de.style.setProperty(param.key, input.value);
+      setVar(param.key, input.value);
       badge.textContent = input.value + param.unit;
       syncLens();
     };
@@ -2799,14 +2854,39 @@ const GLASS_PANEL_JS = `(() => {
     o.textContent = q.label;
     qualSel.appendChild(o);
   });
-  qualSel.value = de.getAttribute('data-px-glass') || 'balanced';
+  qualSel.value = de.getAttribute('data-px-glass') || getRawVar('--glass-quality') || 'balanced';
   qualSel.onchange = () => {
     const q = qualSel.value;
     de.setAttribute('data-px-glass', q);
-    de.style.setProperty('--glass-quality', q);
+    setVar('--glass-quality', q);
   };
   qualRow.appendChild(qualSel);
   optSection.appendChild(qualRow);
+
+  // 7. Vibrance tier selector (calm / balanced / vivid)
+  const vibRow = document.createElement('div');
+  vibRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#a8b2d1;';
+  vibRow.innerHTML = '<span>极光活力</span>';
+  const vibSel = document.createElement('select');
+  vibSel.style.cssText = 'background:rgba(20,24,50,0.9);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;outline:none;';
+  [
+    { k: 'balanced', label: '均衡 (Balanced)' },
+    { k: 'vivid', label: '艳丽 (Vivid)' },
+    { k: 'calm', label: '清雅 (Calm)' }
+  ].forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.k;
+    o.textContent = v.label;
+    vibSel.appendChild(o);
+  });
+  vibSel.value = de.getAttribute('data-px-vibrance') || getRawVar('--glass-vibrance') || 'balanced';
+  vibSel.onchange = () => {
+    const v = vibSel.value;
+    de.setAttribute('data-px-vibrance', v);
+    setVar('--glass-vibrance', v);
+  };
+  vibRow.appendChild(vibSel);
+  optSection.appendChild(vibRow);
 
   // Presets click handler
   presets.forEach(p => {
@@ -2819,17 +2899,22 @@ const GLASS_PANEL_JS = `(() => {
     btn.onclick = () => {
       // 1. Sliders
       for (const [k, v] of Object.entries(p.vars)) {
-        de.style.setProperty(k, v);
+        setVar(k, v);
         const def = PARAMS.find(x => x.key === k);
         if (def && controls[k]) {
           controls[k].input.value = parseFloat(v);
           controls[k].badge.textContent = v;
         }
       }
-      // 2. Quality
+      // 2. Quality & Vibrance
       qualSel.value = p.quality;
       de.setAttribute('data-px-glass', p.quality);
-      de.style.setProperty('--glass-quality', p.quality);
+      setVar('--glass-quality', p.quality);
+      if (p.vibrance) {
+        vibSel.value = p.vibrance;
+        de.setAttribute('data-px-vibrance', p.vibrance);
+        setVar('--glass-vibrance', p.vibrance);
+      }
       // 3. Lens tiers
       lensSel.value = p.lens;
       lensStrongSel.value = p.lensStrong;
@@ -2851,19 +2936,21 @@ const GLASS_PANEL_JS = `(() => {
   // Full Configuration Extractor for Copy & Save
   const getAllConfig = () => {
     const data = {};
+    const getVal = (k) => (document.body && document.body.style.getPropertyValue(k).trim()) || de.style.getPropertyValue(k).trim() || '';
     PARAMS.forEach(p => {
-      const val = de.style.getPropertyValue(p.key).trim() || (p.def + (p.unit || ''));
+      const val = getVal(p.key) || (p.def + (p.unit || ''));
       data[p.key] = val;
     });
-    data['--glass-lens'] = de.style.getPropertyValue('--glass-lens').trim() || 'var(--glass-lens-sm)';
-    data['--glass-lens-strong'] = de.style.getPropertyValue('--glass-lens-strong').trim() || 'var(--glass-lens-xs)';
-    data['--glass-lens-card'] = de.style.getPropertyValue('--glass-lens-card').trim() || 'brightness(1)';
+    data['--glass-lens'] = getVal('--glass-lens') || 'var(--glass-lens-sm)';
+    data['--glass-lens-strong'] = getVal('--glass-lens-strong') || 'var(--glass-lens-xs)';
+    data['--glass-lens-card'] = getVal('--glass-lens-card') || 'var(--glass-lens-xs)';
     data['--glass-lens-follow'] = followOn ? 'on' : 'off';
     LENS_PARAMS.forEach(p => {
-      const v = de.style.getPropertyValue(p.key).trim();
+      const v = getVal(p.key);
       if (v) data[p.key] = v;
     });
     data['--glass-quality'] = qualSel.value || 'balanced';
+    data['--glass-vibrance'] = vibSel.value || 'balanced';
     return data;
   };
 
@@ -2877,9 +2964,9 @@ const GLASS_PANEL_JS = `(() => {
   copyBtn.style.cssText = 'flex:1;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.22);background:rgba(10,132,255,0.25);color:#64d2ff;font-size:11px;cursor:pointer;font-weight:500;transition:all 120ms;';
   copyBtn.onclick = () => {
     const data = getAllConfig();
-    let css = ':root {\\n';
+    let css = ':root, body.theme-light, body:not(.theme-light) {\\n';
     for (const [k, v] of Object.entries(data)) {
-      css += '  ' + k + ': ' + v + ';\\n';
+      css += '  ' + k + ': ' + v + ' !important;\\n';
     }
     css += '}\\n';
     navigator.clipboard.writeText(css).then(() => {
@@ -2955,25 +3042,37 @@ const GLASS_PANEL_JS = `(() => {
 })()`;
 
 /**
- * Liquid Glass quality profile linkage (W4).
- * Reflects --glass-quality onto html[data-px-glass="ultra|balanced|perf"].
+ * Liquid Glass quality and vibrance profile linkage.
+ * Reflects --glass-quality onto html[data-px-glass="ultra|balanced|perf"],
+ * and --glass-vibrance onto html[data-px-vibrance="calm|balanced|vivid"].
  */
 const GLASS_QUALITY_JS = `(() => {
   if (window.__pxGlassQuality) return 'already-present';
 
   let currentQuality = '';
+  let currentVibrance = '';
   const sync = () => {
     const de = document.documentElement;
-    const val = (de.style.getPropertyValue('--glass-quality') || getComputedStyle(de).getPropertyValue('--glass-quality') || 'balanced').trim();
-    if (val && val !== currentQuality) {
-      currentQuality = val;
-      de.setAttribute('data-px-glass', val);
+    const b = document.body;
+    const getVal = (k) => (de.style.getPropertyValue(k) || (b && b.style.getPropertyValue(k)) || (b && getComputedStyle(b).getPropertyValue(k)) || getComputedStyle(de).getPropertyValue(k) || '').trim();
+    const qVal = getVal('--glass-quality') || 'balanced';
+    if (qVal && qVal !== currentQuality) {
+      currentQuality = qVal;
+      de.setAttribute('data-px-glass', qVal);
+    }
+    const vVal = getVal('--glass-vibrance') || 'balanced';
+    if (vVal && vVal !== currentVibrance) {
+      currentVibrance = vVal;
+      de.setAttribute('data-px-vibrance', vVal);
     }
   };
 
   sync();
   const obs = new MutationObserver(() => sync());
   obs.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+  if (document.body) {
+    obs.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+  }
 
   window.__pxGlassQuality = {
     sync,
@@ -3144,7 +3243,7 @@ function attachPixelTheme(win) {
             try {
                 const jsonStr = msg.slice(11);
                 const params = JSON.parse(jsonStr);
-                const lines = [":root {"];
+                const lines = [":root, body.theme-light, body:not(.theme-light) {"];
                 for (const [k, v] of Object.entries(params)) {
                     lines.push("  " + k + ": " + v + " !important;");
                 }

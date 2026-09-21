@@ -67,16 +67,19 @@
      正文卡片/气泡/代码块一律关掉透镜，只留毛玻璃。 */
   --glass-lens:        var(--glass-lens-sm);   /* chrome */
   --glass-lens-strong: var(--glass-lens-xs);   /* 浮层/弹窗 */
-  --glass-lens-card:   brightness(1);          /* 正文卡片/气泡：不折射 */
+  --glass-lens-card:   var(--glass-lens-xs);   /* 正文卡片/气泡：水滴边缘微折射，中心平坦 */
   --glass-lens-none:   brightness(1);          /* 显式关闭 */
 
   /* ---- 材质 ---- */
-  --glass-blur:      10px;    /* 背景模糊半径。模糊会把折射糊掉 —— 参考站默认只有 0.35px，
-                                 这里 10px 是「看不清背后文字」与「留得住边缘透镜」的折中 */
-  --glass-blur-thin:  8px;    /* 薄玻璃（列表行、输入框等小面积） */
-  --glass-sat:       185%;    /* 背景饱和度提升 —— iOS 玻璃「透出的颜色更艳」就靠它 */
-  --glass-bright:    1.06;
-  --glass-contrast:  1.03;
+  --glass-blur:      5px;     /* zsio/liquid-glass 官方基准：5px 极净折射 */
+  --glass-blur-thin:  4px;    /* 薄玻璃（列表行、输入框等小面积） */
+  --glass-sat:       125%;    /* 背景饱和微增 —— 清澈透明不腻 */
+  --glass-bright:    1.02;
+  --glass-contrast:  1.02;
+
+  /* ---- 活力度（Phase 3 批次 5 新增）----
+     可选 calm | balanced | vivid。balanced 为默认；vivid 恢复高饱和艳丽极光；calm 更加清雅克制。 */
+  --glass-vibrance:  balanced;
 
   /* ---- 染色 ----
      --glass-fill = 玻璃本体填充色（RGB 三元组）；--glass-tint = 边缘高光/描边/辉光色。
@@ -84,39 +87,47 @@
      压在壁纸的亮色光团上时输入框/卡片被冲成近白，白字白底完全读不出来。 */
   --glass-fill:      255 255 255;
   --glass-tint:      255 255 255;
-  --glass-alpha:      0.11;   /* chrome：标题栏/侧栏 */
-  --glass-alpha-hi:   0.17;   /* 浮层/弹窗（要更实一点才压得住下面的正文） */
-  --glass-alpha-card: 0.20;   /* 正文卡片/气泡：底下压着密集文字，太透会「鬼影」 */
-  --glass-alpha-lo:   0.07;   /* 薄玻璃 */
+  --glass-alpha:      0.035;  /* chrome：标题栏/侧栏 超清透 */
+  --glass-alpha-hi:   0.12;   /* 浮层/弹窗 */
+  --glass-alpha-card: 0.035;  /* 正文卡片/气泡：水透清澈，遵循 zsio/liquid-glass */
+  --glass-alpha-lo:   0.02;   /* 薄玻璃 */
 
-  /* ---- 边缘与高光 ---- */
-  --glass-rim-top:   0.72;    /* 上边缘亮度（0~1）—— 玻璃厚度感主要来自这里 */
-  --glass-rim-side:  0.30;
-  --glass-rim-bot:   0.14;
-  --glass-inner:     0.10;    /* 内壁散射辉光 */
-  --glass-sheen:     0.26;    /* 斜向高光强度 */
+  /* ---- 边缘与高光 (Meniscus Specular Rim) ---- */
+  --glass-rim-top:   0.75;    /* 顶端聚光弧峰值 */
+  --glass-rim-side:  0.25;
+  --glass-rim-bot:   0.08;
+  --glass-inner:     0.06;
+  --glass-sheen:     0.08;    /* zsio/liquid-glass 官方轻微斜向光 */
 
-  /* ---- 投影 ---- */
-  --glass-shadow-panel: 0 2px 10px rgba(3, 6, 20, 0.22);
-  --glass-shadow-float: 0 22px 48px rgba(3, 6, 20, 0.46), 0 3px 10px rgba(3, 6, 20, 0.26);
-  --glass-shadow-modal: 0 40px 96px rgba(3, 6, 20, 0.62), 0 4px 14px rgba(3, 6, 20, 0.34);
+  /* ---- 投影与弯液面合成 (Meniscus Composite Shadows) ---- */
+  --glass-shadow-panel: 0 24px 36px -20px rgba(31, 42, 58, 0.23), 0 8px 16px -10px rgba(31, 42, 58, 0.19);
+  --glass-shadow-float: 0 28px 48px -16px rgba(31, 42, 58, 0.32), 0 12px 24px -10px rgba(31, 42, 58, 0.22);
+  --glass-shadow-modal: 0 40px 96px -20px rgba(31, 42, 58, 0.45), 0 16px 32px -12px rgba(31, 42, 58, 0.28);
+  --glass-meniscus-card:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 20px 32px -16px rgba(15, 23, 42, 0.18),
+    0 8px 16px -8px rgba(15, 23, 42, 0.12);
+  --glass-meniscus-panel:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 24px 36px -20px rgba(31, 42, 58, 0.23),
+    0 8px 16px -10px rgba(31, 42, 58, 0.19);
+  --glass-meniscus-float:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.80),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 28px 48px -16px rgba(31, 42, 58, 0.32),
+    0 12px 24px -10px rgba(31, 42, 58, 0.22);
 
-  /* ---- 表面层级（2026-09-18 新增）----
-     玻璃的层级感靠「越靠近用户越亮」。所以不管亮色暗色，抬起 / 悬停 / 选中的小面
-     一律用 --glass-tint（白）叠上去，绝不能用 --glass-fill（暗色下是深靛）——
-     那样选中行会比底板还暗，高亮变压暗（2026-09-18 回归，已修）。
-     --glass-fill 只服务四处大底板：侧栏、卡片、浮层、正文底板。 */
-  --glass-raise:  0.14;   /* 抬起面：次级按钮、hover 行 */
-  --glass-select: 0.22;   /* 选中态：当前会话行、选中标签 */
+  /* ---- 表面层级 ---- */
+  --glass-raise:  0.12;   /* 抬起面：次级按钮、hover 行 */
+  --glass-select: 0.18;   /* 选中态：当前会话行、选中标签 */
 
-  /* ---- 形状：四级圆角比例尺（2026-09-18 重构）----
-     旧版把所有 button / [role=button] 一律做成 9999px 胶囊，实测 616 个可见元素里
-     62 个胶囊、61 个共用同一底色 —— 同样是 32px 高的侧栏行，<a> 保持 8px、<button>
-     变胶囊，形状打架。现在按「行 / 卡片 / 面板 / 弹窗」分级，胶囊只留给真胶囊。 */
-  --glass-radius-row:  10px;  /* 侧栏行、菜单项、列表项、普通文字按钮 */
+  /* ---- 形状：五级流线圆角比例尺（有机流体张力几何）---- */
+  --glass-radius-row:  12px;  /* 侧栏行、菜单项、列表项、普通文字按钮 */
   --glass-radius-sm:   14px;  /* 小卡片、输入框、代码块 */
-  --glass-radius:      18px;  /* 面板、气泡 */
-  --glass-radius-lg:   26px;  /* 弹窗 */
+  --glass-radius:      20px;  /* 面板、气泡、主要容器 */
+  --glass-radius-lg:   26px;  /* 弹窗、主抽屉大面板 */
   --glass-radius-pill: 9999px;/* 只给真胶囊：主按钮、开关、chip、图标圆钮 */
 
   /* ---- 壁纸 ---- */
@@ -137,18 +148,18 @@
   --px-chrome-dark-fg:  #EAF2FF;
   --px-glass:  on;
   --px-cursor: off;   /* 玻璃主题用系统指针，省掉自绘指针引擎的常驻开销 */
-  /* ---- 鼠标跟随透镜（注入器 GLASS_LENS_JS，真 2D SDF 光学：zsio/liquid-glass 移植）----
-     透镜中心光学平坦，底下的文字照常可读；只有倒角一圈折射 + 色散 + 内反射。
-     静止 --glass-lens-idle 毫秒后淡出；打字时隐藏；悬停输入框/代码块时降到 --glass-lens-dim。 */
+  /* ---- 鼠标跟随透镜（注入器 GLASS_LENS_JS，真·液态水滴曲率光学：zsio/liquid-glass 升级）----
+     水滴透镜采用球面曲率剖面，产生真实透镜折射、微放大与三通道色散彩虹。
+     静止 --glass-lens-idle 毫秒后淡出；文本区保持 --glass-lens-dim 晶莹高透。 */
   --glass-lens-follow:     on;    /* on | off */
-  --glass-lens-size:       104;   /* 直径 px（28~360） */
-  --glass-lens-refraction: 44;    /* 斯涅尔位移强度 0~100（参考站默认 56，透镜小所以略收） */
-  --glass-lens-bevel:      16;    /* 倒角折射带宽 px（2~100） */
-  --glass-lens-blur:       0.3;   /* 微模糊 px，别超过 1：糊了就没有透镜感 */
-  --glass-lens-dispersion: 1.1;   /* 色散分离度 0~5 */
-  --glass-lens-idle:       300;   /* 静止多少 ms 后淡出 */
-  --glass-lens-opacity:    1;     /* 常态不透明度 */
-  --glass-lens-dim:        0.26;  /* 悬停文本区时的不透明度 */
+  --glass-lens-size:       140;   /* 直径 px（28~360） */
+  --glass-lens-refraction: 60;    /* 斯涅尔位移强度 0~100 */
+  --glass-lens-bevel:      26;    /* 倒角折射带宽 px（2~100） */
+  --glass-lens-blur:       0;     /* 0 保证底图文字锐利折射 */
+  --glass-lens-dispersion: 1.8;   /* 色散分离度 0~5，三通道彩虹色散明显 */
+  --glass-lens-idle:       0;     /* 0 为常驻不淡出，悬停时随时可用作放大透镜 */
+  --glass-lens-opacity:    0.96;  /* 常态不透明度 */
+  --glass-lens-dim:        0.96;  /* 悬停文本区保持晶莹放大，绝不隐形 */
   --glass-quality: balanced; /* ultra | balanced | perf */
   --glass-mx: -999;          /* 指针相对位置（注入器动态写入） */
   --glass-my: -999;
@@ -204,10 +215,10 @@ body:not(.theme-light) {
   /* 暗色玻璃 = 深靛填充 + 白色高光边。填充要比亮色厚（深色玻璃太薄就只剩壁纸的彩光，
      正文泡在彩虹里）；饱和度/壁纸浓度也收一档，侧栏顶部不再像一块霓虹灯牌。 */
   --glass-fill:      14 18 42;
-  --glass-alpha:      0.32;
-  --glass-alpha-hi:   0.58;
-  --glass-alpha-card: 0.44;
-  --glass-alpha-lo:   0.18;
+  --glass-alpha:      0.24;
+  --glass-alpha-hi:   0.45;
+  --glass-alpha-card: 0.26;
+  --glass-alpha-lo:   0.14;
   --glass-sat:       150%;
   --glass-bright:    1.00;
   --glass-wall-vivid: 0.74;
@@ -285,23 +296,30 @@ body:not(.theme-light) {
    ============================================================ */
 body.theme-light {
   --glass-tint:      255 255 255;
-  /* 亮色玻璃必须「薄」：白得太多背景色就被洗掉了。实测 0.34 既能读出玻璃厚度，
-     又留得住壁纸的颜色（0.62 那版整屏发灰、玻璃完全消失）。 */
-  --glass-alpha:     0.34;
-  --glass-alpha-hi:  0.56;
-  --glass-alpha-lo:  0.24;
-  --glass-raise:     0.52;   /* 亮色玻璃底就亮，抬起面要更白才分得开 */
-  --glass-select:    0.80;
-  --glass-sat:       205%;
-  --glass-blur:      24px;
-  --glass-rim-top:   1;
-  --glass-rim-side:  0.85;
-  --glass-rim-bot:   0.45;
-  --glass-inner:     0.20;
-  --glass-sheen:     0.34;
-  --glass-shadow-panel: 0 2px 10px rgba(40, 52, 96, 0.10);
-  --glass-shadow-float: 0 22px 48px rgba(40, 52, 96, 0.18), 0 3px 10px rgba(40, 52, 96, 0.10);
-  --glass-shadow-modal: 0 40px 96px rgba(40, 52, 96, 0.26), 0 4px 14px rgba(40, 52, 96, 0.14);
+  --glass-fill:      255 255 255;
+  /* 严格对齐 zsio/liquid-glass：清亮水感，绝不发灰发粉 */
+  --glass-alpha:     0.035;
+  --glass-alpha-hi:  0.12;
+  --glass-alpha-lo:  0.02;
+  --glass-alpha-card: 0.035; /* 亮色卡片与气泡：晶莹水感底板 */
+  --glass-raise:     0.12;   /* 亮色抬起面 */
+  --glass-select:    0.18;   /* 选中态 */
+  --glass-wall-vivid: 0.65;  /* 亮色壁纸克制柔和 */
+  --glass-sat:       120%;
+  --glass-blur:      5px;
+  --glass-rim-top:   0.75;
+  --glass-rim-side:  0.25;
+  --glass-rim-bot:   0.08;
+  --glass-inner:     0.06;
+  --glass-sheen:     0.08;
+  --glass-shadow-panel: 0 24px 36px -20px rgba(31, 42, 58, 0.23), 0 8px 16px -10px rgba(31, 42, 58, 0.19);
+  --glass-shadow-float: 0 28px 48px -16px rgba(31, 42, 58, 0.32), 0 12px 24px -10px rgba(31, 42, 58, 0.22);
+  --glass-shadow-modal: 0 40px 96px -20px rgba(31, 42, 58, 0.45), 0 16px 32px -12px rgba(31, 42, 58, 0.28);
+  --glass-meniscus-card:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 20px 32px -16px rgba(15, 23, 42, 0.18),
+    0 8px 16px -8px rgba(15, 23, 42, 0.12);
 
   --background:           transparent !important;
   --foreground:           #11131C !important;
@@ -317,8 +335,8 @@ body.theme-light {
   --sidebar-secondary:    rgb(var(--glass-tint) / var(--glass-select)) !important;
   --sidebar-muted:        rgb(var(--glass-tint) / var(--glass-raise)) !important;
   --card:                 rgb(var(--glass-fill) / var(--glass-alpha)) !important;
-  --card-border:          rgba(24, 30, 54, 0.10) !important;
-  --border:               rgba(24, 30, 54, 0.10) !important;
+  --card-border:          rgba(255, 255, 255, 0.12) !important;
+  --border:               rgba(255, 255, 255, 0.12) !important;
 
   --vscode-foreground:                    #11131C !important;
   --vscode-editor-background:             rgba(255, 255, 255, 0.50) !important;
@@ -434,7 +452,7 @@ body::before {
 body.theme-light::before {
   background-image:
     var(--glass-wall-image),
-    radial-gradient(40% 44% at 8% 10%, rgb(255 70 125 / var(--glass-wall-vivid)) 0%, rgb(255 70 125 / 0) 58%),
+    radial-gradient(40% 44% at 8% 10%, rgb(140 190 255 / var(--glass-wall-vivid)) 0%, rgb(140 190 255 / 0) 58%),
     radial-gradient(38% 42% at 94% 6%, rgb(30 125 255 / var(--glass-wall-vivid)) 0%, rgb(30 125 255 / 0) 56%),
     radial-gradient(46% 50% at 92% 96%, rgb(140 80 255 / calc(var(--glass-wall-vivid) * 0.98)) 0%, rgb(140 80 255 / 0) 60%),
     radial-gradient(42% 46% at 4% 98%, rgb(10 200 165 / calc(var(--glass-wall-vivid) * 0.95)) 0%, rgb(10 200 165 / 0) 58%),
@@ -615,32 +633,29 @@ body.theme-light ::-webkit-scrollbar-thumb:hover {
    ⚠ 排除 button / [role=button] / a：New Conversation 这类 CTA 也挂着 bg-card，
      套上「大底板深填充」会变成一个凹洞（2026-09-18 实测暗色下 rgba(14,18,42,.44)）。
      它们走 6.1 的抬起面。 */
-[class~="bg-card"]:not(button):not([role="button"]):not(a),
-[class*="bg-card"]:not([class*="bg-card-border"]):not(button):not([role="button"]):not(a) {
-  backdrop-filter: var(--glass-lens-card, brightness(1)) blur(var(--glass-blur-thin)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) !important;
-  -webkit-backdrop-filter: var(--glass-lens-card, brightness(1)) blur(var(--glass-blur-thin)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) !important;
-  background-color: rgb(var(--glass-fill) / var(--glass-alpha-card)) !important;
-  background-image: radial-gradient(circle 220px at calc(var(--glass-mx, -999) * 100%) calc(var(--glass-my, -999) * 100%), rgb(var(--glass-tint) / var(--glass-sheen, 0.26)) 0%, transparent 100%) !important;
-  border-radius: var(--glass-radius) !important;
-  box-shadow:
-    inset 0 1px 0 rgb(var(--glass-tint) / var(--glass-rim-top)),
-    inset 1px 0 0 rgb(var(--glass-tint) / var(--glass-rim-side)),
-    inset -1px 0 0 rgb(var(--glass-tint) / calc(var(--glass-rim-side) * 0.55)),
-    inset 0 -1px 0 rgb(var(--glass-tint) / var(--glass-rim-bot)),
-    inset 0 0 22px rgb(var(--glass-tint) / var(--glass-inner)),
-    var(--glass-shadow-panel) !important;
+[class~="bg-card"]:not(button):not([role="button"]):not(a):not([class*="user-input"]),
+[class*="bg-card"]:not([class*="bg-card-border"]):not(button):not([role="button"]):not(a):not([class*="user-input"]) {
+  backdrop-filter: var(--glass-lens-card) blur(var(--glass-blur)) saturate(var(--glass-sat, 120%)) brightness(var(--glass-bright, 1.02)) contrast(var(--glass-contrast, 1.02)) !important;
+  -webkit-backdrop-filter: var(--glass-lens-card) blur(var(--glass-blur)) saturate(var(--glass-sat, 120%)) brightness(var(--glass-bright, 1.02)) contrast(var(--glass-contrast, 1.02)) !important;
+  background-color: rgb(var(--glass-fill) / var(--glass-alpha-card, 0.035)) !important;
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.08), transparent 25%, transparent 75%, rgba(255, 255, 255, 0.015)) !important;
+  border-radius: var(--glass-radius, 20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: var(--glass-meniscus-card) !important;
 }
 
 /* CTA 卡片按钮（New Conversation 等）：抬起面 + 面板级圆角，不要大底板深填充 */
 :is(a, button, [role="button"])[class*="bg-card"] {
   background-color: rgb(var(--glass-tint) / var(--glass-select)) !important;
-  border-radius: var(--glass-radius) !important;
-  box-shadow: inset 0 1px 0 rgb(var(--glass-tint) / var(--glass-rim-top)),
+  border-radius: var(--glass-radius, 20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.70),
               var(--glass-shadow-panel) !important;
 }
 
 :is(a, button, [role="button"])[class*="bg-card"]:hover {
-  background-color: rgb(var(--glass-tint) / calc(var(--glass-select) + 0.10)) !important;
+  background-color: rgb(var(--glass-tint) / calc(var(--glass-select) + 0.08)) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
 }
 
 /* ---- 5.3 浮层级玻璃：菜单、下拉、弹窗、气泡 ---- */
@@ -651,19 +666,13 @@ body.theme-light ::-webkit-scrollbar-thumb:hover {
 [role="dialog"],
 [role="alertdialog"],
 .settings-modal-container {
-  backdrop-filter: var(--glass-lens-strong) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) contrast(var(--glass-contrast)) !important;
-  -webkit-backdrop-filter: var(--glass-lens-strong) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) contrast(var(--glass-contrast)) !important;
-  background-color: rgb(var(--glass-fill) / var(--glass-alpha-hi)) !important;
-  background-image: none !important;
-  border: 1px solid rgb(var(--glass-tint) / 0.18) !important;
-  border-radius: var(--glass-radius) !important;
-  box-shadow:
-    inset 0 1px 0 rgb(var(--glass-tint) / var(--glass-rim-top)),
-    inset 1px 0 0 rgb(var(--glass-tint) / var(--glass-rim-side)),
-    inset -1px 0 0 rgb(var(--glass-tint) / calc(var(--glass-rim-side) * 0.55)),
-    inset 0 -1px 0 rgb(var(--glass-tint) / var(--glass-rim-bot)),
-    inset 0 0 30px rgb(var(--glass-tint) / var(--glass-inner)),
-    var(--glass-shadow-float) !important;
+  backdrop-filter: var(--glass-lens-strong) blur(var(--glass-blur)) saturate(125%) brightness(var(--glass-bright)) contrast(var(--glass-contrast)) !important;
+  -webkit-backdrop-filter: var(--glass-lens-strong) blur(var(--glass-blur)) saturate(125%) brightness(var(--glass-bright)) contrast(var(--glass-contrast)) !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.16), transparent 35%, rgba(255, 255, 255, 0.03)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: var(--glass-radius, 20px) !important;
+  box-shadow: var(--glass-meniscus-float) !important;
   overflow: hidden;
 }
 
@@ -673,18 +682,26 @@ body.theme-light [role="listbox"]:not(:empty),
 body.theme-light [role="dialog"],
 body.theme-light [role="alertdialog"],
 body.theme-light .settings-modal-container {
-  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  background-color: rgba(255, 255, 255, 0.24) !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+}
+
+body:not(.theme-light) .px-menu-content,
+body:not(.theme-light) [role="menu"]:not(:empty),
+body:not(.theme-light) [role="listbox"]:not(:empty),
+body:not(.theme-light) [role="dialog"],
+body:not(.theme-light) [role="alertdialog"],
+body:not(.theme-light) .settings-modal-container {
+  background-color: rgba(12, 16, 36, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
 }
 
 /* 弹窗更厚、更圆、投影更深 */
 html body [role="dialog"],
 html body [role="alertdialog"],
 html body .settings-modal-container {
-  border-radius: var(--glass-radius-lg) !important;
-  box-shadow:
-    inset 0 1px 0 rgb(var(--glass-tint) / var(--glass-rim-top)),
-    inset 0 0 40px rgb(var(--glass-tint) / var(--glass-inner)),
-    var(--glass-shadow-modal) !important;
+  border-radius: var(--glass-radius-lg, 26px) !important;
+  box-shadow: var(--glass-shadow-modal) !important;
 }
 
 /* 斜向高光：玻璃的「反光」。用 ::before 铺一层，不影响内容布局 */
@@ -731,20 +748,321 @@ body.theme-light div.animate-modalFadeIn {
    于是壁纸只在它边上露出彩色的「边光」，正文依旧干净。
    选择器按实测的容器类名片段组合（relative z-0 flex-1 flex min-h-0 h-full）。*/
 div[class*="z-0"][class*="flex-1"][class*="min-h-0"][class*="h-full"] {
-  background-color: rgb(var(--glass-fill) / var(--glass-slab, 0.5)) !important;
-  backdrop-filter: var(--glass-lens) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) !important;
-  -webkit-backdrop-filter: var(--glass-lens) blur(var(--glass-blur)) saturate(var(--glass-sat)) brightness(var(--glass-bright)) !important;
+  background-color: rgb(var(--glass-fill) / var(--glass-slab, 0.04)) !important;
+  backdrop-filter: blur(5px) saturate(var(--glass-sat, 120%)) brightness(var(--glass-bright, 1.02)) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(var(--glass-sat, 120%)) brightness(var(--glass-bright, 1.02)) !important;
+  border-radius: 20px 20px 0 0 !important;
   box-shadow:
-    inset 1px 0 0 rgb(var(--glass-tint) / calc(var(--glass-rim-top) * 0.9)),
-    inset 0 1px 0 rgb(var(--glass-tint) / calc(var(--glass-rim-top) * 0.6)) !important;
+    inset 1px 0 0 rgba(255, 255, 255, 0.18),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    0 -4px 20px rgba(0, 0, 0, 0.05) !important;
 }
 
 body:not(.theme-light) {
-  --glass-slab: 0.30;   /* 暗色填充本身就深，正文底板再厚就把极光全盖住了 */
+  --glass-slab: 0.08;   /* 暗色填充高透水感，透出背景极光流动 */
 }
 
 body.theme-light {
-  --glass-slab: 0.30;
+  --glass-slab: 0.04;
+}
+
+/* ---- 5.36 对话正文 / 助理回复 / Markdown 液态玻璃底板 ------------------------
+   重构为真·液态玻璃（Liquid Glass）：
+   1. 晶莹通透（Crystal Clear）：底色透明度压低至 0.035，背景极光如流水折射透出；
+   2. 水滴弯液面光弧（Meniscus Specular Rim）：四向不等亮液体张力反光；
+   3. 流体流光（Fluid Sheen）：155deg 各向异性流动高光；
+   4. 微边缘折射（Fluid Bevel Refraction）。 */
+.leading-relaxed,
+[class*="prose"] {
+  backdrop-filter: blur(5px) saturate(var(--glass-sat, 120%)) brightness(var(--glass-bright, 1.02)) contrast(var(--glass-contrast, 1.02)) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(var(--glass-sat, 120%)) brightness(var(--glass-bright, 1.02)) contrast(var(--glass-contrast, 1.02)) !important;
+  background-color: rgb(var(--glass-fill) / var(--glass-alpha-card, 0.035)) !important;
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.075), transparent 25%, transparent 75%, rgba(255, 255, 255, 0.015)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: var(--glass-radius, 20px) !important;
+  padding: 14px 18px !important;
+  box-shadow: var(--glass-meniscus-card) !important;
+}
+
+body.theme-light .leading-relaxed,
+body.theme-light [class*="prose"] {
+  background-color: rgba(255, 255, 255, 0.035) !important;
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.08), transparent 25%, transparent 75%, rgba(255, 255, 255, 0.015)) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: var(--glass-meniscus-card) !important;
+}
+
+body:not(.theme-light) .leading-relaxed,
+body:not(.theme-light) [class*="prose"] {
+  background-color: rgba(10, 14, 30, 0.12) !important;
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.06), transparent 25%, transparent 75%, rgba(255, 255, 255, 0.012)) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.40),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 20px 32px -16px rgba(0, 0, 0, 0.40),
+    0 8px 16px -8px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* 防止嵌套 prose 或 leading-relaxed 产生多重边框、背景与内边距叠加 */
+body.theme-light .leading-relaxed .leading-relaxed,
+body.theme-light .leading-relaxed [class*="prose"],
+body.theme-light [class*="prose"] .leading-relaxed,
+body.theme-light [class*="prose"] [class*="prose"],
+body:not(.theme-light) .leading-relaxed .leading-relaxed,
+body:not(.theme-light) .leading-relaxed [class*="prose"],
+body:not(.theme-light) [class*="prose"] .leading-relaxed,
+body:not(.theme-light) [class*="prose"] [class*="prose"],
+.leading-relaxed .leading-relaxed,
+.leading-relaxed [class*="prose"],
+[class*="prose"] .leading-relaxed,
+[class*="prose"] [class*="prose"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+}
+
+/* ---- 5.37 用户消息气泡：液态玻璃水滴胶囊 -----------------------------------------
+   严格遵循 zsio/liquid-glass 规范：彻底根除套娃双层边框与伪元素遮罩，打造真·单层液态胶囊。 */
+[data-testid="user-input-step"],
+[class*="group/user-input-step"],
+[class*="user-input-step"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+}
+
+/* 清空外壳与默认边框层，靠右对齐气泡 */
+[class*="group/user-input-step"] [class*="bg-card-border"],
+[data-testid="user-input-step"] [class*="bg-card-border"] {
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  width: 100% !important;
+}
+
+/* 消息真实气泡主体：22px 流体水滴圆角，弯月面光弧，单层透亮水质 */
+[class*="group/user-input-step"] [class*="bg-card-border"] > [class~="bg-card"],
+[data-testid="user-input-step"] [class*="bg-card-border"] > [class~="bg-card"] {
+  border-radius: 22px !important;
+  backdrop-filter: blur(5px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(120%) !important;
+  padding: 10px 20px !important;
+  width: fit-content !important;
+  max-width: 88% !important;
+  overflow: visible !important;
+}
+
+body.theme-light [class*="group/user-input-step"] [class*="bg-card-border"] > [class~="bg-card"],
+body.theme-light [data-testid="user-input-step"] [class*="bg-card-border"] > [class~="bg-card"] {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.14), transparent 25%, transparent 75%, rgba(255, 255, 255, 0.02)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.80),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 20px 32px -14px rgba(31, 42, 58, 0.18),
+    0 6px 12px -6px rgba(31, 42, 58, 0.10) !important;
+}
+
+body:not(.theme-light) [class*="group/user-input-step"] [class*="bg-card-border"] > [class~="bg-card"],
+body:not(.theme-light) [data-testid="user-input-step"] [class*="bg-card-border"] > [class~="bg-card"] {
+  background-color: rgba(10, 14, 30, 0.15) !important;
+  background-image: linear-gradient(155deg, rgba(255, 255, 255, 0.08), transparent 25%, transparent 75%, rgba(255, 255, 255, 0.015)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 20px 32px -14px rgba(0, 0, 0, 0.35),
+    0 6px 12px -6px rgba(0, 0, 0, 0.20) !important;
+}
+
+/* 气泡内部操作按钮栏（复制/时间戳等）：清空外壳，杜绝三层嵌套 */
+[class*="group/user-input-step"] [class*="user-input-buttons-container"],
+[class*="group/user-input-step"] [class*="user-input-buttons-shadow"],
+[data-testid="user-input-step"] [class*="user-input-buttons-container"],
+[data-testid="user-input-step"] [class*="user-input-buttons-shadow"],
+[class*="user-input-buttons-container"],
+[class*="user-input-buttons-shadow"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ---- 5.37b 顶部吸顶消息液态容器透明化 ------------------------------------------
+   彻底移除不透明矩形白条与直角渐变伪元素，让极光壁纸与液态气泡纯净透出。 */
+div[class*="sticky"][class*="top-0"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+div[class*="sticky"][class*="top-0"]::after {
+  display: none !important;
+  background: none !important;
+}
+
+/* ---- 5.38 代码块：液态黑曜石晶体 ---------------------------------------------
+   内外统一 14px 流体圆角，杜绝直角溢出；晶莹黑曜石半透，告别死黑/死白。 */
+.code-block,
+[class*="code-block"] {
+  border-radius: var(--glass-radius-sm, 14px) !important;
+  overflow: hidden !important;
+}
+
+/* ---- 5.38a 工具步骤与命令行执行块：液态水滴微岛 --------------------------- */
+div[class*="group/run-command"],
+div.group:has(> div > div > span.font-mono),
+div.group:has(span[class*="truncate font-mono"]) {
+  border-radius: 14px !important;
+  backdrop-filter: blur(5px) saturate(115%) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(115%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.theme-light div[class*="group/run-command"],
+body.theme-light div.group:has(> div > div > span.font-mono),
+body.theme-light div.group:has(span[class*="truncate font-mono"]) {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.60), 0 4px 12px -4px rgba(31, 42, 58, 0.08) !important;
+}
+
+body.theme-light div[class*="group/run-command"]:hover,
+body.theme-light div.group:has(> div > div > span.font-mono):hover,
+body.theme-light div.group:has(span[class*="truncate font-mono"]):hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.26) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 8px 20px -6px rgba(31, 42, 58, 0.12) !important;
+}
+
+body:not(.theme-light) div[class*="group/run-command"],
+body:not(.theme-light) div.group:has(> div > div > span.font-mono),
+body:not(.theme-light) div.group:has(span[class*="truncate font-mono"]) {
+  background-color: rgba(10, 14, 30, 0.20) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 12px -4px rgba(0, 0, 0, 0.30) !important;
+}
+
+/* Artifact 卡片：水滴浮岛化 */
+.artifact-card,
+div[class*="artifact-card"] {
+  border-radius: 16px !important;
+  backdrop-filter: blur(5px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(120%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+body.theme-light .artifact-card,
+body.theme-light div[class*="artifact-card"] {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.70), 0 8px 20px -8px rgba(31, 42, 58, 0.10) !important;
+}
+
+body.theme-light .artifact-card:hover,
+body.theme-light div[class*="artifact-card"]:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.30) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 12px 24px -8px rgba(31, 42, 58, 0.16) !important;
+}
+
+/* ---- 5.39 侧栏嵌套直角容器清理与圆角行项 -------------------------------------
+   清除内部嵌套 bg-sidebar 造成的十多处 0px 方框与重复边框、阴影。 */
+[class~="bg-sidebar"] [class~="bg-sidebar"] {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.bg-sidebar,
+div[class*="bg-sidebar"],
+div.bg-sidebar.pt-1,
+div.bg-sidebar.pt-1.pb-\[1px\],
+[class*="group/section-header"],
+[class*="section-header"],
+[class*="headerbtn"],
+.bg-sidebar .pt-1 {
+  border-radius: var(--glass-radius-row, 12px) !important;
+}
+
+/* 分隔线转为水滴光缝 */
+div.bg-border.flex-shrink-0.relative.z-30.w-\[1px\].h-full,
+div.bg-border.w-\[1px\].h-full,
+div.bg-border {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.04)) !important;
+}
+body:not(.theme-light) div.bg-border.flex-shrink-0.relative.z-30.w-\[1px\].h-full,
+body:not(.theme-light) div.bg-border.w-\[1px\].h-full,
+body:not(.theme-light) div.bg-border {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02)) !important;
+}
+
+/* ---- 5.40 Markdown 表格流体圆角卡片化 ---------------------------------------- */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: var(--glass-radius-sm, 14px) !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  background-color: rgb(var(--glass-fill) / calc(var(--glass-alpha-card) * 0.5)) !important;
+}
+
+table th {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+body:not(.theme-light) table th {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+table tr:first-child th:first-child,
+table tr:first-child td:first-child {
+  border-top-left-radius: var(--glass-radius-sm, 14px) !important;
+}
+table tr:first-child th:last-child,
+table tr:first-child td:last-child {
+  border-top-right-radius: var(--glass-radius-sm, 14px) !important;
+}
+table tr:last-child th:first-child,
+table tr:last-child td:first-child {
+  border-bottom-left-radius: var(--glass-radius-sm, 14px) !important;
+}
+table tr:last-child th:last-child,
+table tr:last-child td:last-child {
+  border-bottom-right-radius: var(--glass-radius-sm, 14px) !important;
+}
+
+th, td {
+  border-color: rgb(var(--glass-tint) / 0.09) !important;
 }
 
 /* ---- 5.4 菜单项 ---- */
@@ -987,21 +1305,32 @@ textarea:focus,
    密集正文被位移透镜一拉就是满屏重影（2026-09-17 实拍踩到，找了半天才发现是选择器
    认错了组件）。 */
 
-/* ---- 6.5 代码 ---- */
+/* ---- 6.5 代码：液态黑曜石晶体 ---- */
+.code-block,
+[class*="code-block"] {
+  border-radius: var(--glass-radius-sm, 14px) !important;
+  overflow: hidden !important;
+}
+
 pre {
-  /* 别指望代码块能当玻璃：它下面常年压着另一段密集代码，透明+模糊会把两段
-     叠成「鬼影」（2026-09-17 实拍踩到）。这里只保留一点背景透感。 */
-  background-color: rgba(6, 10, 26, 0.66) !important;
+  background-color: rgba(6, 10, 26, 0.45) !important;
   border: 1px solid rgb(var(--glass-tint) / 0.14) !important;
-  border-radius: var(--glass-radius-sm) !important;
-  backdrop-filter: blur(10px) saturate(140%) brightness(0.92) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(140%) brightness(0.92) !important;
-  box-shadow: inset 0 1px 0 rgb(var(--glass-tint) / 0.10) !important;
+  border-radius: var(--glass-radius-sm, 14px) !important;
+  overflow: hidden !important;
+  backdrop-filter: blur(8px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+  box-shadow:
+    inset 0 1.5px 1px 0 rgb(var(--glass-tint) / 0.35),
+    inset 0 0 18px rgb(var(--glass-tint) / 0.06),
+    0 4px 16px rgba(0, 0, 0, 0.15) !important;
 }
 
 body.theme-light pre {
-  background-color: rgba(255, 255, 255, 0.84) !important;
+  background-color: rgba(246, 248, 254, 0.48) !important;
   border: 1px solid rgba(24, 30, 54, 0.10) !important;
+  box-shadow:
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.85),
+    0 4px 14px rgba(40, 52, 96, 0.08) !important;
 }
 
 :not(pre) > code {
@@ -1275,8 +1604,8 @@ html[data-px-glass="perf"] {
   --glass-lens: brightness(1);
   --glass-lens-strong: brightness(1);
   --glass-lens-card: brightness(1);
-  --glass-blur: 8px;
-  --glass-blur-thin: 5px;
+  --glass-blur: 4px;
+  --glass-blur-thin: 3px;
   --glass-lens-follow: off;
   --glass-sheen: 0;
 }
@@ -1284,21 +1613,60 @@ html[data-px-glass="perf"] {
 html[data-px-glass="balanced"] {
   --glass-lens: var(--glass-lens-sm);
   --glass-lens-strong: var(--glass-lens-xs);
-  --glass-lens-card: brightness(1);
-  --glass-blur: 14px;
-  --glass-blur-thin: 8px;
+  --glass-lens-card: var(--glass-lens-xs);
+  --glass-blur: 5px;
+  --glass-blur-thin: 4px;
   --glass-lens-follow: on;
-  --glass-sheen: 0.26;
+  --glass-sheen: 0.08;
 }
 
 html[data-px-glass="ultra"] {
   --glass-lens: var(--glass-lens-md);
   --glass-lens-strong: var(--glass-lens-sm);
-  --glass-lens-card: var(--glass-lens-xs);
-  --glass-blur: 18px;
-  --glass-blur-thin: 10px;
+  --glass-lens-card: var(--glass-lens-sm);
+  --glass-blur: 5px;
+  --glass-blur-thin: 4px;
   --glass-lens-follow: on;
-  --glass-sheen: 0.35;
+  --glass-sheen: 0.12;
+}
+
+/* ============================================================
+   10.1 活力度档位（Phase 3 批次 5：calm | balanced | vivid）
+   ------------------------------------------------------------
+   - vivid 档：恢复早期高饱和、高明度极光感（185% / 1.06 / 0.88）。
+   - balanced 档：Phase 3 调校后的可读性与通透感黄金平衡点（默认：150% / 1.00 / 0.74）。
+   - calm 档：清雅克制，压低背景壁纸和色度干扰（120% / 1.00 / 0.50）。
+   ============================================================ */
+:root[data-px-vibrance="vivid"],
+html[data-px-vibrance="vivid"] {
+  --glass-vibrance: vivid;
+}
+
+:root[data-px-vibrance="calm"],
+html[data-px-vibrance="calm"] {
+  --glass-vibrance: calm;
+}
+
+html[data-px-vibrance="vivid"] body:not(.theme-light) {
+  --glass-sat:        185%;
+  --glass-bright:     1.06;
+  --glass-wall-vivid: 0.88;
+}
+
+html[data-px-vibrance="calm"] body:not(.theme-light) {
+  --glass-sat:        120%;
+  --glass-bright:     1.00;
+  --glass-wall-vivid: 0.50;
+}
+
+html[data-px-vibrance="vivid"] body.theme-light {
+  --glass-sat:        235%;
+  --glass-bright:     1.08;
+}
+
+html[data-px-vibrance="calm"] body.theme-light {
+  --glass-sat:        165%;
+  --glass-bright:     1.02;
 }
 
 /* ============================================================================

@@ -5,7 +5,9 @@
   "scripts": {
     "install-theme": "./install.sh",
     "switch": "./switch.sh",
-    "uninstall-theme": "./uninstall.sh"
+    "uninstall-theme": "./uninstall.sh",
+    "check-payloads": "node scripts/check_payloads.js",
+    "check-bom": "node scripts/check_bom.js"
   },
   "keywords": [
     "antigravity",

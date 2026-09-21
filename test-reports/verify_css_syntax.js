@@ -6,7 +6,8 @@ const themes = [
   'pixel-theme/pixel.css',
   'doodle-theme/doodle.css',
   'matcha-theme/matcha.css',
-  'phantom-theme/phantom.css'
+  'phantom-theme/phantom.css',
+  'glass-theme/glass.css'
 ];
 
 let allPassed = true;
@@ -68,5 +69,5 @@ if (!allPassed) {
   console.error('FAILED: Unbalanced CSS braces detected!');
   process.exit(1);
 } else {
-  console.log('SUCCESS: All 4 CSS stylesheets have perfectly balanced braces.');
+  console.log('SUCCESS: All 5 CSS stylesheets have perfectly balanced braces.');
 }
